@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If TopVenues helps your research, please cite the paper below."
+title: "TopVenues: a reproducible corpus and tooling substrate for cybersecurity literature reviews"
+type: software
+license: MIT
+repository-code: "https://github.com/sidneibarbieri/topvenues-tool"
+authors:
+  - family-names: Barbieri
+    given-names: Sidnei
+  - family-names: Ferraz
+    given-names: Agney Lopes Roth
+  - family-names: "Pereira Júnior"
+    given-names: "Lourenço Alves"
+preferred-citation:
+  type: article
+  title: "TopVenues: A Reproducible Corpus and Tooling Substrate for Cybersecurity Literature Reviews"
+  year: 2026
+  url: "https://arxiv.org/abs/2606.18320"
+  authors:
+    - family-names: Barbieri
+      given-names: Sidnei
+    - family-names: Ferraz
+      given-names: Agney Lopes Roth
+    - family-names: "Pereira Júnior"
+      given-names: "Lourenço Alves"

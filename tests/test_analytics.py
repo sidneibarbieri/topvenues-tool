@@ -1,0 +1,106 @@
+"""Tests for area-level analytics."""
+
+from __future__ import annotations
+
+import sqlite3
+from pathlib import Path
+
+import pytest
+
+from src.analytics import _split_authors, area_year_counts, top_authors
+
+
+def _corpus(db_path: Path) -> None:
+    connection = sqlite3.connect(db_path)
+    connection.execute(
+        "create table papers (paper_id text, authors text, event text, year int)"
+    )
+    connection.executemany(
+        "insert into papers values (?, ?, ?, ?)",
+        [
+            ("p1", "Alice, Bob", "ACM CCS", 2024),
+            ("p2", "Alice and Carol", "IEEE S&P", 2025),
+            ("p3", "Dan", "HotNets", 2025),
+        ],
+    )
+    connection.commit()
+    connection.close()
+
+
+def test_area_year_counts_groups_by_area_and_year(tmp_path: Path) -> None:
+    db = tmp_path / "papers.db"
+    _corpus(db)
+    counts = area_year_counts(db)
+    assert counts["security"] == {2024: 1, 2025: 1}
+    assert counts["networks"] == {2025: 1}
+
+
+def test_top_authors_overall_and_by_area(tmp_path: Path) -> None:
+    db = tmp_path / "papers.db"
+    _corpus(db)
+    assert top_authors(db)[0] == ("Alice", 2)  # Alice appears in two security papers
+    assert ("Dan", 1) in top_authors(db, area="networks")
+    assert all(name != "Dan" for name, _ in top_authors(db, area="security"))
+
+
+def test_dblp_identity_suffix_is_preserved() -> None:
+    assert _split_authors("Wei Wang 0001, Wei Wang 0002") == [
+        "Wei Wang 0001", "Wei Wang 0002"
+    ]
+
+
+class TestTopicTrend:
+    @pytest.fixture
+    def trend_db(self, tmp_path):
+        from src.database import DatabaseManager
+        from src.models import Paper
+
+        manager = DatabaseManager(tmp_path / "papers.db")
+        manager.upsert_papers([
+            Paper(paper_id="1", title="LLM agents", year=2024, event="ACM CCS"),
+            Paper(paper_id="2", title="Fuzzing loops", year=2024, event="ACM CCS",
+                  abstract="uses an llm oracle"),
+            Paper(paper_id="3", title="Routing", year=2024, event="ACM SIGCOMM"),
+            Paper(paper_id="4", title="LLM watermarking", year=2025, event="NDSS"),
+            Paper(paper_id="5", title="Congestion", year=2025, event="ACM SIGCOMM"),
+        ])
+        return manager.db_path
+
+    def test_counts_and_share_by_year(self, trend_db):
+        from src.analytics import topic_trend
+
+        trend = topic_trend(trend_db, "LLM")
+
+        assert trend["total"] == 3
+        assert trend["by_year"] == [
+            {"year": 2024, "papers": 2, "share_pct": 66.67},
+            {"year": 2025, "papers": 1, "share_pct": 50.0},
+        ]
+
+    def test_match_is_case_insensitive_over_abstract(self, trend_db):
+        from src.analytics import topic_trend
+
+        trend = topic_trend(trend_db, "llm")
+        assert trend["total"] == 3
+
+    def test_area_filter_scopes_both_numerator_and_denominator(self, trend_db):
+        from src.analytics import topic_trend
+
+        trend = topic_trend(trend_db, "LLM", area="security")
+
+        assert trend["by_year"] == [
+            {"year": 2024, "papers": 2, "share_pct": 100.0},
+            {"year": 2025, "papers": 1, "share_pct": 100.0},
+        ]
+
+    def test_year_start_cuts_earlier_years(self, trend_db):
+        from src.analytics import topic_trend
+
+        trend = topic_trend(trend_db, "LLM", year_start=2025)
+        assert [row["year"] for row in trend["by_year"]] == [2025]
+
+    def test_top_venues_ordered_by_count(self, trend_db):
+        from src.analytics import topic_trend
+
+        trend = topic_trend(trend_db, "LLM")
+        assert trend["top_venues"][0] == ("ACM CCS", 2)

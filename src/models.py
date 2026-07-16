@@ -1,0 +1,376 @@
+"""Pydantic DTOs."""
+
+import re
+from datetime import datetime
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class EventType(str, Enum):
+    CCS = "ccs"
+    ASIACCS = "asiaccs"
+    USS = "uss"
+    NDSS = "ndss"
+    SP = "sp"
+    EUROSP = "eurosp"
+    HOTNETS = "hotnets"
+    SACMAT = "sacmat"
+    ACSAC = "acsac"
+    ACM_CSUR = "acm_csur"
+    IEEE_COMST = "ieee_comst"
+    FNT_PRIVSEC = "fnt_privsec"
+    # Security (additional)
+    ESORICS = "esorics"
+    CODASPY = "codaspy"
+    RAID = "raid"
+    CNS = "cns"
+    WISEC = "wisec"
+    WOOT = "woot"
+    SATML = "satml"
+    AISEC = "aisec"
+    TRUSTCOM = "trustcom"
+    # Networks and systems
+    SIGCOMM = "sigcomm"
+    NSDI = "nsdi"
+    IMC = "imc"
+    SIGMETRICS = "sigmetrics"
+    ATC = "atc"
+    EUROSYS = "eurosys"
+    # Mobile
+    MOBICOM = "mobicom"
+    MOBISYS = "mobisys"
+    SENSYS = "sensys"
+    HOTMOBILE = "hotmobile"
+    # AI / ML
+    NEURIPS = "neurips"
+    ICML = "icml"
+    ICLR = "iclr"
+    AAAI = "aaai"
+    IJCAI = "ijcai"
+    KDD = "kdd"
+    ACL = "acl"
+    EMNLP = "emnlp"
+    NAACL = "naacl"
+
+
+class PaperType(str, Enum):
+    ARTICLE = "article"
+    PROCEEDINGS = "proceedings"
+    EDITORSHIP = "editorship"
+    UNKNOWN = "unknown"
+
+
+class DownloadStatus(str, Enum):
+    PENDING = "pending"
+    DOWNLOADED = "downloaded"
+    VALID = "valid"
+    FAILED = "failed"
+    BLOCKED = "blocked"
+    SKIPPED = "skipped"
+    CORRUPT = "corrupt"
+
+
+class AbstractStatus(str, Enum):
+    OK = "ok"
+    FAIL = "fail"
+    NOT_APPLICABLE = "n.a."
+    PENDING = "pending"
+
+
+class PaperClass(str, Enum):
+    """High-level bibliographic classification, derived from title and type."""
+
+    SOK = "SoK"
+    SURVEY = "Survey"
+    POSTER = "Poster"
+    WORKSHOP = "Workshop"
+    SHORT = "Short"
+    JOURNAL = "Journal"
+    ARTICLE = "Article"
+
+
+class Paper(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    score: float | None = None
+    paper_id: str = Field(..., alias="ID")
+    authors: str | None = None
+    title: str
+    venue: str | None = None
+    pages: str | None = None
+    year: int
+    paper_type: PaperType = Field(default=PaperType.ARTICLE, alias="Type")
+    access: str | None = None
+    key: str | None = None
+    ee: str | None = None
+    url: str | None = None
+    event: str | None = None
+    abstract: str | None = None
+    bibtex: str | None = None
+
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, v: int) -> int:
+        if not 1900 <= v <= 2100:
+            raise ValueError(f"Year {v} is out of reasonable range")
+        return v
+
+    @property
+    def doi(self) -> str | None:
+        """Bare DOI extracted from the ``ee`` URL, when present."""
+        if not self.ee:
+            return None
+        if "doi.org/" in self.ee:
+            return self.ee.split("doi.org/", 1)[1]
+        if self.ee.startswith("10."):
+            return self.ee
+        return None
+
+    @property
+    def first_author(self) -> str | None:
+        if not self.authors:
+            return None
+        return self.authors.split(",", 1)[0].strip() or None
+
+    @property
+    def abstract_words(self) -> int:
+        return len(self.abstract.split()) if self.abstract else 0
+
+    @property
+    def cite_key(self) -> str | None:
+        """The BibTeX entry key (e.g. ``DBLP:conf/sp/Smith23``), if BibTeX is present."""
+        if not self.bibtex:
+            return None
+        match = re.search(r"@\w+\{([^,\s]+)\s*,", self.bibtex)
+        return match.group(1) if match else None
+
+    @property
+    def cite_command(self) -> str | None:
+        """LaTeX ``\\cite{key}`` command for direct copy-paste."""
+        return f"\\cite{{{self.cite_key}}}" if self.cite_key else None
+
+    @property
+    def paper_class(self) -> PaperClass:
+        title_lower = (self.title or "").lower()
+        if "sok:" in title_lower or "systematization of knowledge" in title_lower:
+            return PaperClass.SOK
+        if any(kw in title_lower for kw in ("survey", "systematic review", "literature review")):
+            return PaperClass.SURVEY
+        if "poster:" in title_lower or title_lower.startswith("poster "):
+            return PaperClass.POSTER
+        if "workshop" in title_lower:
+            return PaperClass.WORKSHOP
+        if "short paper" in title_lower:
+            return PaperClass.SHORT
+        if (self.event or "").lower().startswith(("acm computing", "ieee communications",
+                                                   "foundations and trends")):
+            return PaperClass.JOURNAL
+        return PaperClass.ARTICLE
+
+
+class DownloadLogEntry(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    event: str
+    year: int
+    file_name: str = Field(..., alias="File")
+    url: str
+    http_code: int | None = Field(None, alias="HTTP_Code")
+    status: DownloadStatus
+    message: str | None = None
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class AbstractLogEntry(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    paper_id: str = Field(..., alias="ID")
+    event: str
+    ee_url: str = Field(..., alias="EE")
+    status: AbstractStatus
+    abstract: str | None = None
+    message: str | None = None
+    source: str
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class CacheEntry(BaseModel):
+    key: str
+    value: str
+    created_at: datetime = Field(default_factory=datetime.now)
+    expires_at: datetime | None = None
+    access_count: int = 0
+    last_accessed: datetime | None = None
+
+
+class CheckpointData(BaseModel):
+    phase: str
+    timestamp: datetime = Field(default_factory=datetime.now)
+    events_processed: list[tuple[str, int]] = Field(default_factory=list)
+    papers_processed: int = 0
+    last_event: str | None = None
+    last_year: int | None = None
+    papers_with_abstracts: int = 0
+    custom_data: dict[str, Any] = Field(default_factory=dict)
+
+
+class StudyScope(BaseModel):
+    """Configuration for reproducible measurement studies."""
+
+    core_events: list[str] = Field(
+        default_factory=lambda: ["USENIX Security", "ACM CCS", "IEEE S&P", "NDSS"]
+    )
+    study_years: list[int] = Field(default_factory=lambda: [2024, 2025])
+    prior_windows: dict[int, list[int]] = Field(
+        default_factory=lambda: {2023: [2019, 2022], 2022: [2019, 2021]}
+    )
+    outcome_windows: dict[int, list[int]] = Field(
+        default_factory=lambda: {2023: [2023, 2026], 2022: [2022, 2026]}
+    )
+    title_thresholds: list[float] = Field(default_factory=lambda: [0.5, 0.6, 0.7])
+    preprint_snapshot: str = "data/dataset/arxiv_cs_cr_2022_2026.jsonl.gz"
+    preprint_categories: list[str] = Field(default_factory=lambda: ["cs.CR"])
+    preprint_since_year: int = 2022
+    preprint_until_year: int = 2026
+    publication_months: dict[str, int] = Field(
+        default_factory=lambda: {
+            "USENIX Security": 8,
+            "ACM CCS": 10,
+            "IEEE S&P": 5,
+            "NDSS": 2,
+        }
+    )
+
+
+class Configuration(BaseModel):
+    events: list[str] = Field(
+        default_factory=lambda: [
+            "ccs",
+            "asiaccs",
+            "uss",
+            "ndss",
+            "sp",
+            "eurosp",
+            "hotnets",
+            "sacmat",
+            "acsac",
+            "acm_csur",
+            "ieee_comst",
+            "fnt_privsec",
+        ]
+    )
+    year_start: int = 2019
+    years: list[int] = Field(default_factory=list)
+    study_scope: StudyScope = Field(default_factory=StudyScope)
+
+    def effective_years(self) -> list[int]:
+        """Return years to process."""
+        if self.years:
+            return list(self.years)
+        return list(range(self.year_start, datetime.now().year + 1))
+
+    ieee_comst_topics: list[str] = Field(
+        default_factory=lambda: [
+            "network",
+            "networks",
+            "IoT",
+            "cloud",
+            "edge",
+            "wireless",
+            "5G",
+            "6G",
+            "network security",
+            "cybersecurity",
+            "privacy",
+            "blockchain",
+            "distributed",
+        ]
+    )
+
+    request_timeout: int = 120
+    default_interval: list[float] = Field(default_factory=lambda: [5.0, 15.0])
+    acm_wait_min: float = 60.0
+    acm_wait_max: float = 300.0
+    batch_size: int = 10
+
+    acm_failure_threshold: int = 3
+    acm_backoff_initial: float = 60.0
+    acm_backoff_max: float = 600.0
+
+    max_retries: int = 3
+    retry_backoff_factor: float = 2.0
+
+    cache_enabled: bool = True
+    cache_ttl_hours: int = 168
+
+    checkpoint_enabled: bool = True
+    checkpoint_interval: int = 5
+
+    base_dir: str = "."
+    data_dir: str = "data/dataset"
+    log_dir: str = "data/log"
+    json_dir: str = "data/json"
+    cache_dir: str = "data/cache"
+    checkpoint_dir: str = "data/checkpoints"
+
+    user_agents: list[str] = Field(
+        default_factory=lambda: [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/129.0.2792.79 Safari/537.36",
+        ]
+    )
+
+    headers: dict[str, str] = Field(
+        default_factory=lambda: {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
+            "Cache-Control": "no-cache",
+        }
+    )
+
+
+class SearchFilters(BaseModel):
+    title_contains: str | None = None
+    abstract_contains: str | None = None
+    author_contains: str | None = None
+    event: str | None = None
+    year: int | None = None
+    technology: str | None = None
+
+    def has_any_filter(self) -> bool:
+        return any(
+            [
+                self.title_contains,
+                self.abstract_contains,
+                self.author_contains,
+                self.event,
+                self.year,
+                self.technology,
+            ]
+        )
+
+
+class Statistics(BaseModel):
+    total_papers: int
+    papers_with_abstracts: int
+    papers_without_abstracts: int
+    by_event: dict[str, int] = Field(default_factory=dict)
+    by_year: dict[int, int] = Field(default_factory=dict)
+    abstract_sources: dict[str, int] = Field(default_factory=dict)
+    last_updated: datetime | None = None
+
+
+class AbstractImportResult(BaseModel):
+    """Result of importing abstracts from CSV."""
+
+    scanned: int
+    matched: int
+    updated: int
+    skipped_existing: int
+    missing_in_db: int

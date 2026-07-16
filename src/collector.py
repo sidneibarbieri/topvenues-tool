@@ -1,0 +1,334 @@
+"""Main collector orchestrating download, consolidate, and extract."""
+
+import asyncio
+import random
+from datetime import datetime, timedelta
+from pathlib import Path
+
+from .abstract_fetcher import AbstractFetcher
+from .bibtex_fetcher import BibTeXFetcher
+from .cache import CacheManager
+from .checkpoint import CheckpointManager
+from .config import load_configuration
+from .consolidator import DataConsolidator
+from .database import DatabaseManager
+from .downloader import JSONDownloader
+from .extractors import get_extractor_for_event
+from .models import Configuration, Paper, SearchFilters
+
+
+def _extract_doi(ee_url: str | None) -> str | None:
+    """Return the bare DOI from a doi.org URL, or None if not applicable."""
+    if not ee_url:
+        return None
+    if "doi.org/" in ee_url:
+        return ee_url.split("doi.org/", 1)[1]
+    if ee_url.startswith("10."):
+        return ee_url
+    return None
+
+
+class Collector:
+    """Orchestrates DBLP JSON download, data consolidation, and abstract extraction."""
+
+    def __init__(
+        self,
+        base_dir: Path | None = None,
+        config_path: Path | None = None,
+    ):
+        self.base_dir = Path(base_dir) if base_dir else Path.cwd()
+        self.config: Configuration = load_configuration(config_path)
+
+        self.data_dir = self.base_dir / self.config.data_dir
+        self.log_dir = self.base_dir / self.config.log_dir
+        self.json_dir = self.base_dir / self.config.json_dir
+        self.cache_dir = self.base_dir / self.config.cache_dir
+        self.checkpoint_dir = self.base_dir / self.config.checkpoint_dir
+
+        for directory in (
+            self.data_dir,
+            self.log_dir,
+            self.json_dir,
+            self.cache_dir,
+            self.checkpoint_dir,
+        ):
+            directory.mkdir(parents=True, exist_ok=True)
+
+        self.cache_manager = CacheManager(
+            self.cache_dir,
+            enabled=self.config.cache_enabled,
+            ttl_hours=self.config.cache_ttl_hours,
+        )
+        self.checkpoint_manager = CheckpointManager(
+            self.checkpoint_dir,
+            enabled=self.config.checkpoint_enabled,
+        )
+        self.db = DatabaseManager(self.data_dir / "papers.db")
+        self._bootstrap_db_from_csv()
+
+        self.acm_blocked_until: datetime | None = None
+        self.acm_failure_counts: dict[str, int] = {}
+        self.acm_backoff_seconds = self.config.acm_backoff_initial
+        self.last_was_acm = False
+
+        self.papers: list[Paper] = []
+
+    def _bootstrap_db_from_csv(self) -> None:
+        """Populate DB from the tracked CSV on a fresh clone, if DB is still empty."""
+        stats = self.db.get_statistics()
+        if stats["total_papers"] > 0:
+            return
+        csv_path = self.data_dir / "master_dataset.csv"
+        if not csv_path.exists():
+            return
+        count = self.db.migrate_from_csv(csv_path)
+        if count:
+            print(f"[init] DB was empty — loaded {count} papers from master_dataset.csv")
+
+    def is_acm_blocked(self) -> bool:
+        return self.acm_blocked_until is not None and datetime.now() < self.acm_blocked_until
+
+    def get_acm_failure_count(self, url: str) -> int:
+        return self.acm_failure_counts.get(url, 0)
+
+    def increment_acm_failure_count(self, url: str) -> None:
+        self.acm_failure_counts[url] = self.acm_failure_counts.get(url, 0) + 1
+
+    def reset_acm_failure_count(self, url: str) -> None:
+        self.acm_failure_counts.pop(url, None)
+
+    def block_acm(self) -> None:
+        self.acm_blocked_until = datetime.now() + timedelta(seconds=self.acm_backoff_seconds)
+        self.acm_backoff_seconds = min(self.acm_backoff_seconds * 2, self.config.acm_backoff_max)
+
+    def get_random_user_agent(self) -> str:
+        return random.choice(self.config.user_agents)
+
+    def get_random_interval(self) -> float:
+        lo, hi = self.config.default_interval
+        return random.uniform(lo, hi)
+
+    async def run_download(self) -> None:
+        async with JSONDownloader(self.config, self.log_dir) as downloader:
+            await downloader.download_all(self.json_dir)
+
+    async def run_consolidate(self) -> None:
+        consolidator = DataConsolidator(self.json_dir, self.data_dir)
+        # Consolidate emits JSON-normalized metadata; upsert COALESCE preserves abstracts.
+        self.db.upsert_papers(consolidator.consolidate())
+        self.export_dataset_csv()
+        # Reload from DB so self.papers reflects abstracts for the subsequent extract phase.
+        self.papers = [Paper(**p) for p in self.db.get_all_papers()]
+        print(f"Consolidated {len(self.papers)} papers")
+
+    def export_dataset_csv(self) -> Path:
+        """Write the human-readable CSV from the SQLite source of truth."""
+        csv_path = self.data_dir / "master_dataset.csv"
+        self.db.export_to_csv(csv_path)
+        return csv_path
+
+    async def run_extract(self) -> None:
+        if not self.papers:
+            self.papers = self._load_papers_from_disk()
+
+        to_process = [p for p in self.papers if not p.abstract]
+        if not to_process:
+            print("All papers already have abstracts")
+            return
+
+        print(f"Extracting abstracts for {len(to_process)} papers...")
+        fetcher = AbstractFetcher(self)
+        processed = 0
+
+        while to_process:
+            batch = self._interleave_batch(to_process[: self.config.batch_size])
+            to_process = to_process[self.config.batch_size :]
+
+            for paper in batch:
+                await self._extract_single_abstract(paper, fetcher)
+                processed += 1
+                if processed % self.config.checkpoint_interval == 0:
+                    self._save_checkpoint()
+
+            self._save_dataset()
+            await asyncio.sleep(random.uniform(self.config.acm_wait_min, self.config.acm_wait_max))
+
+        await fetcher.close()
+        print(f"Extracted abstracts for {processed} papers")
+
+    async def run_backfill_abstracts(
+        self,
+        event: str | None = None,
+        limit: int | None = None,
+        concurrency: int = 4,
+    ) -> dict[str, int]:
+        """Backfill missing abstracts through DOI APIs without re-scraping publishers."""
+        targets = [
+            Paper(**row) for row in self.db.get_papers_without_abstracts(event=event, limit=limit)
+        ]
+        if not targets:
+            return {"scanned": 0, "updated": 0, "missing": 0, "no_doi": 0}
+
+        fetcher = AbstractFetcher(self)
+        semaphore = asyncio.Semaphore(concurrency)
+
+        async def _fetch(paper: Paper) -> tuple[Paper, str | None]:
+            doi = _extract_doi(paper.ee)
+            if not doi:
+                return paper, None
+            async with semaphore:
+                return paper, await fetcher.fetch_all(doi)
+
+        results = await asyncio.gather(*(_fetch(paper) for paper in targets))
+        await fetcher.close()
+
+        updated = 0
+        no_doi = 0
+        for paper, abstract in results:
+            if abstract:
+                self.db.update_abstract(paper.paper_id, abstract)
+                updated += 1
+            elif not _extract_doi(paper.ee):
+                no_doi += 1
+
+        return {
+            "scanned": len(targets),
+            "updated": updated,
+            "missing": len(targets) - updated - no_doi,
+            "no_doi": no_doi,
+        }
+
+    async def run_bibtex(self, concurrency: int = 8) -> int:
+        """Backfill BibTeX entries from DBLP for every paper missing one."""
+        targets = self.db.get_papers_without_bibtex()
+        if not targets:
+            print("All papers already have BibTeX.")
+            return 0
+
+        print(f"Fetching BibTeX for {len(targets):,} papers (concurrency={concurrency})…")
+        recovered = 0
+
+        def _persist(paper: Paper, bibtex: str | None) -> None:
+            nonlocal recovered
+            if bibtex:
+                self.db.update_bibtex(paper.paper_id, bibtex)
+                recovered += 1
+
+        papers = [Paper(**row) for row in targets]
+        async with BibTeXFetcher(concurrency=concurrency) as fetcher:
+            await fetcher.fetch_many(papers, on_result=_persist)
+        print(f"Recovered BibTeX for {recovered:,}/{len(papers):,} papers.")
+        return recovered
+
+    async def run_full(self) -> None:
+        from .database import write_gzipped_snapshot
+        print("Starting Top Venues Collector…")
+        print("\n[1/5] Downloading JSON files…")
+        await self.run_download()
+        print("\n[2/5] Consolidating data…")
+        await self.run_consolidate()
+        print("\n[3/5] Extracting abstracts…")
+        await self.run_extract()
+        print("\n[4/5] Fetching BibTeX entries…")
+        await self.run_bibtex()
+        print("\n[5/5] Writing distribution snapshot (papers.db.gz)…")
+        self.export_dataset_csv()
+        write_gzipped_snapshot(self.db.db_path)
+        print("\nCollection complete!")
+
+    def search(self, filters: SearchFilters, limit: int | None = None) -> list[Paper]:
+        if not self.papers:
+            self.papers = self._load_papers_from_disk()
+
+        results = []
+        for paper in self.papers:
+            if (
+                filters.title_contains
+                and filters.title_contains.lower() not in (paper.title or "").lower()
+            ):
+                continue
+            if (
+                filters.abstract_contains
+                and filters.abstract_contains.lower() not in (paper.abstract or "").lower()
+            ):
+                continue
+            if (
+                filters.author_contains
+                and filters.author_contains.lower() not in (paper.authors or "").lower()
+            ):
+                continue
+            if filters.event and paper.event != filters.event:
+                continue
+            if filters.year and paper.year != filters.year:
+                continue
+            if filters.technology:
+                tech = filters.technology.lower()
+                if (
+                    tech not in (paper.title or "").lower()
+                    and tech not in (paper.abstract or "").lower()
+                ):
+                    continue
+
+            results.append(paper)
+            if limit and len(results) >= limit:
+                break
+
+        return results
+
+    def _load_papers_from_disk(self) -> list[Paper]:
+        """Read papers from the SQLite DB — the single source of truth."""
+        return [Paper(**p) for p in self.db.get_all_papers()]
+
+    async def _extract_single_abstract(self, paper: Paper, fetcher: AbstractFetcher) -> None:
+        if not paper.ee:
+            return
+
+        cache_key = f"abstract_{paper.paper_id}"
+        cached = self.cache_manager.get(cache_key)
+        if cached:
+            paper.abstract = cached
+            return
+
+        extractor = get_extractor_for_event(paper.event or "")
+        abstract = await extractor.extract(paper.ee, paper.paper_id, self)
+
+        if not abstract:
+            doi = _extract_doi(paper.ee)
+            abstract = await fetcher.fetch_all(doi) if doi else None
+
+        if abstract:
+            paper.abstract = abstract
+            self.cache_manager.set(cache_key, abstract)
+            self.db.update_abstract(paper.paper_id, abstract)
+
+    def _interleave_batch(self, papers: list[Paper]) -> list[Paper]:
+        """Shuffle papers to alternate ACM and non-ACM requests."""
+        acm = [p for p in papers if p.event and ("ACM" in p.event or "HotNets" in p.event)]
+        non_acm = [p for p in papers if p not in acm]
+        random.shuffle(acm)
+        random.shuffle(non_acm)
+
+        result: list[Paper] = []
+        i_acm = i_non = 0
+        while i_acm < len(acm) or i_non < len(non_acm):
+            if i_non < len(non_acm) and (not self.last_was_acm or i_acm >= len(acm)):
+                result.append(non_acm[i_non])
+                i_non += 1
+                self.last_was_acm = False
+            elif i_acm < len(acm):
+                result.append(acm[i_acm])
+                i_acm += 1
+                self.last_was_acm = True
+        return result
+
+    def _save_checkpoint(self) -> None:
+        papers_with_abstracts = sum(1 for p in self.papers if p.abstract)
+        self.checkpoint_manager.save(
+            phase="extract",
+            papers=[p.model_dump(by_alias=True) for p in self.papers],
+            papers_with_abstracts=papers_with_abstracts,
+        )
+
+    def _save_dataset(self) -> None:
+        """Export the current in-memory papers to CSV and PKL via the consolidator."""
+        DataConsolidator(self.json_dir, self.data_dir).save_dataset(self.papers)
