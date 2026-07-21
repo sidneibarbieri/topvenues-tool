@@ -53,15 +53,15 @@ configs:
 - config_name: default
   data_files:
   - split: train
-    path: data/train-*.parquet
+    path: train-*.parquet
 ---
 
 # TopVenues Cybersecurity Corpus
 
-A reproducible bibliographic corpus for cybersecurity literature reviews:
-{total:,} papers ({year_min}–{year_max}) across {n_events} canonical venues,
-with {n_abstracts:,} abstracts (concentrated on the security core and survey
-venues by curation policy) and a BibTeX entry for every record.
+A reproducible, cybersecurity-focused bibliographic corpus for literature
+reviews: {total:,} papers ({year_min}–{year_max}) across {n_events}
+cybersecurity venues, with {n_abstracts:,} abstracts and a BibTeX entry for
+every record.
 
 - **Foundational paper:** [TopVenues: A Reproducible Corpus and Tooling
   Substrate for Cybersecurity Literature Reviews
@@ -81,17 +81,17 @@ corpus = load_dataset("{repo_id}", split="train")
 security = corpus.filter(lambda paper: paper["area"] == "security")
 ```
 
-## Curation policy
+## Scope and curation
 
-The corpus has two layers, and the abstract column reflects that on purpose:
-
-1. **Security core** ({security_total:,} papers): the security venues
-   (USENIX Security, ACM CCS, IEEE S&P, NDSS, ESORICS, RAID, ACSAC, and
-   others) are enriched with abstracts from open scholarly sources
-   ({security_abstracts:,} abstracts, {security_pct:.1f}% coverage).
-2. **Bibliographic context** (AI/ML/NLP, networking, mobile, and systems
-   venues): metadata and BibTeX only, kept as a stable cross-area
-   denominator for measurement studies.
+The corpus is deliberately cybersecurity-only: 17 security venues plus 3
+survey venues that anchor security literature reviews. Keeping the scope
+focused (rather than mixing in off-topic AI, systems, or networking venues)
+is what keeps abstract coverage high. The {security_total:,}-paper security
+core carries {security_abstracts:,} abstracts ({security_pct:.1f}% coverage);
+the remaining gaps are structural (e.g. Springer-hosted ESORICS and
+publisher-gated recent proceedings) and are reported, not hidden. Records
+without an abstract stay searchable by title, venue, year, author, and DBLP
+key.
 
 ## Schema
 
@@ -147,7 +147,7 @@ def export_hf_dataset(
     out_dir: Path,
     repo_id: str = "sidneibarbieri/topvenues",
 ) -> dict:
-    """Write ``data/train-*.parquet`` and ``README.md`` under ``out_dir``.
+    """Write ``train-*.parquet`` shards and ``README.md`` under ``out_dir``.
 
     Returns the statistics used in the card so callers can display them.
     """
@@ -159,11 +159,11 @@ def export_hf_dataset(
         ["area", "event", "year", "title"]
     ).reset_index(drop=True)
 
-    data_dir = out_dir / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
     # A fresh export owns the directory: stale shards from a previous corpus
-    # would otherwise be loaded together with the new ones.
-    for stale in data_dir.glob("train-*.parquet"):
+    # would otherwise be loaded together with the new ones. Shards live at the
+    # repository root because web uploads cannot carry directory paths.
+    for stale in list(out_dir.glob("train-*.parquet")) + list(out_dir.glob("data/train-*.parquet")):
         stale.unlink()
     # Sharded to stay well under per-file web-upload limits and to let the
     # Hub viewer stream row groups independently.
@@ -172,7 +172,7 @@ def export_hf_dataset(
     parquet_paths = []
     for shard_index in range(shard_count):
         shard = df.iloc[shard_index * rows_per_shard:(shard_index + 1) * rows_per_shard]
-        path = data_dir / f"train-{shard_index:05d}-of-{shard_count:05d}.parquet"
+        path = out_dir / f"train-{shard_index:05d}-of-{shard_count:05d}.parquet"
         shard.to_parquet(path, index=False)
         parquet_paths.append(path)
 

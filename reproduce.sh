@@ -9,7 +9,7 @@
 #   5. A BibTeX export produces a non-empty .bib file.
 #   6. The early-signal study reproduces the headline preprint rate.
 #   7. The scientific-readiness study and baselines reproduce the headline
-#      lift/recall and control comparisons.
+#      relative-risk/recall and control comparisons.
 #
 # Exit code 0 → all claims hold; non-zero → first failure is reported.
 
@@ -18,9 +18,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$PWD/.cache/uv}"
 
-EXPECTED_PAPERS=144785
-EXPECTED_ABSTRACTS=17603
-EXPECTED_BIBTEX=144785
+EXPECTED_PAPERS=20305
+EXPECTED_ABSTRACTS=17491
+EXPECTED_BIBTEX=20305
 
 step() { printf "\n\033[1;34m▶ %s\033[0m\n" "$*"; }
 ok()   { printf "  \033[32m✓\033[0m %s\n" "$*"; }
@@ -149,14 +149,15 @@ step "Reproducing the scientific-readiness filter"
 readiness_output=$(python scripts/readiness_study.py 2>&1)
 echo "$readiness_output" | awk '/2023  thr=0.6/ {print "  " $0}'
 echo "$readiness_output" | grep -q "2023  thr=0.6" || fail "missing 2023 threshold-0.6 readiness result"
-echo "$readiness_output" | grep -q "lift  16.5x" || fail "expected 16.5x readiness lift"
+echo "$readiness_output" | grep -q "RR  16.5x" || fail "expected 16.5x readiness relative risk"
+echo "$readiness_output" | grep -q "lift  2.5x" || fail "expected 2.5x conventional lift"
 echo "$readiness_output" | grep -q "recall  90%" || fail "expected 90% readiness recall"
-ok "readiness filter reproduces 16.5x lift at 90% recall"
+ok "readiness filter reproduces 16.5x relative risk (2.5x conventional lift) at 90% recall"
 
 step "Reproducing readiness baselines"
 baseline_output=$(python scripts/readiness_baselines.py 2>&1)
 echo "$baseline_output" | awk '/prior top-4|prolific|random security authors|first author|senior/ {print "  " $0}'
-echo "$baseline_output" | grep -q "prior top-4 (any author)     16.0%      90%  16.5x" || fail "expected prior-top-4 baseline row"
+echo "$baseline_output" | grep -q "prior top-4 (any author)     16.0%     90%  16.5x   2.5x" || fail "expected prior-top-4 baseline row"
 echo "$baseline_output" | grep -q "prolific (>= 3 papers)" || fail "expected prolific-author control"
 echo "$baseline_output" | grep -q "random security authors" || fail "expected random-author control"
 ok "readiness controls reproduce the reported baseline comparisons"

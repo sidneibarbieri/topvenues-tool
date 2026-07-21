@@ -34,6 +34,7 @@ def test_export_writes_parquet_and_card(db, tmp_path):
 
     card = (out / "README.md").read_text(encoding="utf-8")
     assert card.startswith("---\n")
+    assert "path: train-*.parquet" in card
     assert "load_dataset" in card
     assert "| ACM CCS | security | 1 | 1 |" in card
 

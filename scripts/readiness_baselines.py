@@ -85,10 +85,13 @@ def _project(cohort: Cohort, position: int) -> Cohort:
 
 
 def _row(label: str, result: ReadinessResult) -> str:
-    lift = f"{result.lift:.1f}x" if result.base_rate else "inf"
+    # RR (relative risk) vs. the excluded set; lift vs. population prevalence.
+    # Raw flagged/hit counts make each row independently verifiable.
+    relative_risk = f"{result.relative_risk:.1f}x" if result.base_rate else "inf"
     return (
-        f"  {label:<26}{result.precision * 100:>7.1f}%{result.recall * 100:>8.0f}%"
-        f"{lift:>7}{result.volume_reduction * 100:>9.0f}%"
+        f"  {label:<26}{result.precision * 100:>7.1f}%{result.recall * 100:>7.0f}%"
+        f"{relative_risk:>7}{result.lift:>6.1f}x{result.volume_reduction * 100:>7.0f}%"
+        f"   [{result.converted_with}/{result.n_with_track_record}]"
     )
 
 
@@ -116,7 +119,8 @@ def main() -> int:
     print()
     print(f"  Scientific-readiness baselines ({cohort_year} cs.CR preprints, "
           f"Jaccard {THRESHOLD})")
-    print(f"  {'filter':<26}{'precision':>7}{'recall':>8}{'lift':>7}{'vol-cut':>9}")
+    print(f"  {'filter':<26}{'precision':>7}{'recall':>7}{'RR':>7}{'lift':>7}{'vol-cut':>7}"
+          f"   [hit/flagged]")
     print("  prestige vs. trivial signals")
     print(_row("prior top-4 (any author)", analyze(cohort, top4, outcome, THRESHOLD)))
     print(_row("any security-venue author", analyze(cohort, any_corpus, outcome, THRESHOLD)))

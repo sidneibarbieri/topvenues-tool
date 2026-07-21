@@ -10,7 +10,7 @@ with a DBLP-backed, monotonically enriched, checksum-verified SQLite snapshot.
 Using that snapshot as a fixed denominator, it measures that 29.0% of recent
 top-tier security papers appear as arXiv preprints a median of about five months
 before publication, and that a tunable author-track-record filter triages those
-preprints at up to a 16.5x precision lift (90% recall). This artifact reproduces
+preprints at up to a 16.5x relative risk (2.5x conventional lift) at 90% recall. This artifact reproduces
 those claims offline from committed snapshots.
 
 ## Readme Structure
@@ -24,7 +24,7 @@ claim), and the license. The repository is organized as follows.
 |------|---------|
 | `src/` | pipeline, database, models, extractors, CLI |
 | `web/` | Streamlit exploration interface |
-| `tests/` | pytest suite (307 tests) |
+| `tests/` | pytest suite (317 tests) |
 | `scripts/` | measurement scripts (`early_signal_study.py`, `readiness_study.py`, `readiness_baselines.py`) |
 | `data/dataset/papers.db.gz` | committed compressed SQLite corpus snapshot |
 | `data/dataset/arxiv_cs_cr_2022_2026.jsonl.gz` | committed compressed arXiv snapshot for the measurement claims |
@@ -41,7 +41,7 @@ The badges considered for evaluation are **Available**, **Functional**,
   README, and an MIT license.
 - **Functional** — the CLI, the web interface, and the test suite execute
   locally and expose the artifact's features.
-- **Sustainable** — a modular, typed Python package with a 307-test suite and
+- **Sustainable** — a modular, typed Python package with a 317-test suite and
   in-code documentation; each paper claim maps to a named script.
 - **Reproducible** — `reproduce.sh` re-derives every headline claim from a
   fresh clone, offline, using only the committed snapshots.
@@ -104,8 +104,8 @@ If your shell is already inside the `TopVenues` directory, skip the `cd` step.
 .venv/bin/python -m pytest -q         # test suite
 ```
 
-Expected: `stats` prints 144,785 papers across 40 venues with 17,603 abstracts and
-144,785 BibTeX entries; the suite reports `307 passed` in about one second. This
+Expected: `stats` prints 20,305 papers across 20 venues with 17,491 abstracts and
+20,305 BibTeX entries; the suite reports `317 passed` in about one second. This
 confirms the snapshot bootstrapped and the package is functional.
 
 ## Experiments
@@ -117,15 +117,15 @@ SHA-256 for byte-stability. Each claim can also be reproduced on its own.
 ### Claim 1 — Corpus coverage
 
 - Command: `.venv/bin/python -m src.cli stats`
-- Expected: 144,785 papers; 17,603 abstracts overall; 14,239 abstracts in the
-  16,806-paper security core (84.7%); 144,785 BibTeX (100%); 40 canonical venues
+- Expected: 20,305 papers; 17,491 abstracts overall; 14,290 abstracts in the
+  16,806-paper security core (85.0%); 20,305 BibTeX (100%); 20 cybersecurity venues
   across 2017--2026.
 - Time and resources: under 5 seconds, under 1 GB RAM and disk.
 
 ### Claim 2 — Reproducible snapshot and integrity tests
 
 - Command: `.venv/bin/python -m pytest -q` (also run inside `reproduce.sh`)
-- Expected: 307 tests pass, including the monotonic-enrichment (COALESCE)
+- Expected: 317 tests pass, including the monotonic-enrichment (COALESCE)
   invariant; `reproduce.sh` also prints the snapshot SHA-256.
 - Time and resources: under 30 seconds, under 1 GB RAM and disk.
 
@@ -133,8 +133,8 @@ SHA-256 for byte-stability. Each claim can also be reproduced on its own.
 
 - Command: `bash reproduce.sh` (latency and export stages)
 - Expected on the reference Apple M4 Max host: the 11-trial benchmark reports
-  substring medians of 59.9--81.6 ms and BM25-ranked medians of
-  0.9--18.7 ms on the full corpus; a topic-filtered BibTeX export completes
+  substring medians of 21--37 ms and BM25-ranked medians of
+  0.8--15 ms on the full corpus; a topic-filtered BibTeX export completes
   in under one second.
 - Time and resources: under 10 seconds, under 1 GB RAM and disk.
 
@@ -151,7 +151,7 @@ SHA-256 for byte-stability. Each claim can also be reproduced on its own.
 
 - Commands: `.venv/bin/python scripts/readiness_study.py` and
   `.venv/bin/python scripts/readiness_baselines.py`
-- Expected: prior top-tier authorship yields a 16.5x precision lift at 90%
+- Expected: prior top-tier authorship yields a 16.5x relative risk (2.5x conventional lift) at 90%
   recall (Jaccard 0.6); the baselines show this exceeds prolific-author and
   random-author controls, and the first/senior-author variants trade precision
   for recall.

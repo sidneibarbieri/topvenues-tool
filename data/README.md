@@ -11,10 +11,10 @@ This directory contains local data used by the TopVenues artifact.
 
 Current verified snapshot:
 
-- 144,785 papers across 40 canonical venues (2017–2026).
-- 17,603 papers with abstracts overall; 14,239 of 16,806 papers in the
-  security core have abstracts (84.7%).
-- 144,785 papers with BibTeX (100%).
+- 20,305 papers across 20 cybersecurity venues (2017–2026).
+- 17,491 papers with abstracts overall; 14,290 of 16,806 papers in the
+  security core have abstracts (85.0%).
+- 20,305 papers with BibTeX (100%).
 
 The Parquet package prepared for the Hugging Face Hub is regenerated
 reproducibly from this snapshot via `python -m src.cli export-hf`. Publication

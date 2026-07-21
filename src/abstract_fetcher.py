@@ -9,6 +9,8 @@ from urllib.parse import quote
 
 import httpx
 
+from .abstract_quality import looks_like_abstract
+
 if TYPE_CHECKING:
     from .collector import Collector
 
@@ -151,7 +153,13 @@ class AbstractFetcher:
         return abstract
 
     async def fetch_all(self, doi: str) -> str | None:
-        """Fire all three APIs in parallel; return the first successful result."""
+        """Fire all three APIs in parallel; return the first quality result.
+
+        A source can return author-list metadata instead of a real abstract
+        (CrossRef does this for some ACL Anthology records); results that do
+        not pass :func:`looks_like_abstract` are skipped so junk never reaches
+        the database.
+        """
         tasks = [
             asyncio.create_task(self.fetch_semanticscholar(doi)),
             asyncio.create_task(self.fetch_openalex(doi)),
@@ -160,7 +168,7 @@ class AbstractFetcher:
         try:
             for completed in asyncio.as_completed(tasks):
                 result = await completed
-                if result:
+                if result and looks_like_abstract(result):
                     for task in tasks:
                         task.cancel()
                     return result

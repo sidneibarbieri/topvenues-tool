@@ -51,13 +51,19 @@ def _scope_titles(conn: sqlite3.Connection, events: list[str], lo: int, hi: int)
 
 
 def _print_result(year: int, result: ReadinessResult) -> None:
+    # RR is the relative risk (precision vs. the excluded set); lift is the
+    # conventional precision-over-prevalence. Raw counts let a reviewer
+    # recompute both without rerunning the study.
     print(
         f"    {year}  thr={result.threshold:<4} "
         f"precision {result.precision * 100:5.2f}%  "
-        f"base {result.base_rate * 100:4.2f}%  "
-        f"lift {result.lift:5.1f}x  "
+        f"prevalence {result.overall_prevalence * 100:4.2f}%  "
+        f"RR {result.relative_risk:5.1f}x  "
+        f"lift {result.lift:4.1f}x  "
         f"recall {result.recall * 100:3.0f}%  "
-        f"vol-cut {result.volume_reduction * 100:3.0f}%"
+        f"vol-cut {result.volume_reduction * 100:3.0f}%  "
+        f"[flagged {result.n_with_track_record}, hit {result.converted_with}; "
+        f"excluded {result.n_without_track_record}, hit {result.converted_without}]"
     )
 
 

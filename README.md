@@ -11,7 +11,7 @@ License: MIT
 > [arXiv:2606.18320](https://arxiv.org/abs/2606.18320) are frozen at
 > [`topVenues@arxiv-2606.18320`](https://github.com/sidneibarbieri/topVenues/releases/tag/arxiv-2606.18320)
 > and are not modified here. This tree extends that artifact with a larger
-> snapshot (144,785 papers / 40 venues), BM25 ranked search, tier-weighted
+> snapshot (20,305 papers / 20 venues), BM25 ranked search, tier-weighted
 > author analytics, and the Hugging Face dataset export.
 
 `TopVenues` builds a curated, searchable SQLite dataset for a declared
@@ -20,8 +20,8 @@ metadata from DBLP, backfills abstracts where reliable public sources expose
 them, and exposes a fast full-text search interface for
 researchers, students and reviewers preparing literature reviews.
 
-The current released dataset snapshot covers **144,785 papers** across **40
-canonical venues**, with **17,603 abstracts** and **144,785 BibTeX records**.
+The current released dataset snapshot covers **20,305 papers** across **20
+cybersecurity venues**, with **17,491 abstracts** and **20,305 BibTeX records**.
 Abstracts are intentionally backfilled by policy rather than scraped
 indiscriminately; the full bibliographic denominator is the SQLite snapshot.
 
@@ -29,18 +29,18 @@ indiscriminately; the full bibliographic denominator is the SQLite snapshot.
 
 ## Indexed venues
 
-The snapshot spans 40 normalized venues grouped by research area:
+The snapshot spans 20 cybersecurity venues grouped by role:
 
-- **Security:** ACM CCS, IEEE S&P, USENIX Security, NDSS, ACM ASIA CCS,
-  IEEE EURO S&P, ACSAC, ACM SACMAT, ACM CODASPY, ESORICS, RAID, IEEE CNS,
-  ACM WiSec, USENIX WOOT, IEEE SaTML, ACM AISec, TrustCom.
-- **Networks, systems, and mobile:** HotNets, ACM SIGCOMM, USENIX NSDI,
-  ACM IMC, ACM SIGMETRICS, USENIX ATC, ACM EuroSys, ACM MobiCom,
-  ACM MobiSys, ACM SenSys, ACM HotMobile.
-- **AI/ML/NLP:** NeurIPS, ICML, ICLR, AAAI, IJCAI, ACM KDD, ACL, EMNLP,
-  NAACL.
-- **Surveys and journals:** ACM Computing Surveys, IEEE Communications
-  Surveys & Tutorials, Foundations and Trends in Privacy and Security.
+- **Security (17 venues):** ACM CCS, IEEE S&P, USENIX Security, NDSS,
+  ACM ASIA CCS, IEEE EURO S&P, ACSAC, RAID, ESORICS, ACM CODASPY, IEEE CNS,
+  ACM WiSec, ACM SACMAT, IEEE SaTML, USENIX WOOT, ACM AISec, TrustCom.
+- **Security-relevant surveys (3 venues):** ACM Computing Surveys,
+  IEEE Communications Surveys & Tutorials, Foundations and Trends in
+  Privacy and Security.
+
+The scope is deliberately cybersecurity-only, so abstract coverage stays
+high (86.1% overall, 85% on the security core) rather than diluted by
+off-topic venues.
 
 The set is declared in `config.yaml`. Adding a venue also requires explicit
 normalization, area, and tier mappings; see *Extending* below.
@@ -57,10 +57,10 @@ python3 -m pip install -r requirements.txt
 ```
 
 That's it — the repository ships with the full SQLite database as a
-compressed snapshot (`data/dataset/papers.db.gz`, 96.3 MiB). On first launch
-the application transparently materializes `data/dataset/papers.db` (302.2 MiB)
-from that snapshot, so there is **no manual import step**: 144,785 papers,
-17,603 abstracts and 144,785 BibTeX entries are available immediately.
+compressed snapshot (`data/dataset/papers.db.gz`, 72.7 MiB). On first launch
+the application transparently materializes `data/dataset/papers.db` (232 MiB)
+from that snapshot, so there is **no manual import step**: 20,305 papers,
+17,491 abstracts and 20,305 BibTeX entries are available immediately.
 
 The released corpus is pinned by the compressed SQLite snapshot;
 `reproduce.sh` and the paper claims read that snapshot. Tabular exports are
@@ -151,7 +151,7 @@ python3 -m src.cli search --rank "fuzz*" --year 2025 --award
 The index is derived state: it is built locally on demand (a first
 `search --rank` builds it automatically), is kept in sync by triggers on
 every upsert, and is not part of the published snapshot. Ranked queries
-answer in single- to low-double-digit milliseconds on the 145k-paper corpus. Multi-word
+answer in single- to low-double-digit milliseconds on the 20k-paper corpus. Multi-word
 queries use AND-of-tokens semantics; a trailing `*` enables prefix matching.
 
 ### Hugging Face dataset export
@@ -311,7 +311,7 @@ tests/                 pytest suite
 
 ## Configuration
 
-`config.yaml` (abbreviated below; the released file declares all 40 venues):
+`config.yaml` (abbreviated below; the released file declares all 20 venues):
 
 ```yaml
 year_start: 2019                       # auto-extends to current year

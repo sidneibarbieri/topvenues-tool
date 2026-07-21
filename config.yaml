@@ -5,12 +5,8 @@ events:
 - ndss
 - sp
 - eurosp
-- hotnets
 - sacmat
 - acsac
-- acm_csur
-- ieee_comst
-- fnt_privsec
 - esorics
 - codaspy
 - raid
@@ -20,25 +16,9 @@ events:
 - satml
 - aisec
 - trustcom
-- sigcomm
-- nsdi
-- imc
-- sigmetrics
-- atc
-- eurosys
-- mobicom
-- mobisys
-- sensys
-- hotmobile
-- neurips
-- icml
-- iclr
-- aaai
-- ijcai
-- kdd
-- acl
-- emnlp
-- naacl
+- acm_csur
+- ieee_comst
+- fnt_privsec
 year_start: 2019
 study_scope:
   core_events:
@@ -77,8 +57,6 @@ study_scope:
     ACM CCS: 10
     IEEE S&P: 5
     NDSS: 2
-# years is computed automatically from year_start to the current calendar year.
-# Override here only if you need a custom range, e.g.: years: [2023, 2024]
 request_timeout: 180
 default_interval:
 - 5.0

@@ -112,9 +112,17 @@ class TestReadinessResult:
     def test_base_rate(self) -> None:
         assert self._result(nwo=100, cwo=1).base_rate == pytest.approx(0.01)
 
-    def test_lift(self) -> None:
-        # precision 0.15 / base 0.01 = 15x
-        assert self._result(nw=100, cw=15, nwo=100, cwo=1).lift == pytest.approx(15.0)
+    def test_relative_risk(self) -> None:
+        # precision 0.15 / excluded-set rate 0.01 = 15x
+        assert self._result(nw=100, cw=15, nwo=100, cwo=1).relative_risk == pytest.approx(15.0)
+
+    def test_overall_prevalence(self) -> None:
+        # (15 + 1) conversions over 200 preprints = 8%
+        assert self._result(nw=100, cw=15, nwo=100, cwo=1).overall_prevalence == pytest.approx(0.08)
+
+    def test_lift_uses_population_prevalence(self) -> None:
+        # conventional lift: precision 0.15 / prevalence 0.08 = 1.875x
+        assert self._result(nw=100, cw=15, nwo=100, cwo=1).lift == pytest.approx(1.875)
 
     def test_recall(self) -> None:
         # captured 15 of 16 total conversions
@@ -124,8 +132,8 @@ class TestReadinessResult:
         # 100 of 200 preprints excluded by the filter
         assert self._result(nw=100, nwo=100).volume_reduction == pytest.approx(0.5)
 
-    def test_infinite_lift_when_base_zero(self) -> None:
-        assert math.isinf(self._result(cwo=0).lift)
+    def test_infinite_relative_risk_when_excluded_rate_zero(self) -> None:
+        assert math.isinf(self._result(cwo=0).relative_risk)
 
     def test_zero_denominators_do_not_raise(self) -> None:
         empty = ReadinessResult(0.6, 0, 0, 0, 0)
@@ -159,7 +167,7 @@ class TestAnalyze:
         assert result.precision == pytest.approx(0.5)
         assert result.base_rate == pytest.approx(0.5)
 
-    def test_track_record_filter_shows_lift(self) -> None:
+    def test_track_record_filter_shows_relative_risk(self) -> None:
         # Track-record authors convert; others mostly do not.
         prior = build_prior_author_set([["Alice Smith"]])
         outcome = OutcomeIndex(["Cache Side-Channel Attacks"])
@@ -170,7 +178,10 @@ class TestAnalyze:
         result = analyze(preprints, prior, outcome, threshold=0.6)
         assert result.precision == pytest.approx(1.0)
         assert result.base_rate == pytest.approx(0.0)
-        assert math.isinf(result.lift)
+        # No conversions in the excluded set -> infinite relative risk, but a
+        # finite conventional lift (one conversion in a 100-preprint pool).
+        assert math.isinf(result.relative_risk)
+        assert result.lift == pytest.approx(100.0)
         assert result.recall == pytest.approx(1.0)
 
     def test_empty_cohort(self) -> None:

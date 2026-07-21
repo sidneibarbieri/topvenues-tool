@@ -16,7 +16,7 @@ refreshing, querying, and exporting venue-bounded paper collections.
 3. `data/dataset/papers.db.gz` — committed corpus snapshot.
 4. `data/dataset/arxiv_cs_cr_2022_2026.jsonl.gz` — committed preprint snapshot for the measurement studies.
 5. `src/` and `web/` — implementation.
-6. `tests/` — executable checks (307 tests).
+6. `tests/` — executable checks (317 tests).
 
 ## Minimal Verification
 
@@ -28,14 +28,14 @@ Expected output: `✓ All headline claims reproduced`.
 
 The script verifies:
 
-- 307 tests pass after dependency installation;
-- the SQLite snapshot bootstraps to 144,785 papers, 17,603 abstracts and
-  144,785 BibTeX entries;
+- 317 tests pass after dependency installation;
+- the SQLite snapshot bootstraps to 20,305 papers, 17,491 abstracts and
+  20,305 BibTeX entries;
 - substring search answers representative queries in tens of
   milliseconds, and BM25-ranked search (FTS5) in single- to low-double-digit
   milliseconds after an index build of a few seconds;
 - BibTeX export produces a non-empty `.bib` file ready for LaTeX use;
-- the scientific-readiness study reproduces the reported 16.5x lift at
+- the scientific-readiness study reproduces the reported 16.5x relative risk (2.5x lift) at
   90% recall.
 
 Total runtime is well under a minute on a 2020-or-later laptop.

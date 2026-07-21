@@ -106,14 +106,40 @@ class ReadinessResult:
 
     @property
     def base_rate(self) -> float:
-        """P(enters scope | preprint without a prior-scope author)."""
+        """P(enters scope | preprint without a prior-scope author).
+
+        This is the conversion rate in the *excluded* set, i.e. the reference
+        rate for the relative risk below. It is not the population prevalence.
+        """
         return self.converted_without / self.n_without_track_record if self.n_without_track_record else 0.0
 
     @property
-    def lift(self) -> float:
-        """How many times more precise the track-record filter is than the base rate."""
+    def overall_prevalence(self) -> float:
+        """P(enters scope) over the whole preprint pool.
+
+        The population reference rate, used for the conventional lift.
+        """
+        total = self.n_with_track_record + self.n_without_track_record
+        converted = self.converted_with + self.converted_without
+        return converted / total if total else 0.0
+
+    @property
+    def relative_risk(self) -> float:
+        """Precision relative to the excluded set: precision / base_rate.
+
+        This is a relative risk (risk ratio): how many times more likely a
+        preprint with the track record is to enter scope than one without.
+        It is deliberately not called "lift"; conventional lift divides by the
+        population prevalence, not by the excluded set's rate.
+        """
         base = self.base_rate
         return self.precision / base if base else float("inf")
+
+    @property
+    def lift(self) -> float:
+        """Conventional lift: precision divided by population prevalence."""
+        prevalence = self.overall_prevalence
+        return self.precision / prevalence if prevalence else float("inf")
 
     @property
     def recall(self) -> float:
