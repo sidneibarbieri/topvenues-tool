@@ -1,6 +1,6 @@
-# TopVenues SF Reviewer Guide
+# TopVenues Reviewer Guide
 
-This release is the executable artifact for the Salão de Ferramentas paper. Its only evaluation object is the immutable `security-20` profile.
+This release evaluates the immutable `security-20` profile.
 
 ## What the release verifies
 
@@ -15,7 +15,7 @@ The artifact is a corpus-construction and review-workflow tool. Its evidence is 
 ## Reproduce from a fresh clone
 
 ```bash
-git clone --branch sbseg2026-sf-submission https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch sbseg2026-sf-submission-r1 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 bash reproduce.sh
 ```
@@ -35,7 +35,7 @@ source .venv/bin/activate
 python -m streamlit run web/app.py
 ```
 
-Open `http://localhost:8501`, inspect coverage, run a ranked search, and export a result set as BibTeX, CSV, or JSON.
+Open `http://localhost:8501`, inspect coverage, run a ranked search, and export a result set as BibTeX, CSV, or JSON. An [abstract-evidence capture](docs/assets/topvenues-abstract-search.pdf) applies the **Abstract contains** filter to `intrusion detection`; every displayed row has an abstract preview.
 
 ## Scope and limitations
 

@@ -1,12 +1,12 @@
-# TopVenues SF Artifact
+# TopVenues Research Artifact
 
-TopVenues materializes a declared cybersecurity-literature scope as a local, versioned SQLite corpus. This release packages the `security-20` profile used by the Salão de Ferramentas paper.
+TopVenues materializes a declared cybersecurity-literature scope as a local, versioned SQLite corpus. This release packages the `security-20` profile.
 
 ## Artifact identity
 
 | Property | Value |
 | --- | --- |
-| Release tag | `sbseg2026-sf-submission` |
+| Release tag | `sbseg2026-sf-submission-r1` |
 | Profile | `security-20` |
 | Records | 20,305 |
 | Abstract-enriched records | 17,491 |

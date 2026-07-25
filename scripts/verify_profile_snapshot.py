@@ -23,7 +23,7 @@ SOURCE_METADATA = {
         "release_status": "sf-submission",
         "paper_denominator": False,
         "origin": "security-oriented Salão de Ferramentas release",
-        "source_release_tag": "sbseg2026-sf-submission",
+        "source_release_tag": "sbseg2026-sf-submission-r1",
     },
 }
 

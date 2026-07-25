@@ -1,6 +1,6 @@
 # Immutable profile
 
-This Salão de Ferramentas release ships one immutable profile:
+This release ships one immutable profile:
 
 | Profile | Records | Venues | Role |
 | --- | ---: | ---: | --- |

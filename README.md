@@ -1,10 +1,10 @@
 # TopVenues
 
-TopVenues is an open-source, local-first tool for constructing and inspecting a declared corpus for cybersecurity literature reviews. The SBSeg Salão de Ferramentas release is pinned to the immutable `security-20` profile.
+TopVenues is an open-source, local-first tool for constructing and inspecting a declared corpus for cybersecurity literature reviews. This public release is pinned to the immutable `security-20` profile.
 
 | Property | Value |
 | --- | --- |
-| Release | [`sbseg2026-sf-submission`](https://github.com/sidneibarbieri/topvenues-tool/releases/tag/sbseg2026-sf-submission) |
+| Release | [`sbseg2026-sf-submission-r1`](https://github.com/sidneibarbieri/topvenues-tool/releases/tag/sbseg2026-sf-submission-r1) |
 | Scope | 20 declared security and security-relevant venues |
 | Records | 20,305 |
 | Abstract-enriched records | 17,491 (86.1%) |
@@ -16,7 +16,7 @@ The release keeps records with missing abstracts for metadata and citation workf
 ## Reviewer quick start
 
 ```bash
-git clone --branch sbseg2026-sf-submission https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch sbseg2026-sf-submission-r1 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 bash reproduce.sh
 ```
@@ -34,6 +34,12 @@ python -m streamlit run web/app.py
 
 The interface exposes coverage inspection, substring and BM25-ranked search, author and trend exploration, and exports. It runs against the local snapshot at `http://localhost:8501`.
 
+## Inspect abstract evidence
+
+[![Abstract-text search with populated previews](docs/assets/topvenues-abstract-search.png)](docs/assets/topvenues-abstract-search.pdf)
+
+This capture applies the interface's **Abstract contains** filter to `intrusion detection` in `security-20`. Every displayed row has an abstract preview. The linked [high-resolution PDF](docs/assets/topvenues-abstract-search.pdf) preserves the capture for close inspection.
+
 ## Command-line workflows
 
 ```bash
@@ -50,7 +56,7 @@ python -m src.cli --profile security-20 search --rank "memory corruption mitigat
 python -m src.cli --profile security-20 export --format bibtex --tech "fuzzing" -o fuzzing.bib
 
 # Build the Hugging Face Parquet export from the immutable profile
-python -m src.cli --profile security-20 export-hf --release-tag sbseg2026-sf-submission
+python -m src.cli --profile security-20 export-hf --release-tag sbseg2026-sf-submission-r1
 ```
 
 Substring and ranked search answer different questions: substring search finds records that mention text, whereas ranked search orders title, abstract, and author matches by BM25. Multi-word ranked queries use token semantics.

@@ -37,6 +37,10 @@ def test_export_writes_parquet_and_card(db, tmp_path):
     assert "path: train-*.parquet" in card
     assert "load_dataset" in card
     assert "| ACM CCS | security | 1 | 1 |" in card
+    assert "assets/topvenues-abstract-search.png" in card
+    assert "assets/topvenues-abstract-search.pdf" in card
+    assert (out / "assets" / "topvenues-abstract-search.png").is_file()
+    assert (out / "assets" / "topvenues-abstract-search.pdf").is_file()
 
 
 def test_stats_reflect_two_layer_policy(db, tmp_path):

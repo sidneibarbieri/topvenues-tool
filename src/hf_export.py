@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
+from shutil import copy2
 
 import pandas as pd
 
@@ -33,6 +34,11 @@ _EXPORT_COLUMNS = [
     "abstract",
     "bibtex",
 ]
+
+_EVIDENCE_ASSETS = (
+    "topvenues-abstract-search.png",
+    "topvenues-abstract-search.pdf",
+)
 
 _CARD_TEMPLATE = """\
 ---
@@ -66,7 +72,7 @@ every record.
 
 - **Code / tool:** <https://github.com/sidneibarbieri/topvenues-tool>
 - **Pinned source of truth:** the gzipped SQLite snapshot shipped with the
-  tool; this dataset is a faithful Parquet export of the same frozen state.
+  tool; this dataset is a faithful Parquet export of the same named snapshot.
 
 ## Release identity
 
@@ -81,6 +87,15 @@ corpus = load_dataset("{repo_id}", split="train")
 
 security = corpus.filter(lambda paper: paper["area"] == "security")
 ```
+
+## Interface evidence
+
+[![Abstract-text search with populated previews](assets/topvenues-abstract-search.png)](assets/topvenues-abstract-search.pdf)
+
+The capture applies the local interface's **Abstract contains** filter to
+`intrusion detection` in `security-20`. Every displayed row has an abstract
+preview. Open the [high-resolution PDF](assets/topvenues-abstract-search.pdf)
+for close inspection.
 
 ## Scope and curation
 
@@ -134,8 +149,8 @@ dataset card does not grant rights in third-party abstract text.
   author = {{Barbieri, Sidnei and Ferraz, Agney Lopes Roth and
             Pereira J{{\\'u}}nior, Louren{{\\c{{c}}}}o Alves}},
   year   = {{2026}},
-  version = {{sbseg2026-sf-submission}},
-  url    = {{https://github.com/sidneibarbieri/topvenues-tool/releases/tag/sbseg2026-sf-submission}}
+  version = {{{release_tag}}},
+  url    = {{https://github.com/sidneibarbieri/topvenues-tool/releases/tag/{release_tag}}}
 }}
 ```
 """
@@ -180,6 +195,11 @@ def export_hf_dataset(
     ).reset_index(drop=True)
 
     out_dir.mkdir(parents=True, exist_ok=True)
+    asset_source_dir = Path(__file__).resolve().parents[1] / "docs" / "assets"
+    asset_output_dir = out_dir / "assets"
+    asset_output_dir.mkdir(exist_ok=True)
+    for asset_name in _EVIDENCE_ASSETS:
+        copy2(asset_source_dir / asset_name, asset_output_dir / asset_name)
     # A fresh export owns the directory: stale shards from a previous corpus
     # would otherwise be loaded together with the new ones. Shards live at the
     # repository root because web uploads cannot carry directory paths.
@@ -224,6 +244,7 @@ def export_hf_dataset(
         venue_table="\n".join(venue_rows),
         repo_id=repo_id,
         release_identity=release_identity,
+        release_tag=release_tag or "unreleased",
         **stats,
     )
     (out_dir / "README.md").write_text(card, encoding="utf-8")

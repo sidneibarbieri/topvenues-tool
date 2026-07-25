@@ -4,7 +4,7 @@
   "release_status": "sf-submission",
   "paper_denominator": false,
   "origin": "security-oriented Salão de Ferramentas release",
-  "source_release_tag": "sbseg2026-sf-submission",
+  "source_release_tag": "sbseg2026-sf-submission-r1",
   "configuration": {
     "path": "profiles/security-20/config.yaml",
     "event_keys": [
