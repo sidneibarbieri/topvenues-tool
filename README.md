@@ -82,9 +82,9 @@ the application transparently materializes `data/dataset/papers.db` (232 MiB)
 from that snapshot, so there is **no manual import step**: 20,305 papers,
 17,491 abstracts and 20,305 BibTeX entries are available immediately.
 
-`reproduce.sh` defaults to the accepted paper's immutable `submitted-11`
-profile for backwards compatibility. Run the Salão artifact with its explicit
-profile:
+`reproduce.sh` defaults to the Salão artifact's immutable `security-20`
+profile. The explicit form below makes the denominator visible in scripts and
+review reports:
 
 ```bash
 bash reproduce.sh --profile security-20
