@@ -41,14 +41,6 @@
     ],
     "workspace_data_dir": "data/workspaces/security-20/dataset"
   },
-  "analysis_inputs": {
-    "preprint_snapshot": {
-      "path": "data/dataset/arxiv_cs_cr_2022_2026.jsonl.gz",
-      "bytes": 15652489,
-      "sha256": "c11e4e1e91311026a3699203279bbc98544027c2c3d93be8ae451f2cb22ec370",
-      "records": 27749
-    }
-  },
   "snapshot": {
     "path": "data/profiles/security-20/papers.db.gz",
     "gzip_bytes": 76218785,

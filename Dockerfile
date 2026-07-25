@@ -8,7 +8,7 @@
 #   → open http://localhost:8501
 #
 # Run any CLI command:
-#   docker run --rm topvenues python -m src.cli --profile submitted-11 stats
+#   docker run --rm topvenues python -m src.cli --profile security-20 stats
 #   docker run --rm topvenues python -m src.cli search --title "intrusion"
 #
 # Run the test suite:
@@ -34,8 +34,7 @@ COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY profiles/ ./profiles/
 COPY config.yaml README.md LICENSE ./
-COPY data/dataset/papers.db.gz data/dataset/papers.db.gz.sha256 \
-     data/dataset/arxiv_cs_cr_2022_2026.jsonl.gz ./data/dataset/
+COPY data/dataset/papers.db.gz data/dataset/papers.db.gz.sha256 ./data/dataset/
 COPY data/profiles/ ./data/profiles/
 COPY data/awards/ ./data/awards/
 COPY reproduce.sh ./

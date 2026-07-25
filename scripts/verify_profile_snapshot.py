@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import gzip
 import hashlib
 import json
 import sqlite3
@@ -20,23 +19,11 @@ sys.path.insert(0, str(ROOT))
 from src.profiles import PROFILE_IDS, verified_profile_snapshot  # noqa: E402
 
 SOURCE_METADATA = {
-    "submitted-11": {
-        "release_status": "paper-frozen",
-        "paper_denominator": True,
-        "origin": "topVenues repository",
-        "source_commit": "dcbab16b85483efe691440a65d37253b65f66067",
-    },
     "security-20": {
         "release_status": "sf-submission",
         "paper_denominator": False,
         "origin": "security-oriented Salão de Ferramentas release",
         "source_release_tag": "sbseg2026-sf-submission",
-    },
-    "full-40": {
-        "release_status": "historical-broad",
-        "paper_denominator": False,
-        "origin": "arena repository broad cross-area snapshot",
-        "source_commit": "37bf9fcd50d3522c867f95ca5a61c58a0542d50d",
     },
 }
 
@@ -70,13 +57,6 @@ def build_manifest(profile_id: str) -> dict[str, object]:
     snapshot = ROOT / snapshot_relative
     if not snapshot.is_file():
         raise FileNotFoundError(snapshot)
-
-    preprint_relative = Path(config["study_scope"]["preprint_snapshot"])
-    preprint_snapshot = ROOT / preprint_relative
-    if not preprint_snapshot.is_file():
-        raise FileNotFoundError(preprint_snapshot)
-    with gzip.open(preprint_snapshot, "rt", encoding="utf-8") as source:
-        preprint_records = sum(1 for line in source if line.strip())
 
     with tempfile.TemporaryDirectory(prefix=f"topvenues-{profile_id}-") as directory:
         database = Path(directory) / "papers.db"
@@ -118,14 +98,6 @@ def build_manifest(profile_id: str) -> dict[str, object]:
             "event_keys": config["events"],
             "declared_years": config["years"],
             "workspace_data_dir": config["data_dir"],
-        },
-        "analysis_inputs": {
-            "preprint_snapshot": {
-                "path": preprint_relative.as_posix(),
-                "bytes": preprint_snapshot.stat().st_size,
-                "sha256": sha256_file(preprint_snapshot),
-                "records": preprint_records,
-            }
         },
         "snapshot": {
             "path": snapshot_relative.as_posix(),
@@ -180,11 +152,7 @@ def main() -> int:
             encoding="utf-8",
         )
     else:
-        with verified_profile_snapshot(
-            args.profile,
-            ROOT,
-            verify_preprints=True,
-        ) as verified:
+        with verified_profile_snapshot(args.profile, ROOT) as verified:
             actual = verified.profile.manifest
 
     snapshot = actual["snapshot"]

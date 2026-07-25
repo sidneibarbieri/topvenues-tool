@@ -1,4 +1,4 @@
-"""Assert that the released artifact matches the paper's headline claims."""
+"""Assert that the released artifact matches its snapshot manifest."""
 
 import argparse
 import sqlite3
@@ -21,14 +21,13 @@ def main() -> int:
         "--profile",
         choices=PROFILE_IDS,
         default=select_profile_id(),
-        help="immutable corpus profile (default: TOPVENUES_PROFILE or submitted-11)",
+        help="immutable corpus profile (default: TOPVENUES_PROFILE or security-20)",
     )
     args = parser.parse_args()
 
     with verified_profile_snapshot(
         args.profile,
         ROOT,
-        verify_preprints=True,
     ) as verified:
         uri = f"file:{verified.database_path.resolve()}?mode=ro&immutable=1"
         with sqlite3.connect(uri, uri=True) as conn:

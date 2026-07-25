@@ -39,7 +39,6 @@ class Profile:
     config_path: Path
     manifest_path: Path
     snapshot_path: Path
-    preprint_snapshot_path: Path
     workspace_data_dir: Path
     configuration: Configuration
     manifest: dict[str, Any]
@@ -115,13 +114,10 @@ def load_profile(profile_id: str | None = None, root: Path = PROJECT_ROOT) -> Pr
 
     snapshot_manifest = manifest.get("snapshot")
     configuration_manifest = manifest.get("configuration")
-    analysis_inputs = manifest.get("analysis_inputs")
     if not isinstance(snapshot_manifest, dict):
         raise RuntimeError(f"missing snapshot declaration in {manifest_path}")
     if not isinstance(configuration_manifest, dict):
         raise RuntimeError(f"missing configuration declaration in {manifest_path}")
-    if not isinstance(analysis_inputs, dict):
-        raise RuntimeError(f"missing analysis_inputs declaration in {manifest_path}")
 
     config_snapshot = config_payload.get("snapshot_path")
     manifest_snapshot = snapshot_manifest.get("path")
@@ -142,16 +138,6 @@ def load_profile(profile_id: str | None = None, root: Path = PROJECT_ROOT) -> Pr
     ):
         raise RuntimeError(f"venue-count mismatch between config and snapshot for {selected}")
 
-    preprint_manifest = analysis_inputs.get("preprint_snapshot")
-    if not isinstance(preprint_manifest, dict):
-        raise RuntimeError(f"missing preprint snapshot declaration in {manifest_path}")
-    configured_preprint = config_payload.get("study_scope", {}).get("preprint_snapshot")
-    if configured_preprint != preprint_manifest.get("path"):
-        raise RuntimeError(
-            f"preprint snapshot mismatch for {selected}: config={configured_preprint!r}, "
-            f"manifest={preprint_manifest.get('path')!r}"
-        )
-
     configuration = Configuration(**config_payload)
     return Profile(
         profile_id=selected,
@@ -159,9 +145,6 @@ def load_profile(profile_id: str | None = None, root: Path = PROJECT_ROOT) -> Pr
         config_path=config_path,
         manifest_path=manifest_path,
         snapshot_path=_within_root(resolved_root, str(config_snapshot), "snapshot_path"),
-        preprint_snapshot_path=_within_root(
-            resolved_root, str(configured_preprint), "study_scope.preprint_snapshot"
-        ),
         workspace_data_dir=_within_root(resolved_root, str(configuration.data_dir), "data_dir"),
         configuration=configuration,
         manifest=manifest,
@@ -235,36 +218,15 @@ def _database_observation(connection: sqlite3.Connection) -> dict[str, Any]:
     }
 
 
-def verify_analysis_inputs(profile: Profile) -> None:
-    """Verify the frozen non-corpus input used by the measurement scripts."""
-    declaration = profile.manifest["analysis_inputs"]["preprint_snapshot"]
-    _verify_file(profile.preprint_snapshot_path, declaration)
-
-    expected_records = declaration.get("records")
-    if expected_records is not None:
-        with gzip.open(profile.preprint_snapshot_path, "rt", encoding="utf-8") as source:
-            actual_records = sum(1 for line in source if line.strip())
-        if actual_records != expected_records:
-            raise RuntimeError(
-                f"record-count mismatch for {profile.preprint_snapshot_path}: "
-                f"expected {expected_records}, got {actual_records}"
-            )
-
-
 @contextmanager
 def verified_profile_snapshot(
     profile_id: str | None = None,
     root: Path = PROJECT_ROOT,
-    *,
-    verify_preprints: bool = False,
 ) -> Iterator[VerifiedSnapshot]:
     """Yield a temporary SQLite copy after validating the complete manifest."""
     profile = load_profile(profile_id, root)
     snapshot_declaration = profile.manifest["snapshot"]
     _verify_file(profile.snapshot_path, snapshot_declaration, prefix="gzip_")
-    if verify_preprints:
-        verify_analysis_inputs(profile)
-
     with tempfile.TemporaryDirectory(prefix=f"topvenues-{profile.profile_id}-") as directory:
         database_path = Path(directory) / "papers.db"
         sqlite_digest = hashlib.sha256()

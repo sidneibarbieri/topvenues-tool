@@ -143,11 +143,11 @@ class TestBootstrapFromGzippedSnapshot:
         assert any(r["paper_id"] == "42" for r in rows)
 
     def test_external_snapshot_is_copied_to_disposable_workspace(self, tmp_path):
-        snapshot = tmp_path / "data" / "profiles" / "submitted-11" / "papers.db.gz"
+        snapshot = tmp_path / "data" / "profiles" / "security-20" / "papers.db.gz"
         snapshot.parent.mkdir(parents=True)
         snapshot.write_bytes(gzip.compress(self._seeded_db_bytes(tmp_path)))
         original_digest = hashlib.sha256(snapshot.read_bytes()).hexdigest()
-        workspace = tmp_path / "data" / "workspaces" / "submitted-11" / "papers.db"
+        workspace = tmp_path / "data" / "workspaces" / "security-20" / "papers.db"
 
         manager = DatabaseManager(workspace, snapshot_path=snapshot)
         manager.upsert_paper(_paper("local", title="Workspace-only change"))

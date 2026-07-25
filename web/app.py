@@ -20,7 +20,6 @@ from src.models import PaperClass, SearchFilters
 
 PAGE_SIZE_OPTIONS = (25, 50, 100, 200)
 ABSTRACT_PREVIEW_CHARS = 280
-TRIAGE_FILTER_CLAIM = ("Triage filter", "16.5x", "relative risk at 90% recall")
 
 st.set_page_config(
     page_title="TopVenues - Security Paper Explorer",
@@ -298,7 +297,7 @@ def _artifact_claims(stats: dict) -> tuple[tuple[str, str, str], ...]:
             f"{with_bibtex / total:.1%}" if total else "n/a",
             "records ready for citation export",
         ),
-        TRIAGE_FILTER_CLAIM,
+        ("Verification", "238 tests", "offline checks for the released snapshot"),
     )
 
 
@@ -372,7 +371,7 @@ def page_artifact() -> None:
         [
             {
                 "Criterion": "Availability",
-                "Evidence": "Source code, compressed SQLite snapshot, arXiv snapshot and documentation.",
+                "Evidence": "Source code, compressed SQLite snapshot, manifest, and reviewer documentation.",
             },
             {
                 "Criterion": "Functionality",
@@ -380,7 +379,7 @@ def page_artifact() -> None:
             },
             {
                 "Criterion": "Reproducibility",
-                "Evidence": "Single-command script validates counts, tests, latency, export and triage results.",
+                "Evidence": "One command validates the manifest, materializes the snapshot, runs tests, exercises search, and exports BibTeX.",
             },
             {
                 "Criterion": "Sustainability",
@@ -390,18 +389,18 @@ def page_artifact() -> None:
     )
     st.dataframe(evidence, width="stretch", hide_index=True)
 
-    st.subheader("Scientific findings")
+    st.subheader("Release evidence")
     findings = pd.DataFrame(
         [
             {
-                "Finding": "Early signal",
-                "Result": "29.0% of 2024-2025 core security papers have a matching arXiv preprint.",
-                "Reproduce": ".venv/bin/python scripts/early_signal_study.py",
+                "Check": "Snapshot identity",
+                "Result": "The manifest records counts and SHA-256 for the compressed SQLite release.",
+                "Use": "bash reproduce.sh",
             },
             {
-                "Finding": "Triage filter",
-                "Result": "Prior-scope authorship gives 16.5x relative risk (2.5x conventional lift) at 90% recall and 64% volume cut.",
-                "Reproduce": ".venv/bin/python scripts/readiness_study.py",
+                "Check": "Search and export",
+                "Result": "FTS5 ranking, filters, and CSV/JSON/BibTeX exports run against the verified local copy.",
+                "Use": "Search page or python -m src.cli",
             },
         ]
     )

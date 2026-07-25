@@ -37,7 +37,7 @@ def main() -> None:
         "--profile",
         choices=PROFILE_IDS,
         default=select_profile_id(),
-        help="immutable corpus profile (default: TOPVENUES_PROFILE or submitted-11)",
+        help="immutable corpus profile (default: TOPVENUES_PROFILE or security-20)",
     )
     parser.add_argument(
         "--output",
