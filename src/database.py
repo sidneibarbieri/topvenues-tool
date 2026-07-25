@@ -15,7 +15,48 @@ MIN_ABSTRACT_LENGTH = 50
 logger = logging.getLogger(__name__)
 
 
-def bootstrap_from_gzipped_snapshot(db_path: Path) -> None:
+class CorpusNotFoundError(RuntimeError):
+    """Raised when a read-only consumer finds no corpus to open."""
+
+
+def _has_records(database: Path) -> bool:
+    if not database.exists():
+        return False
+    with sqlite3.connect(database) as conn:
+        has_table = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='papers'"
+        ).fetchone()
+        if has_table is None:
+            return False
+        return bool(conn.execute("SELECT EXISTS(SELECT 1 FROM papers)").fetchone()[0])
+
+
+def require_corpus(db_path: Path, snapshot_path: Path | None = None) -> None:
+    """Fail when neither a populated database nor a snapshot is available.
+
+    Read-only consumers call this before opening a corpus, so that running from
+    the wrong directory reports an actionable error instead of silently
+    presenting an empty corpus. Corpus-building commands do not call it.
+    """
+    database = Path(db_path)
+    snapshot = (
+        Path(snapshot_path)
+        if snapshot_path is not None
+        else database.with_suffix(database.suffix + ".gz")
+    )
+    if snapshot.exists() or _has_records(database):
+        return
+    raise CorpusNotFoundError(
+        f"No corpus found: {database} holds no records and {snapshot} is missing. "
+        "Run this from the artifact root directory, or run 'bash reproduce.sh' "
+        "to materialise the corpus first."
+    )
+
+
+def bootstrap_from_gzipped_snapshot(
+    db_path: Path,
+    snapshot_path: Path | None = None,
+) -> None:
     """Materialise ``papers.db`` from a tracked ``papers.db.gz`` snapshot.
 
     Called on every :class:`DatabaseManager` startup. The behavior when both
@@ -23,7 +64,11 @@ def bootstrap_from_gzipped_snapshot(db_path: Path) -> None:
     implements lineage-tracked auto-refresh: pure readers always get the
     newest upstream data; users with local modifications keep their work.
     """
-    gz_path = db_path.with_suffix(db_path.suffix + ".gz")
+    gz_path = (
+        Path(snapshot_path)
+        if snapshot_path is not None
+        else db_path.with_suffix(db_path.suffix + ".gz")
+    )
     if not gz_path.exists():
         return
 
@@ -127,10 +172,15 @@ def _write_sync_marker(db_path: Path, gz_path: Path) -> None:
 class DatabaseManager:
     """Manages an SQLite database of papers, supporting full-text search and export."""
 
-    def __init__(self, db_path: Path):
+    def __init__(self, db_path: Path, snapshot_path: Path | None = None):
         self.db_path = Path(db_path)
+        self.snapshot_path = (
+            Path(snapshot_path)
+            if snapshot_path is not None
+            else self.db_path.with_suffix(self.db_path.suffix + ".gz")
+        )
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        bootstrap_from_gzipped_snapshot(self.db_path)
+        bootstrap_from_gzipped_snapshot(self.db_path, self.snapshot_path)
         self._init_schema()
 
     def _init_schema(self) -> None:

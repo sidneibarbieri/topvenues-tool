@@ -37,17 +37,30 @@ from src.author_matcher import (
     build_author_index,
     find_matches,
 )
-from src.config import load_configuration
+from src.config import activate_profile
+from src.profiles import (
+    PROFILE_IDS,
+    PROJECT_ROOT,
+    Profile,
+    select_profile_id,
+    verified_profile_snapshot,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger(__name__)
 
-def harvest_snapshot(force: bool) -> Path:
-    scope = load_configuration().study_scope
-    snapshot_path = Path(scope.preprint_snapshot)
-    if snapshot_path.exists() and not force:
-        logger.info("snapshot already present at %s", snapshot_path)
-        return snapshot_path
+
+def harvest_snapshot(force: bool, profile: Profile) -> Path:
+    scope = profile.configuration.study_scope
+    if not force:
+        logger.info("using verified preprint snapshot at %s", profile.preprint_snapshot_path)
+        return profile.preprint_snapshot_path
+
+    snapshot_path = profile.workspace_data_dir.parent / "analysis" / "arxiv_cs_cr_live.jsonl.gz"
+    logger.warning(
+        "--harvest is a live-data mode; writing %s without changing the frozen manifest",
+        snapshot_path,
+    )
 
     snapshot_path.parent.mkdir(parents=True, exist_ok=True)
     start = time.time()
@@ -71,7 +84,8 @@ def load_scope_cohort(db_path: Path, events: list[str], years: list[int]) -> lis
         f"WHERE event IN ({placeholders}) AND year IN ({year_placeholders}) "
         f"AND title IS NOT NULL AND authors IS NOT NULL"
     )
-    with sqlite3.connect(db_path) as conn:
+    uri = f"file:{db_path.resolve()}?mode=ro&immutable=1"
+    with sqlite3.connect(uri, uri=True) as conn:
         conn.row_factory = sqlite3.Row
         return [dict(row) for row in conn.execute(query, (*events, *years)).fetchall()]
 
@@ -86,6 +100,7 @@ def report(
     matched_paper_ids: set[str],
     events: list[str],
     years: list[int],
+    event_totals: dict[str, int],
 ) -> None:
     print()
     print("═" * 70)
@@ -96,7 +111,7 @@ def report(
     n_matched = len(matched_paper_ids)
     rate = n_matched / total_papers if total_papers else 0.0
     print(f"  Scoped papers analyzed    : {total_papers:>5}")
-    print(f"  Papers with arXiv preprint: {n_matched:>5}  ({rate*100:.1f}%)")
+    print(f"  Papers with arXiv preprint: {n_matched:>5}  ({rate * 100:.1f}%)")
     print()
 
     if not matches:
@@ -115,13 +130,14 @@ def report(
     for m in matches:
         v = by_venue.setdefault(m.paper_venue, {"matches": 0})
         v["matches"] += 1
-    event_totals = _event_totals(events, years)
     print(f"    {'event':<22} {'matched':>8} {'total':>6} {'rate':>6}")
     for venue in events:
         matched_in_venue = len({m.paper_id for m in matches if m.paper_venue == venue})
         total_in_venue = event_totals.get(venue, 0)
         venue_rate = matched_in_venue / total_in_venue if total_in_venue else 0.0
-        print(f"    {venue:<22} {matched_in_venue:>8} {total_in_venue:>6} {venue_rate*100:>5.1f}%")
+        print(
+            f"    {venue:<22} {matched_in_venue:>8} {total_in_venue:>6} {venue_rate * 100:>5.1f}%"
+        )
     print()
 
     print("  Top-similarity examples:")
@@ -141,15 +157,18 @@ def report(
     print(f"  {ARXIV_ACKNOWLEDGMENT}")
 
 
-def _event_totals(events: list[str], years: list[int]) -> dict[str, int]:
-    with sqlite3.connect("data/dataset/papers.db") as conn:
-        return dict(conn.execute(
-            f"SELECT event, COUNT(*) FROM papers "
-            f"WHERE event IN ({','.join(['?']*len(events))}) "
-            f"AND year IN ({','.join(['?']*len(years))}) "
-            f"GROUP BY event",
-            (*events, *years),
-        ).fetchall())
+def _event_totals(db_path: Path, events: list[str], years: list[int]) -> dict[str, int]:
+    uri = f"file:{db_path.resolve()}?mode=ro&immutable=1"
+    with sqlite3.connect(uri, uri=True) as conn:
+        return dict(
+            conn.execute(
+                f"SELECT event, COUNT(*) FROM papers "
+                f"WHERE event IN ({','.join(['?'] * len(events))}) "
+                f"AND year IN ({','.join(['?'] * len(years))}) "
+                f"GROUP BY event",
+                (*events, *years),
+            ).fetchall()
+        )
 
 
 def export_matches(matches: list[Match], target: Path) -> None:
@@ -173,43 +192,83 @@ def export_matches(matches: list[Match], target: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--harvest", action="store_true",
-                        help="force a fresh arXiv harvest before analysis")
-    parser.add_argument("--title-threshold", type=float, default=DEFAULT_TITLE_THRESHOLD,
-                        help="Jaccard threshold for title match (default 0.55)")
+    parser.add_argument(
+        "--harvest", action="store_true", help="force a fresh arXiv harvest before analysis"
+    )
+    parser.add_argument(
+        "--title-threshold",
+        type=float,
+        default=DEFAULT_TITLE_THRESHOLD,
+        help="Jaccard threshold for title match (default 0.55)",
+    )
+    parser.add_argument(
+        "--profile",
+        choices=PROFILE_IDS,
+        default=select_profile_id(),
+        help="immutable corpus profile (default: TOPVENUES_PROFILE or submitted-11)",
+    )
     args = parser.parse_args()
-    scope = load_configuration().study_scope
+    activate_profile(args.profile, PROJECT_ROOT)
 
-    snapshot = harvest_snapshot(force=args.harvest)
-    logger.info("loading preprints from %s", snapshot)
-    preprints = load_jsonl(snapshot)
-    logger.info("loaded %d preprints", len(preprints))
+    with verified_profile_snapshot(
+        args.profile,
+        PROJECT_ROOT,
+        verify_preprints=True,
+    ) as verified:
+        profile = verified.profile
+        scope = profile.configuration.study_scope
+        snapshot = harvest_snapshot(force=args.harvest, profile=profile)
+        logger.info("loading preprints from %s", snapshot)
+        preprints = load_jsonl(snapshot)
+        logger.info("loaded %d preprints", len(preprints))
 
-    author_index = build_author_index(preprints)
-    logger.info("indexed %d unique author keys", len(author_index))
+        author_index = build_author_index(preprints)
+        logger.info("indexed %d unique author keys", len(author_index))
 
-    cohort = load_scope_cohort(Path("data/dataset/papers.db"), scope.core_events, scope.study_years)
-    logger.info("analysing %d scoped papers from %s", len(cohort), scope.study_years)
-
-    all_matches: list[Match] = []
-    matched_paper_ids: set[str] = set()
-    for paper in cohort:
-        matches = find_matches(
-            paper_id=paper["paper_id"],
-            paper_title=paper["title"],
-            paper_authors=parse_authors(paper["authors"]),
-            paper_year=paper["year"],
-            paper_venue=paper["event"],
-            author_index=author_index,
-            title_threshold=args.title_threshold,
-            publication_months=scope.publication_months,
+        cohort = load_scope_cohort(
+            verified.database_path,
+            scope.core_events,
+            scope.study_years,
         )
-        if matches:
-            all_matches.extend(matches)
-            matched_paper_ids.add(paper["paper_id"])
+        event_totals = _event_totals(
+            verified.database_path,
+            scope.core_events,
+            scope.study_years,
+        )
+        logger.info(
+            "analysing %d scoped papers from %s under profile %s",
+            len(cohort),
+            scope.study_years,
+            profile.profile_id,
+        )
 
-    export_matches(all_matches, Path("data/arxiv/matches.jsonl"))
-    report(all_matches, len(cohort), matched_paper_ids, scope.core_events, scope.study_years)
+        all_matches: list[Match] = []
+        matched_paper_ids: set[str] = set()
+        for paper in cohort:
+            matches = find_matches(
+                paper_id=paper["paper_id"],
+                paper_title=paper["title"],
+                paper_authors=parse_authors(paper["authors"]),
+                paper_year=paper["year"],
+                paper_venue=paper["event"],
+                author_index=author_index,
+                title_threshold=args.title_threshold,
+                publication_months=scope.publication_months,
+            )
+            if matches:
+                all_matches.extend(matches)
+                matched_paper_ids.add(paper["paper_id"])
+
+        output = profile.workspace_data_dir.parent / "analysis" / "early_signal_matches.jsonl"
+        export_matches(all_matches, output)
+        report(
+            all_matches,
+            len(cohort),
+            matched_paper_ids,
+            scope.core_events,
+            scope.study_years,
+            event_totals,
+        )
     return 0
 
 

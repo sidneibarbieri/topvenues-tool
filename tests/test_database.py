@@ -1,6 +1,7 @@
 """Tests for DatabaseManager."""
 
 import gzip
+import hashlib
 import sqlite3
 
 import pandas as pd
@@ -56,7 +57,9 @@ class TestImportAbstractsFromCsv:
         assert result.missing_in_db == 0
 
         with sqlite3.connect(db.db_path) as conn:
-            rows = conn.execute("SELECT paper_id, abstract FROM papers ORDER BY paper_id").fetchall()
+            rows = conn.execute(
+                "SELECT paper_id, abstract FROM papers ORDER BY paper_id"
+            ).fetchall()
         assert rows == [("1", "A" * 200), ("2", "B" * 200)]
 
     def test_never_overwrites_existing_abstract(self, db, tmp_path):
@@ -139,6 +142,21 @@ class TestBootstrapFromGzippedSnapshot:
         rows = DatabaseManager(db_path).get_all_papers()
         assert any(r["paper_id"] == "42" for r in rows)
 
+    def test_external_snapshot_is_copied_to_disposable_workspace(self, tmp_path):
+        snapshot = tmp_path / "data" / "profiles" / "submitted-11" / "papers.db.gz"
+        snapshot.parent.mkdir(parents=True)
+        snapshot.write_bytes(gzip.compress(self._seeded_db_bytes(tmp_path)))
+        original_digest = hashlib.sha256(snapshot.read_bytes()).hexdigest()
+        workspace = tmp_path / "data" / "workspaces" / "submitted-11" / "papers.db"
+
+        manager = DatabaseManager(workspace, snapshot_path=snapshot)
+        manager.upsert_paper(_paper("local", title="Workspace-only change"))
+
+        assert any(row["paper_id"] == "42" for row in manager.get_all_papers())
+        assert any(row["paper_id"] == "local" for row in manager.get_all_papers())
+        assert hashlib.sha256(snapshot.read_bytes()).hexdigest() == original_digest
+        assert workspace.parent != snapshot.parent
+
     def test_noop_when_no_snapshot(self, tmp_path):
         bootstrap_from_gzipped_snapshot(tmp_path / "papers.db")  # must not raise
         assert not (tmp_path / "papers.db").exists()
@@ -167,6 +185,7 @@ class TestBootstrapFromGzippedSnapshot:
         # Upstream publishes a new snapshot with a different paper
         import os
         import time
+
         new_bytes = gzip.compress(self._seeded_db_bytes(tmp_path, "new"))
         gz_path.write_bytes(new_bytes)
         future = time.time() + 60
@@ -182,6 +201,7 @@ class TestBootstrapFromGzippedSnapshot:
         import logging
         import os
         import time
+
         db_path = tmp_path / "papers.db"
         gz_path = tmp_path / "papers.db.gz"
 

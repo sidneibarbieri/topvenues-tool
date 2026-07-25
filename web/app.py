@@ -9,21 +9,18 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+ARTIFACT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ARTIFACT_ROOT))
 
 from src.abstract_fetcher import AbstractFetcher
 from src.awards import build_corpus_award_map
 from src.collector import Collector
+from src.database import require_corpus
 from src.models import PaperClass, SearchFilters
 
 PAGE_SIZE_OPTIONS = (25, 50, 100, 200)
 ABSTRACT_PREVIEW_CHARS = 280
-ARTIFACT_CLAIMS = (
-    ("Corpus", "20,305", "cybersecurity papers across 20 venues"),
-    ("Abstracts", "86.1%", "17,491 searchable abstracts; 85% on the security core"),
-    ("BibTeX", "100%", "every record ready for citation export"),
-    ("Triage filter", "16.5x", "relative risk at 90% recall"),
-)
+TRIAGE_FILTER_CLAIM = ("Triage filter", "16.5x", "relative risk at 90% recall")
 
 st.set_page_config(
     page_title="TopVenues - Security Paper Explorer",
@@ -191,7 +188,11 @@ def _run_async(coro):
 
 @st.cache_resource(show_spinner="Loading dataset…")
 def _load_collector() -> Collector:
-    collector = Collector()
+    """Open the corpus anchored at the artifact root, independent of the shell's
+    working directory, and report a missing corpus instead of showing an empty one.
+    """
+    collector = Collector(base_dir=ARTIFACT_ROOT)
+    require_corpus(collector.db.db_path, collector.db.snapshot_path)
     collector.papers = collector._load_papers_from_disk()
     return collector
 
@@ -279,7 +280,29 @@ def _render_header(title: str, subtitle: str) -> None:
     )
 
 
-def _render_claims() -> None:
+def _artifact_claims(stats: dict) -> tuple[tuple[str, str, str], ...]:
+    """Build the headline cards from live corpus counts, so they cannot drift."""
+    total = stats["total_papers"]
+    with_abstracts = stats["with_abstracts"]
+    with_bibtex = stats.get("with_bibtex", 0)
+    venues = len(stats.get("by_event", ()))
+    return (
+        ("Corpus", f"{total:,}", f"cybersecurity papers across {venues} venues"),
+        (
+            "Abstracts",
+            f"{with_abstracts / total:.1%}" if total else "n/a",
+            f"{with_abstracts:,} searchable abstracts",
+        ),
+        (
+            "BibTeX",
+            f"{with_bibtex / total:.1%}" if total else "n/a",
+            "records ready for citation export",
+        ),
+        TRIAGE_FILTER_CLAIM,
+    )
+
+
+def _render_claims(stats: dict) -> None:
     # The HTML must stay flat: Streamlit runs markdown before inserting raw
     # HTML, so any line indented four or more spaces becomes a code block.
     cards = "".join(
@@ -288,7 +311,7 @@ def _render_claims() -> None:
         f'<div class="value">{_safe_html(value)}</div>'
         f'<div class="note">{_safe_html(note)}</div>'
         "</div>"
-        for name, value, note in ARTIFACT_CLAIMS
+        for name, value, note in _artifact_claims(stats)
     )
     st.markdown(f'<div class="claim-grid">{cards}</div>', unsafe_allow_html=True)
 
@@ -330,7 +353,7 @@ def page_artifact() -> None:
         "Reproducible corpus overview",
         "Reproduce the corpus, inspect coverage, and export ready-to-cite references from a local snapshot.",
     )
-    _render_claims()
+    _render_claims(_load_collector().db.get_statistics())
 
     st.subheader("Verification path")
     st.markdown(

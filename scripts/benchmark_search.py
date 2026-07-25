@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.database import DatabaseManager
+from src.profiles import PROFILE_IDS, PROJECT_ROOT, select_profile_id, verified_profile_snapshot
 
 TERMS = ("machine learning", "fuzzing", "intrusion detection", "ransomware")
 
@@ -23,27 +24,20 @@ def _elapsed_ms(callable_) -> tuple[float, list]:
     return (time.perf_counter() - start) * 1000, rows
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--db", type=Path, default=Path("data/dataset/papers.db"))
-    parser.add_argument("--trials", type=int, default=11)
-    args = parser.parse_args()
-    if args.trials < 3:
-        parser.error("--trials must be at least 3")
-
-    db = DatabaseManager(args.db)
+def benchmark(db_path: Path, trials: int) -> None:
+    """Run both search paths against one disposable or explicitly supplied DB."""
+    db = DatabaseManager(db_path)
     started = time.perf_counter()
     db.build_fts_index()
     print(f"FTS5 index build: {time.perf_counter() - started:.2f} s")
 
-    with sqlite3.connect(args.db) as connection:
+    with sqlite3.connect(db_path) as connection:
         for term in TERMS:
             pattern = f"%{term}%"
 
             def substring_search(pattern: str = pattern) -> list:
                 return connection.execute(
-                    "SELECT paper_id FROM papers "
-                    "WHERE title LIKE ? OR abstract LIKE ?",
+                    "SELECT paper_id FROM papers WHERE title LIKE ? OR abstract LIKE ?",
                     (pattern, pattern),
                 ).fetchall()
 
@@ -58,7 +52,7 @@ def main() -> None:
             ranked_times: list[float] = []
             substring_rows: list = []
             ranked_rows: list = []
-            for _ in range(args.trials):
+            for _ in range(trials):
                 elapsed, substring_rows = _elapsed_ms(substring_search)
                 substring_times.append(elapsed)
                 elapsed, ranked_rows = _elapsed_ms(ranked_search)
@@ -71,6 +65,36 @@ def main() -> None:
             )
             if not substring_rows or not ranked_rows:
                 raise SystemExit(f"search returned no results for {term!r}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--profile",
+        choices=PROFILE_IDS,
+        default=select_profile_id(),
+        help="immutable corpus profile (default: TOPVENUES_PROFILE or submitted-11)",
+    )
+    parser.add_argument(
+        "--db",
+        type=Path,
+        default=None,
+        help="explicit mutable database; bypasses profile selection",
+    )
+    parser.add_argument("--trials", type=int, default=11)
+    args = parser.parse_args()
+    if args.trials < 3:
+        parser.error("--trials must be at least 3")
+
+    if args.db is not None:
+        if not args.db.is_file():
+            parser.error(f"--db does not exist: {args.db}")
+        benchmark(args.db, args.trials)
+        return
+
+    with verified_profile_snapshot(args.profile, PROJECT_ROOT) as verified:
+        print(f"Profile: {verified.profile.profile_id}")
+        benchmark(verified.database_path, args.trials)
 
 
 if __name__ == "__main__":

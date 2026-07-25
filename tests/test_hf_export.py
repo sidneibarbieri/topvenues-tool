@@ -55,6 +55,27 @@ def test_repo_id_lands_in_usage_example(db, tmp_path):
     assert 'load_dataset("someorg/somecorpus", split="train")' in card
 
 
+def test_profile_export_records_snapshot_identity(db, tmp_path):
+    base = tmp_path / "artifact"
+    manifest_dir = base / "data" / "profiles" / "security-20"
+    manifest_dir.mkdir(parents=True)
+    (manifest_dir / "manifest.json").write_text(
+        '{"snapshot": {"gzip_sha256": "abc", "papers": 3}}', encoding="utf-8"
+    )
+    out = tmp_path / "hf"
+    export_hf_dataset(
+        db.db_path,
+        out,
+        profile_id="security-20",
+        release_tag="test-release",
+        base_dir=base,
+    )
+    card = (out / "README.md").read_text(encoding="utf-8")
+    assert "**Profile:** `security-20`" in card
+    assert "`abc`" in card
+    assert "`test-release`" in card
+
+
 def test_large_corpus_is_sharded(tmp_path):
     from src.database import DatabaseManager
     from src.hf_export import export_hf_dataset

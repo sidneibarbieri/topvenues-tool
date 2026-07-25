@@ -39,9 +39,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/sidneibarbieri/topvenues-tool"
-Repository = "https://github.com/sidneibarbieri/topvenues-tool"
-Issues = "https://github.com/sidneibarbieri/topvenues-tool/issues"
+Homepage = "https://github.com/sidneibarbieri/topVenues"
+Repository = "https://github.com/sidneibarbieri/topVenues"
+Issues = "https://github.com/sidneibarbieri/topVenues/issues"
 
 [project.optional-dependencies]
 dev = [

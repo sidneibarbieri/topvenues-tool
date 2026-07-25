@@ -14,6 +14,7 @@ Usage::
 
 from __future__ import annotations
 
+import argparse
 import sqlite3
 import sys
 from pathlib import Path
@@ -21,10 +22,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.arxiv_fetcher import ARXIV_ACKNOWLEDGMENT, load_jsonl
-from src.config import load_configuration
+from src.config import activate_profile
+from src.profiles import PROFILE_IDS, PROJECT_ROOT, select_profile_id, verified_profile_snapshot
 from src.readiness import OutcomeIndex, ReadinessResult, analyze, build_prior_author_set
-
-DB_PATH = Path("data/dataset/papers.db")
 
 
 def _scope_authors(
@@ -68,32 +68,49 @@ def _print_result(year: int, result: ReadinessResult) -> None:
 
 
 def main() -> int:
-    scope = load_configuration().study_scope
-    preprints = load_jsonl(Path(scope.preprint_snapshot))
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--profile",
+        choices=PROFILE_IDS,
+        default=select_profile_id(),
+        help="immutable corpus profile (default: TOPVENUES_PROFILE or submitted-11)",
+    )
+    args = parser.parse_args()
+    activate_profile(args.profile, PROJECT_ROOT)
 
-    print()
-    print("═" * 70)
-    print(" Scientific-readiness filter — prior-scope authorship as an")
-    print(" early-signal predictor for arXiv cs.CR preprints")
-    print("═" * 70)
-    print()
-    print("  P(preprint joins the publication scope) by author track record:")
-    print()
+    with verified_profile_snapshot(
+        args.profile,
+        PROJECT_ROOT,
+        verify_preprints=True,
+    ) as verified:
+        profile = verified.profile
+        scope = profile.configuration.study_scope
+        preprints = load_jsonl(profile.preprint_snapshot_path)
 
-    with sqlite3.connect(DB_PATH) as conn:
-        for cohort_year in sorted(scope.prior_windows, reverse=True):
-            plo, phi = scope.prior_windows[cohort_year]
-            olo, ohi = scope.outcome_windows[cohort_year]
-            prior = build_prior_author_set(_scope_authors(conn, scope.core_events, plo, phi))
-            outcome = OutcomeIndex(_scope_titles(conn, scope.core_events, olo, ohi))
-            cohort = [
-                (p.title, p.authors)
-                for p in preprints
-                if p.submitted_at.startswith(str(cohort_year))
-            ]
-            for threshold in scope.title_thresholds:
-                _print_result(cohort_year, analyze(cohort, prior, outcome, threshold))
-            print()
+        print()
+        print("═" * 70)
+        print(f" Scientific-readiness filter — profile {profile.profile_id}")
+        print(" prior-scope authorship as an early-signal predictor for cs.CR")
+        print("═" * 70)
+        print()
+        print("  P(preprint joins the publication scope) by author track record:")
+        print()
+
+        uri = f"file:{verified.database_path.resolve()}?mode=ro&immutable=1"
+        with sqlite3.connect(uri, uri=True) as conn:
+            for cohort_year in sorted(scope.prior_windows, reverse=True):
+                plo, phi = scope.prior_windows[cohort_year]
+                olo, ohi = scope.outcome_windows[cohort_year]
+                prior = build_prior_author_set(_scope_authors(conn, scope.core_events, plo, phi))
+                outcome = OutcomeIndex(_scope_titles(conn, scope.core_events, olo, ohi))
+                cohort = [
+                    (p.title, p.authors)
+                    for p in preprints
+                    if p.submitted_at.startswith(str(cohort_year))
+                ]
+                for threshold in scope.title_thresholds:
+                    _print_result(cohort_year, analyze(cohort, prior, outcome, threshold))
+                print()
 
     print(f"  {ARXIV_ACKNOWLEDGMENT}")
     return 0

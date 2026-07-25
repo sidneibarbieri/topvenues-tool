@@ -7,6 +7,7 @@ and the same dataset card statistics.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -36,7 +37,7 @@ _EXPORT_COLUMNS = [
 _CARD_TEMPLATE = """\
 ---
 pretty_name: TopVenues Cybersecurity Corpus
-license: odc-by
+license: other
 language:
 - en
 task_categories:
@@ -48,7 +49,7 @@ tags:
 - literature-review
 - dblp
 size_categories:
-- 100K<n<1M
+- 10K<n<100K
 configs:
 - config_name: default
   data_files:
@@ -60,16 +61,21 @@ configs:
 
 A reproducible, cybersecurity-focused bibliographic corpus for literature
 reviews: {total:,} papers ({year_min}–{year_max}) across {n_events}
-cybersecurity venues, with {n_abstracts:,} abstracts and a BibTeX entry for
+security and security-relevant venues, with {n_abstracts:,} abstracts and a BibTeX entry for
 every record.
 
 - **Foundational paper:** [TopVenues: A Reproducible Corpus and Tooling
   Substrate for Cybersecurity Literature Reviews
   (arXiv:2606.18320)](https://arxiv.org/abs/2606.18320). That paper reports an
-  earlier, smaller frozen snapshot; this dataset is the expanded tool snapshot.
+  earlier, smaller frozen snapshot. This dataset is a distinct tool release and
+  must not be used to reproduce that paper's reported measurements.
 - **Code / tool:** <https://github.com/sidneibarbieri/topvenues-tool>
 - **Pinned source of truth:** the gzipped SQLite snapshot shipped with the
   tool; this dataset is a faithful Parquet export of the same frozen state.
+
+## Release identity
+
+{release_identity}
 
 ## Usage
 
@@ -121,8 +127,8 @@ Bibliographic metadata and BibTeX come from [DBLP](https://dblp.org)
 (released CC0). Abstracts were collected from open scholarly sources
 (Semantic Scholar, OpenAlex, CrossRef) and publisher pages; they remain the
 copyright of their respective publishers and are included for research and
-indexing purposes. The compilation is released under
-[ODC-BY 1.0](https://opendatacommons.org/licenses/by/1-0/).
+indexing purposes. The repository's MIT license applies to the tool code; this
+dataset card does not grant rights in third-party abstract text.
 
 ## Citation
 
@@ -146,11 +152,32 @@ def export_hf_dataset(
     db_path: Path,
     out_dir: Path,
     repo_id: str = "sidneibarbieri/topvenues",
+    profile_id: str | None = None,
+    release_tag: str | None = None,
+    base_dir: Path | None = None,
 ) -> dict:
     """Write ``train-*.parquet`` shards and ``README.md`` under ``out_dir``.
 
     Returns the statistics used in the card so callers can display them.
     """
+    release_identity = (
+        "This export was produced without an immutable-profile declaration. "
+        "It is not a release artifact."
+    )
+    if profile_id:
+        if base_dir is None:
+            raise ValueError("base_dir is required when profile_id is provided")
+        manifest_path = base_dir / "data" / "profiles" / profile_id / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        snapshot = manifest["snapshot"]
+        tag_text = release_tag or "not yet tagged"
+        release_identity = (
+            f"- **Profile:** `{profile_id}`\n"
+            f"- **Snapshot SHA-256 (gzip):** `{snapshot['gzip_sha256']}`\n"
+            f"- **Source release tag:** `{tag_text}`\n"
+            f"- **Snapshot record count:** {snapshot['papers']:,}"
+        )
+
     with sqlite3.connect(db_path) as conn:
         df = pd.read_sql_query("SELECT * FROM papers", conn)
 
@@ -200,6 +227,11 @@ def export_hf_dataset(
             f"| {event} | {row['area']} | {row['papers']:,} | {int(row['abstracts']):,} |"
         )
 
-    card = _CARD_TEMPLATE.format(venue_table="\n".join(venue_rows), repo_id=repo_id, **stats)
+    card = _CARD_TEMPLATE.format(
+        venue_table="\n".join(venue_rows),
+        repo_id=repo_id,
+        release_identity=release_identity,
+        **stats,
+    )
     (out_dir / "README.md").write_text(card, encoding="utf-8")
     return stats

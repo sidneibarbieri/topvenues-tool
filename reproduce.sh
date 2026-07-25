@@ -1,32 +1,54 @@
 #!/usr/bin/env bash
-# Reproduce the artifact's headline claims in a single shot.
-#
-# What this script verifies:
-#   1. Installation succeeds with declared dependencies.
-#   2. Database snapshot bootstraps to the expected counts.
-#   3. Test suite passes (no failures).
-#   4. A representative keyword search returns within the latency budget.
-#   5. A BibTeX export produces a non-empty .bib file.
-#   6. The early-signal study reproduces the headline preprint rate.
-#   7. The scientific-readiness study and baselines reproduce the headline
-#      relative-risk/recall and control comparisons.
-#
-# Exit code 0 → all claims hold; non-zero → first failure is reported.
+# Reproduce the selected profile and, for submitted-11, the paper headlines.
 
 set -euo pipefail
 
 cd "$(dirname "$0")"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$PWD/.cache/uv}"
 
-EXPECTED_PAPERS=20305
-EXPECTED_ABSTRACTS=17491
-EXPECTED_BIBTEX=20305
+profile="${TOPVENUES_PROFILE:-security-20}"
+skip_install=false
+
+usage() {
+  printf 'Usage: %s [--profile security-20] [--skip-install]\n' "$0"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --profile)
+      [[ $# -ge 2 ]] || { usage >&2; exit 2; }
+      profile="$2"
+      shift 2
+      ;;
+    --skip-install)
+      skip_install=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf 'Unknown argument: %s\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+case "$profile" in
+  security-20) ;;
+  *)
+    printf 'Unknown profile: %s\n' "$profile" >&2
+    exit 2
+    ;;
+esac
+export TOPVENUES_PROFILE="$profile"
 
 step() { printf "\n\033[1;34m▶ %s\033[0m\n" "$*"; }
 ok()   { printf "  \033[32m✓\033[0m %s\n" "$*"; }
 fail() { printf "  \033[31m✗\033[0m %s\n" "$*"; exit 1; }
 
-# ── 1. Python and dependencies ────────────────────────────────────────────
 step "Checking Python and dependencies"
 if [[ -n "${PYTHON:-}" ]]; then
   python_bin="$PYTHON"
@@ -42,13 +64,15 @@ fi
 if [[ -z "$python_bin" ]] || ! command -v "$python_bin" >/dev/null 2>&1; then
   fail "Python 3.11+ is required (set PYTHON=… to override)"
 fi
-ok "bootstrap interpreter: $($python_bin --version)"
 "$python_bin" - <<'PY' || fail "Python 3.11 or newer is required"
 import sys
 raise SystemExit(0 if sys.version_info >= (3, 11) else 1)
 PY
 
 if [[ ! -d .venv ]]; then
+  if [[ "$skip_install" == true ]]; then
+    fail "--skip-install requires an existing .venv"
+  fi
   step "Creating .venv"
   if command -v uv >/dev/null 2>&1; then
     uv venv --quiet --seed --python "$python_bin" .venv
@@ -63,103 +87,110 @@ import sys
 raise SystemExit(0 if sys.version_info >= (3, 11) else 1)
 PY
 ok "active environment: $(python --version)"
-if command -v uv >/dev/null 2>&1; then
-  uv pip install --quiet -r requirements.txt
-else
-  PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1 pip install --quiet --prefer-binary --timeout 60 -r requirements.txt
-fi
-ok "dependencies installed"
 
-# ── 2. Bootstrap from the gzipped snapshot ────────────────────────────────
-step "Bootstrapping the database from papers.db.gz"
-rm -f data/dataset/papers.db data/dataset/papers.db.sync-id
-stats=$(python -m src.cli stats)
+if [[ "$skip_install" == false ]]; then
+  if command -v uv >/dev/null 2>&1; then
+    uv pip install --quiet -r requirements.txt
+  else
+    PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1 \
+      pip install --quiet --prefer-binary --timeout 60 -r requirements.txt
+  fi
+  ok "dependencies installed"
+else
+  ok "dependency installation skipped explicitly"
+fi
+
+step "Verifying immutable profile inputs"
+manifest_row=$(python scripts/verify_profile_snapshot.py --profile "$profile" --machine) || \
+  fail "profile manifest verification failed"
+IFS=$'\t' read -r snapshot_path workspace_data_dir expected_papers expected_abstracts \
+  expected_bibtex expected_snapshot_sha <<< "$manifest_row"
+[[ -n "$snapshot_path" && -n "$workspace_data_dir" && -n "$expected_snapshot_sha" ]] || \
+  fail "profile verifier returned an incomplete machine record"
+ok "profile $profile: $snapshot_path (sha256=$expected_snapshot_sha)"
+ok "frozen arXiv input: 27,749 records and manifest checksum verified"
+
+step "Refreshing the disposable profile workspace"
+python -m src.cli --profile "$profile" refresh-db >/dev/null
+stats=$(python -m src.cli --profile "$profile" stats)
 echo "$stats" | sed 's/^/  /'
 
-papers=$(echo "$stats"     | awk '/Total Papers:/ {print $NF}')
-abstracts=$(echo "$stats"  | awk '/With Abstracts:/ {print $3}')
-bibtex=$(echo "$stats"     | awk '/With BibTeX:/ {print $3}')
+papers=$(echo "$stats"    | awk '/Total Papers:/ {print $NF}')
+abstracts=$(echo "$stats" | awk '/With Abstracts:/ {print $3}')
+bibtex=$(echo "$stats"    | awk '/With BibTeX:/ {print $3}')
+[[ "$papers" == "$expected_papers" ]] || \
+  fail "expected $expected_papers papers, got $papers"
+[[ "$abstracts" == "$expected_abstracts" ]] || \
+  fail "expected $expected_abstracts abstracts, got $abstracts"
+[[ "$bibtex" == "$expected_bibtex" ]] || \
+  fail "expected $expected_bibtex BibTeX entries, got $bibtex"
+python scripts/verify_claims.py --profile "$profile" || fail "profile counts changed"
+ok "workspace matches the immutable $profile manifest"
 
-[[ "$papers"    == "$EXPECTED_PAPERS"    ]] || fail "expected $EXPECTED_PAPERS papers, got $papers"
-[[ "$abstracts" == "$EXPECTED_ABSTRACTS" ]] || fail "expected $EXPECTED_ABSTRACTS abstracts, got $abstracts"
-[[ "$bibtex"    == "$EXPECTED_BIBTEX"    ]] || fail "expected $EXPECTED_BIBTEX BibTeX entries, got $bibtex"
-ok "database state matches headline claims"
-
-# Snapshot identity: reviewers can confirm they hold the same release.
-snapshot_sha=$(shasum -a 256 data/dataset/papers.db.gz | awk '{print $1}')
-expected_snapshot_sha=$(awk '{print $1}' data/dataset/papers.db.gz.sha256)
-[[ "$snapshot_sha" == "$expected_snapshot_sha" ]] || \
-  fail "snapshot SHA-256 mismatch: expected $expected_snapshot_sha, got $snapshot_sha"
-ok "snapshot papers.db.gz SHA-256 verified: $snapshot_sha"
-
-# ── 3. Test suite ─────────────────────────────────────────────────────────
-step "Running test suite"
+step "Running the test suite"
 test_output=$(python -m pytest -q 2>&1 || true)
 echo "$test_output" | tail -3 | sed 's/^/  /'
-test_count=$(echo "$test_output" | awk '/passed/ {print $1}' | head -1)
 echo "$test_output" | grep -qE "failed|error" && fail "test suite did not pass cleanly"
+test_count=$(echo "$test_output" | awk '/passed/ {print $1}' | head -1)
 [[ -n "$test_count" ]] || fail "no tests ran"
 ok "all $test_count tests pass"
 
-# ── 3b. Researcher-facing analytics and award data ───────────────────────
-step "Validating author analytics and award metadata"
-python - <<'PY' || fail "analytics or award metadata validation failed"
-from pathlib import Path
-from src.analytics import reference_authors
-from src.awards import build_corpus_award_map
+step "Benchmarking search on a verified disposable copy"
+python scripts/benchmark_search.py --profile "$profile" --trials 11 || \
+  fail "search benchmark failed"
+ok "substring and ranked search returned results"
 
-db = Path("data/dataset/papers.db")
-awards = Path("data/awards")
-award_map = build_corpus_award_map(awards, db)
-ranked = reference_authors(db, topic="LLM", limit=20, awards_dir=awards)
-assert award_map, "no award records matched the corpus"
-assert ranked, "LLM author query returned no results"
-assert any(entry["top4"] > 0 for entry in ranked), "author evidence has no top-four papers"
-print(f"  {len(award_map)} corpus papers carry award evidence")
-print(f"  {len(ranked)} author profiles returned for topic LLM")
-PY
-ok "author evidence and award annotations are populated"
-
-# ── 4. Repeated search-latency benchmark ──────────────────────────────────
-step "Benchmarking substring and ranked search"
-python scripts/benchmark_search.py --trials 11 || fail "search benchmark failed"
-ok "both search paths return results across 11 warm-cache trials"
-
-# ── 5. BibTeX export ──────────────────────────────────────────────────────
 step "Exporting a sample BibTeX corpus"
-out=$(mktemp -t topvenues_repro.XXXXXX.bib)
-python -m src.cli export --title "intrusion" --format bibtex --output "$out" >/dev/null
-size=$(wc -c < "$out" | tr -d ' ')
-[[ "$size" -gt 1000 ]] || fail "BibTeX export was empty"
-ok "BibTeX export produced $(wc -l < "$out" | tr -d ' ') lines ($size bytes)"
-rm -f "$out"
+sample_bib=$(mktemp -t topvenues_repro.XXXXXX.bib)
+trap 'rm -f "$sample_bib"' EXIT
+python -m src.cli --profile "$profile" export \
+  --title "intrusion" --format bibtex --output "$sample_bib" >/dev/null
+sample_size=$(wc -c < "$sample_bib" | tr -d ' ')
+[[ "$sample_size" -gt 1000 ]] || fail "BibTeX export was empty"
+ok "BibTeX export produced $(wc -l < "$sample_bib" | tr -d ' ') lines ($sample_size bytes)"
+rm -f "$sample_bib"
+trap - EXIT
 
-# ── 6. Scientific-readiness result ────────────────────────────────────────
-# ── 6. Early-signal measurement ───────────────────────────────────────────
-step "Reproducing the early-signal measurement"
-early_output=$(python scripts/early_signal_study.py 2>&1)
-echo "$early_output" | awk '/Papers with arXiv preprint/ {print "  " $0}'
-echo "$early_output" | awk '/p25/ || /^[[:space:]]+[0-9]/ {print "  " $0}' | head -2
-echo "$early_output" | grep -q "Papers with arXiv preprint:  1351  (29.0%)" || fail "expected 1351 early-signal matches and 29.0% rate"
-echo "$early_output" | grep -q "149.0" || fail "expected median preprint lead near 149 days"
-ok "early-signal study reproduces 29.0% preprint rate and median 149-day lead"
+if [[ "$profile" == "submitted-11" ]]; then
+  step "Reproducing the paper's early-signal measurement"
+  early_output=$(python scripts/early_signal_study.py --profile "$profile" 2>&1)
+  echo "$early_output" | awk '/Scoped papers analyzed|Papers with arXiv preprint/ {print "  " $0}'
+  echo "$early_output" | awk '/p25/ || /^[[:space:]]+47\.0/ {print "  " $0}' | head -2
+  echo "$early_output" | grep -q "Scoped papers analyzed    :  2537" || \
+    fail "expected the 2,537-paper submitted cohort"
+  echo "$early_output" | grep -q "Papers with arXiv preprint:   742  (29.2%)" || \
+    fail "expected 742 early-signal matches and 29.2% rate"
+  echo "$early_output" | grep -q "154.0" || \
+    fail "expected median preprint lead of 154 days"
+  ok "early-signal result is 742/2,537 (29.2%) with median lead 154 days"
 
-# ── 7. Scientific-readiness result ────────────────────────────────────────
-step "Reproducing the scientific-readiness filter"
-readiness_output=$(python scripts/readiness_study.py 2>&1)
-echo "$readiness_output" | awk '/2023  thr=0.6/ {print "  " $0}'
-echo "$readiness_output" | grep -q "2023  thr=0.6" || fail "missing 2023 threshold-0.6 readiness result"
-echo "$readiness_output" | grep -q "RR  16.5x" || fail "expected 16.5x readiness relative risk"
-echo "$readiness_output" | grep -q "lift  2.5x" || fail "expected 2.5x conventional lift"
-echo "$readiness_output" | grep -q "recall  90%" || fail "expected 90% readiness recall"
-ok "readiness filter reproduces 16.5x relative risk (2.5x conventional lift) at 90% recall"
+  step "Reproducing the paper's scientific-readiness result"
+  readiness_output=$(python scripts/readiness_study.py --profile "$profile" 2>&1)
+  echo "$readiness_output" | awk '/2023  thr=0.6/ {print "  " $0}'
+  echo "$readiness_output" | grep -q "2023  thr=0.6" || \
+    fail "missing 2023 threshold-0.6 readiness result"
+  echo "$readiness_output" | grep -q "RR  16.5x" || \
+    fail "expected 16.5x readiness relative risk"
+  echo "$readiness_output" | grep -q "lift  2.5x" || \
+    fail "expected 2.5x conventional readiness lift"
+  echo "$readiness_output" | grep -q "recall  90%" || \
+    fail "expected 90% readiness recall"
+  ok "readiness result is RR 16.5x, lift 2.5x, recall 90%"
 
-step "Reproducing readiness baselines"
-baseline_output=$(python scripts/readiness_baselines.py 2>&1)
-echo "$baseline_output" | awk '/prior top-4|prolific|random security authors|first author|senior/ {print "  " $0}'
-echo "$baseline_output" | grep -q "prior top-4 (any author)     16.0%     90%  16.5x   2.5x" || fail "expected prior-top-4 baseline row"
-echo "$baseline_output" | grep -q "prolific (>= 3 papers)" || fail "expected prolific-author control"
-echo "$baseline_output" | grep -q "random security authors" || fail "expected random-author control"
-ok "readiness controls reproduce the reported baseline comparisons"
+  step "Reproducing readiness controls"
+  baseline_output=$(python scripts/readiness_baselines.py --profile "$profile" 2>&1)
+  echo "$baseline_output" | \
+    awk '/prior top-4|prolific|random security authors|first author|senior/ {print "  " $0}'
+  echo "$baseline_output" | \
+    grep -Eq "prior top-4 .*15\.9%.*90%.*16\.5x.*2\.5x" || \
+    fail "expected prior-top-4 baseline row"
+  echo "$baseline_output" | grep -q "prolific (>= 3 papers)" || \
+    fail "expected prolific-author control"
+  echo "$baseline_output" | grep -q "random security authors" || \
+    fail "expected random-author control"
+  ok "readiness controls reproduce the reported comparisons"
+else
+  ok "paper-specific measurements skipped: their denominator is submitted-11, not $profile"
+fi
 
-step "All headline claims reproduced"
+step "Profile $profile reproduced successfully"

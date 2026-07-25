@@ -245,6 +245,9 @@ class StudyScope(BaseModel):
 
 
 class Configuration(BaseModel):
+    profile_id: str | None = None
+    immutable_snapshot: bool = False
+    snapshot_path: str | None = None
     events: list[str] = Field(
         default_factory=lambda: [
             "ccs",

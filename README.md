@@ -3,16 +3,28 @@
 **A reproducible bibliographic explorer for configured security research sources.**
 
 Paper: [arXiv:2606.18320](https://arxiv.org/abs/2606.18320) ·
-Dataset export: generated locally; public Hub validation pending ·
+Living dataset: [Hugging Face](https://huggingface.co/datasets/sidneibarbieri/topvenues) ·
 License: MIT
 
-> **Lineage.** This repository is the actively developed tool. The exact
-> corpus and code measured by the companion paper
-> [arXiv:2606.18320](https://arxiv.org/abs/2606.18320) are frozen at
-> [`topVenues@arxiv-2606.18320`](https://github.com/sidneibarbieri/topVenues/releases/tag/arxiv-2606.18320)
-> and are not modified here. This tree extends that artifact with a larger
-> snapshot (20,305 papers / 20 venues), BM25 ranked search, tier-weighted
-> author analytics, and the Hugging Face dataset export.
+> **Denominator boundary.** The accepted full paper uses only immutable
+> `submitted-11`: 9,925 records from 11 venues. The Salão de Ferramentas tool
+> uses the distinct immutable `security-20` profile: 20,305 records from 20
+> security and security-relevant venues. `full-40` is a historical broad
+> catalog, not an abstract-ready security corpus. Neither `security-20`,
+> `full-40`, nor Hugging Face is a denominator for the accepted paper.
+
+| Object | Records | Release role |
+| --- | ---: | --- |
+| `submitted-11` | 9,925 | Immutable accepted-paper denominator; public source commit recorded in its manifest |
+| `security-20` | 20,305 | Immutable Salão de Ferramentas profile; tag `sbseg2026-sf-submission` |
+| `full-40` | 120,628 | Immutable broad historical catalog |
+| [Hugging Face](https://huggingface.co/datasets/sidneibarbieri/topvenues) | 20,305 | Parquet export of `security-20`, identified by its snapshot hash and release tag |
+
+The exact corpus and code measured by the earlier companion preprint are
+preserved at
+[`topVenues@arxiv-2606.18320`](https://github.com/sidneibarbieri/topVenues/releases/tag/arxiv-2606.18320).
+The named local profiles and their checksums are documented in
+[`profiles/README.md`](profiles/README.md).
 
 `TopVenues` builds a curated, searchable SQLite dataset for a declared
 computer-security literature scope. It downloads
@@ -20,16 +32,19 @@ metadata from DBLP, backfills abstracts where reliable public sources expose
 them, and exposes a fast full-text search interface for
 researchers, students and reviewers preparing literature reviews.
 
-The current released dataset snapshot covers **20,305 papers** across **20
-cybersecurity venues**, with **17,491 abstracts** and **20,305 BibTeX records**.
+The default local snapshot is the immutable **`security-20` release**:
+**20,305 papers** across **20 security and security-relevant venues**, with **17,491 abstracts**
+and **20,305 BibTeX records**.
 Abstracts are intentionally backfilled by policy rather than scraped
-indiscriminately; the full bibliographic denominator is the SQLite snapshot.
+indiscriminately. For any analysis, the denominator is the explicitly named
+SQLite profile snapshot, never whichever export happens to be newest.
 
 ---
 
 ## Indexed venues
 
-The snapshot spans 20 cybersecurity venues grouped by role:
+The `security-20` candidate spans 20 venues in a security-oriented profile,
+grouped by role:
 
 - **Security (17 venues):** ACM CCS, IEEE S&P, USENIX Security, NDSS,
   ACM ASIA CCS, IEEE EURO S&P, ACSAC, RAID, ESORICS, ACM CODASPY, IEEE CNS,
@@ -38,36 +53,72 @@ The snapshot spans 20 cybersecurity venues grouped by role:
   IEEE Communications Surveys & Tutorials, Foundations and Trends in
   Privacy and Security.
 
-The scope is deliberately cybersecurity-only, so abstract coverage stays
-high (86.1% overall, 85% on the security core) rather than diluted by
-off-topic venues.
+The profile is security-oriented rather than security-exclusive: it combines
+17 security venues with 3 broad survey venues relevant to security reviews.
+Its abstract coverage is 86.1% overall and 85.0% on the 16,806-record security
+core.
 
-The set is declared in `config.yaml`. Adding a venue also requires explicit
+The candidate set is declared in `config.yaml`. Adding a venue also requires explicit
 normalization, area, and tier mappings; see *Extending* below.
 
 ---
 
 ## Quick start
 
+### Salão de Ferramentas release
+
+Checkout `sbseg2026-sf-submission` to obtain the exact public tree and snapshot
+used by the tool paper. The default reproduction command below intentionally
+selects `security-20`; it never substitutes the companion paper's profile.
+
 ```bash
-git clone https://github.com/sidneibarbieri/topvenues-tool.git
-cd topvenues-tool
 python3 -m venv .venv && source .venv/bin/activate
 python3 -m pip install -r requirements.txt
 ```
 
-That's it — the repository ships with the full SQLite database as a
+The release package includes the `security-20` snapshot as a
 compressed snapshot (`data/dataset/papers.db.gz`, 72.7 MiB). On first launch
 the application transparently materializes `data/dataset/papers.db` (232 MiB)
 from that snapshot, so there is **no manual import step**: 20,305 papers,
 17,491 abstracts and 20,305 BibTeX entries are available immediately.
 
-The released corpus is pinned by the compressed SQLite snapshot;
-`reproduce.sh` and the paper claims read that snapshot. Tabular exports are
-prepared for publication on the Hugging Face Hub (see *Hugging Face dataset export* below)
-and regenerated from the same frozen database. A refreshed corpus should be
-published as a new snapshot with a new checksum and updated reported counts,
-rather than silently changing the submission denominator.
+`reproduce.sh` defaults to the accepted paper's immutable `submitted-11`
+profile for backwards compatibility. Run the Salão artifact with its explicit
+profile:
+
+```bash
+bash reproduce.sh --profile security-20
+```
+
+The script verifies the 20,305-record manifest and counts, runs the common
+tests and search/export checks, and deliberately skips the companion paper's
+profile-specific studies. Alternative profiles must be named explicitly:
+
+```bash
+bash reproduce.sh --profile security-20
+bash reproduce.sh --profile full-40
+```
+
+Those alternative runs verify the selected profile's manifest, counts, tests,
+and search/export paths. They skip the paper-specific measurements because only
+`submitted-11` is their valid denominator.
+
+The three local profiles are checksum-pinned under `data/profiles/`. A refreshed
+corpus must receive a new manifest, checksum, commit, and tag rather than
+silently changing the paper denominator. The Hugging Face export records its
+profile, checksum, and source tag in its dataset card.
+
+### Public paper-frozen lineage
+
+To inspect the public source lineage associated with `submitted-11`:
+
+```bash
+git clone https://github.com/sidneibarbieri/topVenues.git
+cd topVenues
+git checkout arxiv-2606.18320
+```
+
+That tag is not the later `security-20` Salão release documented above.
 
 When a newer snapshot lands upstream and you want to refresh your local
 copy explicitly:
@@ -78,8 +129,8 @@ python3 -m src.cli refresh-db
 
 ### Web interface (recommended)
 
-If your shell prompt already ends in `topvenues-tool`, do not run
-`cd topvenues-tool` again; start from the commands below.
+If your shell prompt already ends in `topVenues`, do not run
+`cd topVenues` again; start from the commands below.
 
 ```bash
 python3 -m streamlit run web/app.py
@@ -149,27 +200,30 @@ python3 -m src.cli search --rank "fuzz*" --year 2025 --award
 ```
 
 The index is derived state: it is built locally on demand (a first
-`search --rank` builds it automatically), is kept in sync by triggers on
-every upsert, and is not part of the published snapshot. Ranked queries
-answer in single- to low-double-digit milliseconds on the 20k-paper corpus. Multi-word
-queries use AND-of-tokens semantics; a trailing `*` enables prefix matching.
+`search --rank` builds it automatically), is kept in sync by triggers on every
+upsert, and is not part of any immutable profile snapshot. Ranked queries answer
+in single- to low-double-digit milliseconds on the 20k-paper candidate.
+Multi-word queries use AND-of-tokens semantics; a trailing `*` enables prefix
+matching.
 
 ### Hugging Face dataset export
 
-`export-hf` materializes the corpus as a Parquet file plus a generated
-dataset card, ready to upload to the Hub:
+The public dataset is available directly at
+[Hugging Face](https://huggingface.co/datasets/sidneibarbieri/topvenues). It
+is a Parquet export of the `security-20` snapshot, not a mutable substitute for
+the companion paper's frozen data.
+
+`export-hf` materializes the selected local working corpus as a Parquet file
+plus a generated dataset card for a future Hub refresh:
 
 ```bash
-python3 -m src.cli export-hf                       # writes data/hf-dataset/
+python3 -m src.cli --profile security-20 export-hf --release-tag sbseg2026-sf-submission  # writes data/hf-dataset/
 hf upload-large-folder sidneibarbieri/topvenues --repo-type dataset data/hf-dataset
 ```
 
-The generated dataset is a faithful export of the pinned SQLite snapshot used
-by the companion tool manuscript. Do not rely on
-`load_dataset("sidneibarbieri/topvenues")` until the public Hub URL and Dataset
-Viewer have been validated anonymously. The earlier arXiv paper reports a
-smaller frozen snapshot; the repository lineage above keeps the two objects
-separate.
+The generated package records its profile and snapshot SHA. In particular,
+`load_dataset("sidneibarbieri/topvenues")` must never be used to reproduce the
+accepted paper's 9,925-record results.
 
 ### Paper-award metadata
 
@@ -179,13 +233,14 @@ Paper-award labels (Best Paper / Distinguished Paper) are collected per venue in
 ```bash
 python3 scripts/collect_acsac_awards.py   # ACSAC distinguished/outstanding, from the ACSAC archive
 python3 scripts/import_top4_awards.py      # IEEE S&P, ACM CCS, NDSS, USENIX (from data/awards/sources/)
-python3 scripts/award_coverage.py          # join awards to the corpus; report matched/unmatched
+python3 scripts/award_coverage.py --profile submitted-11  # join against a verified profile
 ```
 
 `award_coverage.py` joins each award to a corpus paper by normalized title within
-venue, writes the matches to `data/awards/award_corpus_matches.tsv`, and prints
-honest gaps (an award whose paper is not in the corpus — e.g. a year outside the
-corpus range — is reported as unmatched, never silently dropped).
+venue, writes matches under `data/workspaces/<profile>/analysis/`, and prints
+honest gaps (an award whose paper is not in the selected profile—e.g. ACSAC in
+`submitted-11`—is reported as unmatched, never silently dropped). Use
+`--output` only when a different derived TSV destination is required.
 
 Awards are kept intentionally separate from the DBLP `papers` table: a paper can
 exist in the corpus without an award, and every award label stays source-backed.
@@ -249,10 +304,12 @@ python3 -m src.cli bibtex-local
 python3 -m src.cli write-snapshot
 ```
 
-Treat the compressed SQLite snapshot as the published denominator. For large
-venue expansion, prefer `materialize-from-dump`: it parses `data/dblp/dblp.xml.gz`
-locally and avoids DBLP API rate limits. The live `download` command remains
-useful for small, fresh updates.
+Treat each named profile's compressed SQLite snapshot and manifest as one
+immutable release object. `data/dataset/papers.db.gz` is only the default
+`security-20` candidate working input. For large venue expansion, prefer
+`materialize-from-dump`: it parses `data/dblp/dblp.xml.gz` locally and avoids
+DBLP API rate limits. The live `download` command remains useful for small,
+fresh updates, but its output is not a release until frozen and manifested.
 
 ---
 
@@ -311,7 +368,7 @@ tests/                 pytest suite
 
 ## Configuration
 
-`config.yaml` (abbreviated below; the released file declares all 20 venues):
+`config.yaml` (abbreviated below; the release-candidate file declares all 20 venues):
 
 ```yaml
 year_start: 2019                       # auto-extends to current year
@@ -348,7 +405,7 @@ No code outside these declared registries needs to change.
 
 ```bash
 python3 -m pip install -e ".[dev]"
-python3 -m pytest                          # 299 tests
+python3 -m pytest                          # full test suite
 python3 -m ruff check src/ web/ tests/
 ```
 

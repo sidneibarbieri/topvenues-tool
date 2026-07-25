@@ -22,14 +22,16 @@ from .analytics import (
 )
 from .awards import build_corpus_award_map
 from .collector import Collector
+from .config import set_configuration_path
 from .models import DownloadStatus, SearchFilters
+from .profiles import PROFILE_IDS, profile_config_path
 
 console = Console()
 
 
 def _load_award_map(collector: Collector) -> dict[str, list[str]]:
     """Map corpus paper_id to award labels from data/awards, or empty if absent."""
-    awards_dir = collector.db.db_path.parent.parent / "awards"
+    awards_dir = collector.base_dir / "data" / "awards"
     if not awards_dir.exists():
         return {}
     return build_corpus_award_map(awards_dir, collector.db.db_path)
@@ -76,11 +78,25 @@ def _materialized_json_years(json_dir: Path) -> dict[str, set[int]]:
 
 @click.group()
 @click.option("--base-dir", type=click.Path(), help="Base directory for data")
+@click.option(
+    "--profile",
+    type=click.Choice(PROFILE_IDS),
+    envvar="TOPVENUES_PROFILE",
+    help="Use a named immutable profile; omit it to use mutable config.yaml.",
+)
 @click.pass_context
-def cli(ctx: click.Context, base_dir: str | None) -> None:
+def cli(ctx: click.Context, base_dir: str | None, profile: str | None) -> None:
     """Bibliographic corpus command-line interface."""
     ctx.ensure_object(dict)
-    ctx.obj["base_dir"] = Path(base_dir) if base_dir else Path.cwd()
+    resolved_base = Path(base_dir) if base_dir else Path.cwd()
+    ctx.obj["base_dir"] = resolved_base
+    ctx.obj["profile"] = profile
+    config_path = (
+        profile_config_path(profile, resolved_base) if profile else resolved_base / "config.yaml"
+    )
+    if not config_path.is_file():
+        raise click.UsageError(f"configuration not found: {config_path}")
+    set_configuration_path(config_path)
 
 
 @cli.command()
@@ -140,9 +156,7 @@ def materialization_status(ctx: click.Context) -> None:
         )
 
     console.print(table)
-    console.print(
-        f"[bold]Complete events:[/bold] {complete}/{len(collector.config.events)}"
-    )
+    console.print(f"[bold]Complete events:[/bold] {complete}/{len(collector.config.events)}")
 
 
 @cli.command("materialize-from-dump")
@@ -242,8 +256,9 @@ def extract(ctx: click.Context) -> None:
 @cli.command("backfill-abstracts")
 @click.option("--event", "-e", help="Canonical event name to backfill, e.g. ACSAC.")
 @click.option("--limit", type=int, default=None, help="Maximum number of missing abstracts to try.")
-@click.option("--concurrency", type=int, default=4, show_default=True,
-              help="Concurrent DOI API requests.")
+@click.option(
+    "--concurrency", type=int, default=4, show_default=True, help="Concurrent DOI API requests."
+)
 @click.pass_context
 def backfill_abstracts(
     ctx: click.Context,
@@ -276,15 +291,16 @@ def backfill_abstracts(
 def refresh_db(ctx: click.Context) -> None:
     """Force-refresh papers.db from the tracked papers.db.gz snapshot."""
     from .database import bootstrap_from_gzipped_snapshot
+
     base_dir = ctx.obj["base_dir"]
     collector = Collector(base_dir=base_dir)
-    gz = collector.db.db_path.with_suffix(collector.db.db_path.suffix + ".gz")
+    gz = collector.db.snapshot_path
     if not gz.exists():
         console.print(f"[bold red]No snapshot found at {gz}.[/bold red]")
         return
     if collector.db.db_path.exists():
         collector.db.db_path.unlink()
-    bootstrap_from_gzipped_snapshot(collector.db.db_path)
+    bootstrap_from_gzipped_snapshot(collector.db.db_path, gz)
     console.print(f"[bold green]✓[/bold green] Refreshed from {gz.name}")
 
 
@@ -293,6 +309,7 @@ def refresh_db(ctx: click.Context) -> None:
 def write_snapshot(ctx: click.Context) -> None:
     """Compress papers.db → papers.db.gz for distribution."""
     from .database import write_gzipped_snapshot
+
     base_dir = ctx.obj["base_dir"]
     collector = Collector(base_dir=base_dir)
     if not collector.db.db_path.exists():
@@ -306,8 +323,7 @@ def write_snapshot(ctx: click.Context) -> None:
 
 
 @cli.command()
-@click.option("--concurrency", default=4, show_default=True,
-              help="Concurrent DBLP requests.")
+@click.option("--concurrency", default=4, show_default=True, help="Concurrent DBLP requests.")
 @click.pass_context
 def bibtex(ctx: click.Context, concurrency: int) -> None:
     """Fetch missing BibTeX entries via the DBLP per-record API."""
@@ -319,14 +335,17 @@ def bibtex(ctx: click.Context, concurrency: int) -> None:
 
 
 @cli.command("bibtex-from-dump")
-@click.option("--dump-dir", type=click.Path(path_type=Path), default=None,
-              help="Where to store dblp.xml.gz and dblp.dtd "
-                   "(default: <base>/data/dblp).")
-@click.option("--force-download", is_flag=True,
-              help="Re-download even if the dump is already on disk.")
+@click.option(
+    "--dump-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Where to store dblp.xml.gz and dblp.dtd (default: <base>/data/dblp).",
+)
+@click.option(
+    "--force-download", is_flag=True, help="Re-download even if the dump is already on disk."
+)
 @click.pass_context
-def bibtex_from_dump(ctx: click.Context, dump_dir: Path | None,
-                     force_download: bool) -> None:
+def bibtex_from_dump(ctx: click.Context, dump_dir: Path | None, force_download: bool) -> None:
     """Fill BibTeX entries from a single download of the DBLP XML dump."""
     import sqlite3
 
@@ -361,8 +380,11 @@ def bibtex_from_dump(ctx: click.Context, dump_dir: Path | None,
 
 
 @cli.command("bibtex-local")
-@click.option("--overwrite", is_flag=True,
-              help="Overwrite existing BibTeX entries instead of only filling blanks.")
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    help="Overwrite existing BibTeX entries instead of only filling blanks.",
+)
 @click.pass_context
 def bibtex_local(ctx: click.Context, overwrite: bool) -> None:
     """Generate BibTeX offline from fields already in the database."""
@@ -374,8 +396,7 @@ def bibtex_local(ctx: click.Context, overwrite: bool) -> None:
     base_dir = ctx.obj["base_dir"]
     collector = Collector(base_dir=base_dir)
 
-    rows = (collector.db.get_all_papers() if overwrite
-            else collector.db.get_papers_without_bibtex())
+    rows = collector.db.get_all_papers() if overwrite else collector.db.get_papers_without_bibtex()
     populated = 0
     with sqlite3.connect(collector.db.db_path) as conn:
         for row in rows:
@@ -408,10 +429,10 @@ def run_all(ctx: click.Context) -> None:
 @click.option("--event", "-e", help="Filter by configured event name")
 @click.option("--year", "-y", type=int, help="Filter by year")
 @click.option("--tech", "-T", help="Search technology/topic")
-@click.option("--rank", "-r", "rank_query",
-              help="BM25-ranked full-text search over title/abstract/authors")
-@click.option("--award", "-w", is_flag=True,
-              help="Only papers with a recorded paper award")
+@click.option(
+    "--rank", "-r", "rank_query", help="BM25-ranked full-text search over title/abstract/authors"
+)
+@click.option("--award", "-w", is_flag=True, help="Only papers with a recorded paper award")
 @click.option("--limit", "-l", type=int, default=50, help="Limit results")
 @click.pass_context
 def search(
@@ -437,7 +458,9 @@ def search(
     with console.status("[bold green]Searching..."):
         if rank_query:
             rows = collector.db.search_ranked(
-                rank_query, event=event, year=year,
+                rank_query,
+                event=event,
+                year=year,
                 limit=None if award else limit,
             )
             if award:
@@ -469,9 +492,7 @@ def search(
     console.print(table)
 
 
-def _print_ranked_results(
-    query: str, rows: list[dict], award_map: dict[str, list[str]]
-) -> None:
+def _print_ranked_results(query: str, rows: list[dict], award_map: dict[str, list[str]]) -> None:
     table = Table(title=f"Ranked Results for “{query}” ({len(rows)} papers)")
     table.add_column("Score", style="magenta", justify="right")
     table.add_column("Title", style="cyan", no_wrap=False)
@@ -496,12 +517,20 @@ def _print_ranked_results(
 
 
 @cli.command()
-@click.option("--topic", "-T", help="Restrict to papers matching this topic "
-              "(case-insensitive over title and abstract), e.g. 'LLM'")
-@click.option("--area", "-a", help="Restrict to a research area: security, ai, "
-              "networks, mobile, systems, cross-area")
-@click.option("--limit", "-l", type=int, default=15, show_default=True,
-              help="Number of authors to show")
+@click.option(
+    "--topic",
+    "-T",
+    help="Restrict to papers matching this topic "
+    "(case-insensitive over title and abstract), e.g. 'LLM'",
+)
+@click.option(
+    "--area",
+    "-a",
+    help="Restrict to a research area: security, ai, networks, mobile, systems, cross-area",
+)
+@click.option(
+    "--limit", "-l", type=int, default=15, show_default=True, help="Number of authors to show"
+)
 @click.pass_context
 def authors(ctx: click.Context, topic: str | None, area: str | None, limit: int) -> None:
     """Rank author visibility in this corpus, weighted by venue tier.
@@ -522,10 +551,18 @@ def authors(ctx: click.Context, topic: str | None, area: str | None, limit: int)
             awards_dir=awards_dir,
         )
 
-    scope = " · ".join(filter(None, [
-        f"topic: {topic}" if topic else None,
-        f"area: {area}" if area else None,
-    ])) or "whole corpus"
+    scope = (
+        " · ".join(
+            filter(
+                None,
+                [
+                    f"topic: {topic}" if topic else None,
+                    f"area: {area}" if area else None,
+                ],
+            )
+        )
+        or "whole corpus"
+    )
     table = Table(title=f"Author visibility in corpus — {scope}")
     table.add_column("#", style="dim", justify="right")
     table.add_column("Author", style="cyan")
@@ -554,12 +591,15 @@ def authors(ctx: click.Context, topic: str | None, area: str | None, limit: int)
 
 
 @cli.command()
-@click.option("--topic", "-T", required=True,
-              help="Topic to trace (case-insensitive over title and abstract)")
-@click.option("--area", "-a", help="Restrict to a research area: security, ai, "
-              "networks, mobile, systems, cross-area")
-@click.option("--since", type=int, default=None,
-              help="First year to include, e.g. 2019")
+@click.option(
+    "--topic", "-T", required=True, help="Topic to trace (case-insensitive over title and abstract)"
+)
+@click.option(
+    "--area",
+    "-a",
+    help="Restrict to a research area: security, ai, networks, mobile, systems, cross-area",
+)
+@click.option("--since", type=int, default=None, help="First year to include, e.g. 2019")
 @click.pass_context
 def trends(ctx: click.Context, topic: str, area: str | None, since: int | None) -> None:
     """Trace a topic's yearly volume, corpus share, and main venues."""
@@ -579,8 +619,7 @@ def trends(ctx: click.Context, topic: str, area: str | None, since: int | None) 
     peak = max((row["papers"] for row in trend["by_year"]), default=0)
     for row in trend["by_year"]:
         bar = "█" * round(30 * row["papers"] / peak) if peak else ""
-        table.add_row(str(row["year"]), f"{row['papers']:,}",
-                      f"{row['share_pct']:.2f}%", bar)
+        table.add_row(str(row["year"]), f"{row['papers']:,}", f"{row['share_pct']:.2f}%", bar)
 
     console.print(table)
     if trend["top_venues"]:
@@ -658,20 +697,43 @@ def export_results(
 
 
 @cli.command("export-hf")
-@click.option("--output", "-o", type=click.Path(path_type=Path),
-              default=Path("data/hf-dataset"), show_default=True,
-              help="Directory that receives the Hugging Face dataset files")
-@click.option("--repo-id", default="sidneibarbieri/topvenues", show_default=True,
-              help="Hub dataset id used in the card's usage example")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    default=Path("data/hf-dataset"),
+    show_default=True,
+    help="Directory that receives the Hugging Face dataset files",
+)
+@click.option(
+    "--repo-id",
+    default="sidneibarbieri/topvenues",
+    show_default=True,
+    help="Hub dataset id used in the card's usage example",
+)
+@click.option(
+    "--release-tag",
+    default=None,
+    help="Immutable source-release tag recorded in the dataset card.",
+)
 @click.pass_context
-def export_hf(ctx: click.Context, output: Path, repo_id: str) -> None:
+def export_hf(
+    ctx: click.Context, output: Path, repo_id: str, release_tag: str | None
+) -> None:
     """Export the corpus as a Hugging Face dataset (Parquet + dataset card)."""
     from .hf_export import export_hf_dataset
 
     base_dir = ctx.obj["base_dir"]
     collector = Collector(base_dir=base_dir)
     with console.status("[bold green]Exporting Hugging Face dataset..."):
-        stats = export_hf_dataset(collector.db.db_path, output, repo_id=repo_id)
+        stats = export_hf_dataset(
+            collector.db.db_path,
+            output,
+            repo_id=repo_id,
+            profile_id=ctx.obj["profile"],
+            release_tag=release_tag,
+            base_dir=base_dir,
+        )
 
     console.print(
         f"[bold green]✓[/bold green] Wrote {stats['total']:,} papers "
@@ -679,8 +741,7 @@ def export_hf(ctx: click.Context, output: Path, repo_id: str) -> None:
         f"{stats['security_pct']:.1f}% coverage on the security core) to {output}"
     )
     console.print(
-        f"  Upload with: [bold]hf upload-large-folder {repo_id} "
-        f"--repo-type dataset {output}[/bold]"
+        f"  Upload with: [bold]hf upload-large-folder {repo_id} --repo-type dataset {output}[/bold]"
     )
 
 
@@ -705,9 +766,7 @@ def stats(ctx: click.Context) -> None:
         f"[bold]With Abstracts:[/bold] {with_abstracts} ({with_abstracts / total * 100:.2f}%)"
     )
     console.print(f"[bold]Without Abstracts:[/bold] {data['without_abstracts']}")
-    console.print(
-        f"[bold]With BibTeX:[/bold]    {with_bibtex} ({with_bibtex / total * 100:.2f}%)"
-    )
+    console.print(f"[bold]With BibTeX:[/bold]    {with_bibtex} ({with_bibtex / total * 100:.2f}%)")
 
     console.print("\n[bold]By Conference:[/bold]")
     for event, count in sorted(data["by_event"].items(), key=lambda x: x[1], reverse=True):
@@ -772,8 +831,14 @@ def db_recover_abstracts(ctx: click.Context, source: Path | None) -> None:
 
 @cli.command()
 @click.option("--area", help="Restrict the author ranking to one area (e.g. security).")
-@click.option("--authors", "author_limit", type=int, default=10, show_default=True,
-              help="How many prominent authors to list.")
+@click.option(
+    "--authors",
+    "author_limit",
+    type=int,
+    default=10,
+    show_default=True,
+    help="How many prominent authors to list.",
+)
 @click.pass_context
 def analytics(ctx: click.Context, area: str | None, author_limit: int) -> None:
     """Area-level analytics: trends, prominent authors, and award standouts."""
@@ -791,8 +856,9 @@ def analytics(ctx: click.Context, area: str | None, author_limit: int) -> None:
     trend.add_column("total", justify="right", style="green")
     for area_name in sorted(year_counts, key=lambda a: -sum(year_counts[a].values())):
         counts = year_counts[area_name]
-        trend.add_row(area_name, *[str(counts.get(y, 0)) for y in recent],
-                      str(sum(counts.values())))
+        trend.add_row(
+            area_name, *[str(counts.get(y, 0)) for y in recent], str(sum(counts.values()))
+        )
     console.print(trend)
 
     scope = f" in {area}" if area else ""

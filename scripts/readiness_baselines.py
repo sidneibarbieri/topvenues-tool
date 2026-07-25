@@ -18,6 +18,7 @@ row by feeding it the cohort projected onto the relevant author position.
 
 from __future__ import annotations
 
+import argparse
 import random
 import sqlite3
 import sys
@@ -27,7 +28,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.arxiv_fetcher import ARXIV_ACKNOWLEDGMENT, load_jsonl
-from src.config import load_configuration
+from src.config import activate_profile
+from src.profiles import PROFILE_IDS, PROJECT_ROOT, select_profile_id, verified_profile_snapshot
 from src.readiness import (
     OutcomeIndex,
     ReadinessResult,
@@ -36,7 +38,6 @@ from src.readiness import (
     strict_author_key,
 )
 
-DB_PATH = Path("data/dataset/papers.db")
 THRESHOLD = 0.6
 PROLIFIC_MIN_PAPERS = 3
 RANDOM_SEED = 42
@@ -44,8 +45,9 @@ RANDOM_SEED = 42
 Cohort = list[tuple[str, tuple[str, ...]]]
 
 
-def _author_lists(conn: sqlite3.Connection, events: tuple[str, ...] | None,
-                  lo: int, hi: int) -> list[list[str]]:
+def _author_lists(
+    conn: sqlite3.Connection, events: tuple[str, ...] | None, lo: int, hi: int
+) -> list[list[str]]:
     if events is None:
         rows = conn.execute(
             "SELECT authors FROM papers WHERE year BETWEEN ? AND ? AND authors IS NOT NULL",
@@ -96,35 +98,64 @@ def _row(label: str, result: ReadinessResult) -> str:
 
 
 def main() -> int:
-    scope = load_configuration().study_scope
-    core_events = tuple(scope.core_events)
-    cohort_year = max(scope.prior_windows)
-    prior_lo, prior_hi = scope.prior_windows[cohort_year]
-    outcome_lo, outcome_hi = scope.outcome_windows[cohort_year]
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--profile",
+        choices=PROFILE_IDS,
+        default=select_profile_id(),
+        help="immutable corpus profile (default: TOPVENUES_PROFILE or submitted-11)",
+    )
+    args = parser.parse_args()
+    activate_profile(args.profile, PROJECT_ROOT)
 
-    conn = sqlite3.connect(DB_PATH)
-    top4 = build_prior_author_set(_author_lists(conn, core_events, prior_lo, prior_hi))
-    any_corpus = build_prior_author_set(_author_lists(conn, None, prior_lo, prior_hi))
-    prolific = _prolific_authors(_author_lists(conn, None, prior_lo, prior_hi), PROLIFIC_MIN_PAPERS)
-    random.seed(RANDOM_SEED)
-    random_authors = frozenset(random.sample(sorted(any_corpus), len(top4)))
+    with verified_profile_snapshot(
+        args.profile,
+        PROJECT_ROOT,
+        verify_preprints=True,
+    ) as verified:
+        profile = verified.profile
+        scope = profile.configuration.study_scope
+        core_events = tuple(scope.core_events)
+        cohort_year = max(scope.prior_windows)
+        prior_lo, prior_hi = scope.prior_windows[cohort_year]
+        outcome_lo, outcome_hi = scope.outcome_windows[cohort_year]
 
-    outcome = OutcomeIndex(_scope_titles(conn, core_events, outcome_lo, outcome_hi))
-    cohort: Cohort = [
-        (p.title, p.authors)
-        for p in load_jsonl(Path(scope.preprint_snapshot))
-        if p.submitted_at.startswith(str(cohort_year))
-    ]
+        uri = f"file:{verified.database_path.resolve()}?mode=ro&immutable=1"
+        with sqlite3.connect(uri, uri=True) as conn:
+            top4 = build_prior_author_set(_author_lists(conn, core_events, prior_lo, prior_hi))
+            any_corpus = build_prior_author_set(_author_lists(conn, None, prior_lo, prior_hi))
+            prolific = _prolific_authors(
+                _author_lists(conn, None, prior_lo, prior_hi),
+                PROLIFIC_MIN_PAPERS,
+            )
+            outcome = OutcomeIndex(_scope_titles(conn, core_events, outcome_lo, outcome_hi))
+
+        random.seed(RANDOM_SEED)
+        random_authors = frozenset(random.sample(sorted(any_corpus), len(top4)))
+        cohort: Cohort = [
+            (p.title, p.authors)
+            for p in load_jsonl(profile.preprint_snapshot_path)
+            if p.submitted_at.startswith(str(cohort_year))
+        ]
 
     print()
-    print(f"  Scientific-readiness baselines ({cohort_year} cs.CR preprints, "
-          f"Jaccard {THRESHOLD})")
-    print(f"  {'filter':<26}{'precision':>7}{'recall':>7}{'RR':>7}{'lift':>7}{'vol-cut':>7}"
-          f"   [hit/flagged]")
+    print(
+        f"  Scientific-readiness baselines ({cohort_year} cs.CR preprints, "
+        f"Jaccard {THRESHOLD}, profile {profile.profile_id})"
+    )
+    print(
+        f"  {'filter':<26}{'precision':>7}{'recall':>7}{'RR':>7}{'lift':>7} {'vol-cut':>7}"
+        f"   [hit/flagged]"
+    )
     print("  prestige vs. trivial signals")
     print(_row("prior top-4 (any author)", analyze(cohort, top4, outcome, THRESHOLD)))
     print(_row("any security-venue author", analyze(cohort, any_corpus, outcome, THRESHOLD)))
-    print(_row(f"prolific (>= {PROLIFIC_MIN_PAPERS} papers)", analyze(cohort, prolific, outcome, THRESHOLD)))
+    print(
+        _row(
+            f"prolific (>= {PROLIFIC_MIN_PAPERS} papers)",
+            analyze(cohort, prolific, outcome, THRESHOLD),
+        )
+    )
     print(_row("random security authors", analyze(cohort, random_authors, outcome, THRESHOLD)))
     print("  operating points by author position (prior top-4)")
     print(_row("first author", analyze(_project(cohort, 0), top4, outcome, THRESHOLD)))

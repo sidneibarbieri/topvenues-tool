@@ -63,7 +63,15 @@ class Collector:
             self.checkpoint_dir,
             enabled=self.config.checkpoint_enabled,
         )
-        self.db = DatabaseManager(self.data_dir / "papers.db")
+        snapshot_path = None
+        if self.config.snapshot_path:
+            snapshot_path = Path(self.config.snapshot_path)
+            if not snapshot_path.is_absolute():
+                snapshot_path = self.base_dir / snapshot_path
+        self.db = DatabaseManager(
+            self.data_dir / "papers.db",
+            snapshot_path=snapshot_path,
+        )
         self._bootstrap_db_from_csv()
 
         self.acm_blocked_until: datetime | None = None

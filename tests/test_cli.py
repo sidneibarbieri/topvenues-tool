@@ -1,5 +1,6 @@
 """Tests for CLI export behavior."""
 
+import pytest
 from click.testing import CliRunner
 
 from src.cli import cli
@@ -7,7 +8,28 @@ from src.database import DatabaseManager
 from src.models import Paper
 
 
+@pytest.fixture(autouse=True)
+def _isolate_profile_environment(monkeypatch):
+    """Keep an outer TOPVENUES_PROFILE from changing temporary CLI fixtures."""
+    monkeypatch.delenv("TOPVENUES_PROFILE", raising=False)
+
+
+def _configure(base_dir, data_dir="data/dataset"):
+    (base_dir / "config.yaml").write_text(
+        "\n".join(
+            (
+                "immutable_snapshot: false",
+                f"data_dir: {data_dir}",
+                "events: [ccs]",
+                "years: [2024, 2025]",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+
 def _seed(base_dir):
+    _configure(base_dir)
     db = DatabaseManager(base_dir / "data" / "dataset" / "papers.db")
     papers = [
         Paper(
@@ -72,6 +94,7 @@ def test_export_json_filtered_to_file(tmp_path):
 
 
 def test_backfill_abstracts_cli_invokes_collector(tmp_path, monkeypatch):
+    _configure(tmp_path)
     called = {}
 
     async def fake_backfill(self, event=None, limit=None, concurrency=4):
@@ -103,6 +126,7 @@ def test_backfill_abstracts_cli_invokes_collector(tmp_path, monkeypatch):
 
 
 def test_download_cli_can_scope_events(tmp_path, monkeypatch):
+    _configure(tmp_path)
     called = {}
 
     async def fake_download(self):
@@ -131,6 +155,7 @@ def test_download_cli_can_scope_events(tmp_path, monkeypatch):
 
 
 def test_materialization_status_reports_json_years(tmp_path, monkeypatch):
+    _configure(tmp_path)
     json_dir = tmp_path / "data" / "json"
     json_dir.mkdir(parents=True)
     (json_dir / "data_ccs2024.json").write_text("{}", encoding="utf-8")
@@ -157,3 +182,28 @@ def test_materialization_status_reports_json_years(tmp_path, monkeypatch):
     assert "ccs" in result.output
     assert "2024" in result.output
     assert "2025" in result.output
+
+
+def test_profile_flag_selects_isolated_workspace(tmp_path):
+    config_dir = tmp_path / "profiles" / "security-20"
+    config_dir.mkdir(parents=True)
+    (config_dir / "config.yaml").write_text(
+        "\n".join(
+            (
+                "profile_id: security-20",
+                "immutable_snapshot: false",
+                "data_dir: data/workspaces/security-20/dataset",
+                "events: [ccs]",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        cli,
+        ["--base-dir", str(tmp_path), "--profile", "security-20", "stats"],
+    )
+
+    assert result.exit_code == 0
+    assert (tmp_path / "data/workspaces/security-20/dataset/papers.db").is_file()
+    assert not (tmp_path / "data/dataset/papers.db").exists()
