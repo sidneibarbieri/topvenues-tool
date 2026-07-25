@@ -450,7 +450,7 @@ def page_search() -> None:
 
         with st.expander("Awards", expanded=False):
             awards_only = st.checkbox(
-                "Award winners only 👑",
+                "Award winners only",
                 help="Only papers with a recorded Best or Distinguished Paper award.",
             )
 

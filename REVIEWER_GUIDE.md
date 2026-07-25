@@ -1,6 +1,6 @@
 # TopVenues SF Reviewer Guide
 
-This release is the executable artifact for the SBSeg 2026 Salão de Ferramentas paper. Its only evaluation object is the immutable `security-20` profile.
+This release is the executable artifact for the Salão de Ferramentas paper. Its only evaluation object is the immutable `security-20` profile.
 
 ## What the release verifies
 
@@ -10,7 +10,7 @@ This release is the executable artifact for the SBSeg 2026 Salão de Ferramentas
 - 238 automated tests; and
 - local FTS5 ranked search and a BibTeX export.
 
-The artifact is a corpus-construction and review-workflow tool. It does not claim to reproduce the measurements of the separate accepted full paper.
+The artifact is a corpus-construction and review-workflow tool. Its evidence is limited to the declared snapshot and the workflows exercised below.
 
 ## Reproduce from a fresh clone
 

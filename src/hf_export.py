@@ -64,11 +64,6 @@ reviews: {total:,} papers ({year_min}–{year_max}) across {n_events}
 security and security-relevant venues, with {n_abstracts:,} abstracts and a BibTeX entry for
 every record.
 
-- **Foundational paper:** [TopVenues: A Reproducible Corpus and Tooling
-  Substrate for Cybersecurity Literature Reviews
-  (arXiv:2606.18320)](https://arxiv.org/abs/2606.18320). That paper reports an
-  earlier, smaller frozen snapshot. This dataset is a distinct tool release and
-  must not be used to reproduce that paper's reported measurements.
 - **Code / tool:** <https://github.com/sidneibarbieri/topvenues-tool>
 - **Pinned source of truth:** the gzipped SQLite snapshot shipped with the
   tool; this dataset is a faithful Parquet export of the same frozen state.
@@ -133,16 +128,14 @@ dataset card does not grant rights in third-party abstract text.
 ## Citation
 
 ```bibtex
-@misc{{barbieri2026topvenues,
-  title  = {{TopVenues: A Reproducible Corpus and Tooling Substrate for
+@software{{topvenues2026,
+  title  = {{TopVenues: An Executable Corpus and Research Tool for
             Cybersecurity Literature Reviews}},
   author = {{Barbieri, Sidnei and Ferraz, Agney Lopes Roth and
             Pereira J{{\\'u}}nior, Louren{{\\c{{c}}}}o Alves}},
   year   = {{2026}},
-  eprint = {{2606.18320}},
-  archivePrefix = {{arXiv}},
-  primaryClass  = {{cs.CR}},
-  url    = {{https://arxiv.org/abs/2606.18320}}
+  version = {{sbseg2026-sf-submission}},
+  url    = {{https://github.com/sidneibarbieri/topvenues-tool/releases/tag/sbseg2026-sf-submission}}
 }}
 ```
 """

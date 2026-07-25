@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "topvenues"
 version = "1.0.0"
-description = "Bibliographic explorer for top-tier security venues — DBLP → SQLite → web search"
+description = "Local, reproducible corpus tool for cybersecurity literature reviews"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
@@ -25,7 +25,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Information Analysis",
 ]
 dependencies = [
-    "arxiv>=2.1.0",
     "pydantic>=2.0.0",
     "pyyaml>=6.0",
     "httpx>=0.24.0",
@@ -39,9 +38,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/sidneibarbieri/topVenues"
-Repository = "https://github.com/sidneibarbieri/topVenues"
-Issues = "https://github.com/sidneibarbieri/topVenues/issues"
+Homepage = "https://github.com/sidneibarbieri/topvenues-tool"
+Repository = "https://github.com/sidneibarbieri/topvenues-tool"
+Issues = "https://github.com/sidneibarbieri/topvenues-tool/issues"
 
 [project.optional-dependencies]
 dev = [

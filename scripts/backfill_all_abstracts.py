@@ -87,7 +87,7 @@ async def main() -> None:
 
     async with httpx.AsyncClient(
         timeout=30.0, follow_redirects=True,
-        headers={"User-Agent": "TopVenues/1.0 (mailto:sidneisb@ita.br)"},
+        headers={"User-Agent": "TopVenues/1.0"},
     ) as client:
 
         async def worker(row: tuple) -> tuple[str, str | None]:

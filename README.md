@@ -63,7 +63,7 @@ Live `download`, `consolidate`, `extract`, and `bibtex` commands are maintenance
 
 ## Hugging Face export
 
-The public dataset is at [sidneibarbieri/topvenues](https://huggingface.co/datasets/sidneibarbieri/topvenues). It is a two-shard Parquet export of `security-20`, not a substitute for the separate full-paper snapshot. Its dataset card records the profile, source tag, and snapshot SHA-256.
+The public dataset is at [sidneibarbieri/topvenues](https://huggingface.co/datasets/sidneibarbieri/topvenues). It is a two-shard Parquet export of `security-20`; its dataset card records the profile, source tag, and snapshot SHA-256.
 
 ## License and provenance
 
