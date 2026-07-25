@@ -36,6 +36,6 @@ jobs:
 
       - name: Verify dataset claims
         run: |
-          python scripts/verify_profile_snapshot.py --profile submitted-11
-          python -m src.cli --profile submitted-11 stats
-          python scripts/verify_claims.py --profile submitted-11
+          python scripts/verify_profile_snapshot.py --profile security-20
+          python -m src.cli --profile security-20 stats
+          python scripts/verify_claims.py --profile security-20
