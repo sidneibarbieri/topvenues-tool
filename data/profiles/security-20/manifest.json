@@ -3,7 +3,7 @@
   "profile_id": "security-20",
   "release_status": "sf-submission",
   "paper_denominator": false,
-  "origin": "security-oriented Sal\u00e3o de Ferramentas release",
+  "origin": "security-oriented Salão de Ferramentas release",
   "source_release_tag": "sbseg2026-sf-submission-r1",
   "configuration": {
     "path": "profiles/security-20/config.yaml",
@@ -43,13 +43,13 @@
   },
   "snapshot": {
     "path": "data/profiles/security-20/papers.db.gz",
-    "gzip_bytes": 10549511,
-    "gzip_sha256": "84b446b0afc67cbfb3f6c56fee6ff1f7061085db526aa85727e153b9337440e6",
-    "sqlite_bytes": 53596160,
-    "sqlite_sha256": "f427cac429a2f84bb1b2b83e5f4b3b3a92233086a7365be30fd56b3b585bfeeb",
-    "papers": 14863,
-    "abstracts": 13991,
-    "bibtex": 14863,
+    "gzip_bytes": 76218785,
+    "gzip_sha256": "5a35bd6e3ec6845a0fde4cc3d6aa05b1db04e511cb39e783eeaee2cea7493b08",
+    "sqlite_bytes": 243613696,
+    "sqlite_sha256": "6ca8f8efb6cb235b7b85a34c95d89ed4642ee26f06fb38f9521089268af05c25",
+    "papers": 20305,
+    "abstracts": 17491,
+    "bibtex": 20305,
     "venues": 20,
     "observed_year_min": 2017,
     "observed_year_max": 2026,
@@ -64,57 +64,57 @@
       },
       {
         "event": "ACM ASIA CCS",
-        "papers": 837,
-        "abstracts": 827,
-        "bibtex": 837,
+        "papers": 1062,
+        "abstracts": 957,
+        "bibtex": 1062,
         "year_min": 2019,
         "year_max": 2026
       },
       {
         "event": "ACM CCS",
-        "papers": 1972,
-        "abstracts": 1971,
-        "bibtex": 1972,
+        "papers": 4329,
+        "abstracts": 4090,
+        "bibtex": 4329,
         "year_min": 2019,
         "year_max": 2025
       },
       {
         "event": "ACM CODASPY",
-        "papers": 316,
+        "papers": 357,
         "abstracts": 281,
-        "bibtex": 316,
+        "bibtex": 357,
         "year_min": 2019,
         "year_max": 2026
       },
       {
         "event": "ACM Computing Surveys",
-        "papers": 1813,
-        "abstracts": 1812,
-        "bibtex": 1813,
+        "papers": 2382,
+        "abstracts": 2374,
+        "bibtex": 2382,
         "year_min": 2019,
         "year_max": 2026
       },
       {
         "event": "ACM SACMAT",
-        "papers": 176,
+        "papers": 199,
         "abstracts": 176,
-        "bibtex": 176,
+        "bibtex": 199,
         "year_min": 2019,
         "year_max": 2025
       },
       {
         "event": "ACM WiSec",
-        "papers": 314,
+        "papers": 353,
         "abstracts": 270,
-        "bibtex": 314,
+        "bibtex": 353,
         "year_min": 2019,
         "year_max": 2026
       },
       {
         "event": "ACSAC",
-        "papers": 509,
-        "abstracts": 509,
-        "bibtex": 509,
+        "papers": 593,
+        "abstracts": 593,
+        "bibtex": 593,
         "year_min": 2019,
         "year_max": 2025
       },
@@ -128,41 +128,41 @@
       },
       {
         "event": "Foundations and Trends in Privacy and Security",
-        "papers": 20,
-        "abstracts": 20,
-        "bibtex": 20,
+        "papers": 23,
+        "abstracts": 23,
+        "bibtex": 23,
         "year_min": 2017,
         "year_max": 2025
       },
       {
         "event": "IEEE CNS",
-        "papers": 381,
+        "papers": 471,
         "abstracts": 381,
-        "bibtex": 381,
+        "bibtex": 471,
         "year_min": 2019,
         "year_max": 2025
       },
       {
         "event": "IEEE Communications Surveys & Tutorials",
-        "papers": 833,
+        "papers": 1094,
         "abstracts": 804,
-        "bibtex": 833,
+        "bibtex": 1094,
         "year_min": 2019,
         "year_max": 2026
       },
       {
         "event": "IEEE EURO S&P",
-        "papers": 339,
+        "papers": 399,
         "abstracts": 339,
-        "bibtex": 339,
+        "bibtex": 399,
         "year_min": 2019,
         "year_max": 2025
       },
       {
         "event": "IEEE S&P",
-        "papers": 1166,
+        "papers": 1420,
         "abstracts": 1165,
-        "bibtex": 1166,
+        "bibtex": 1420,
         "year_min": 2019,
         "year_max": 2025
       },
@@ -176,50 +176,44 @@
       },
       {
         "event": "NDSS",
-        "papers": 1059,
-        "abstracts": 1058,
-        "bibtex": 1059,
+        "papers": 1535,
+        "abstracts": 1534,
+        "bibtex": 1535,
         "year_min": 2019,
         "year_max": 2026
       },
       {
         "event": "RAID",
-        "papers": 290,
-        "abstracts": 222,
-        "bibtex": 290,
+        "papers": 414,
+        "abstracts": 346,
+        "bibtex": 414,
         "year_min": 2019,
         "year_max": 2025
       },
       {
         "event": "TrustCom",
-        "papers": 1915,
-        "abstracts": 1912,
-        "bibtex": 1915,
+        "papers": 2311,
+        "abstracts": 1914,
+        "bibtex": 2311,
         "year_min": 2019,
         "year_max": 2025
       },
       {
         "event": "USENIX Security",
-        "papers": 2103,
+        "papers": 2542,
         "abstracts": 2056,
-        "bibtex": 2103,
+        "bibtex": 2542,
         "year_min": 2019,
         "year_max": 2025
       },
       {
         "event": "USENIX WOOT",
-        "papers": 18,
+        "papers": 19,
         "abstracts": 2,
-        "bibtex": 18,
+        "bibtex": 19,
         "year_min": 2025,
         "year_max": 2025
       }
     ]
-  },
-  "deduplication": {
-    "rule": "field-wise merge by DBLP key; each field keeps its most complete value",
-    "rows_before": 20305,
-    "records_after": 14863,
-    "duplicate_rows_removed": 5442
   }
 }

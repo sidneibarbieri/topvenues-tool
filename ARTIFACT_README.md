@@ -12,7 +12,7 @@ TopVenues materializes a declared cybersecurity-literature scope as a local, ver
 | Abstract-enriched records | 17,491 |
 | BibTeX entries | 20,305 |
 | Automated tests | 238 |
-| Snapshot gzip SHA-256 | `84b446b0afc67cbfb3f6c56fee6ff1f7061085db526aa85727e153b9337440e6` |
+| Snapshot gzip SHA-256 | `5a35bd6e3ec6845a0fde4cc3d6aa05b1db04e511cb39e783eeaee2cea7493b08` |
 
 ## Public reviewer path
 

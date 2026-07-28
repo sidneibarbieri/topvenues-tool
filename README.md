@@ -9,7 +9,7 @@ TopVenues is an open-source, local-first tool for constructing and inspecting a 
 | Records | 20,305 |
 | Abstract-enriched records | 17,491 (86.1%) |
 | BibTeX entries | 20,305 |
-| Snapshot SHA-256 | `84b446b0afc67cbfb3f6c56fee6ff1f7061085db526aa85727e153b9337440e6` |
+| Snapshot SHA-256 | `5a35bd6e3ec6845a0fde4cc3d6aa05b1db04e511cb39e783eeaee2cea7493b08` |
 
 The release keeps records with missing abstracts for metadata and citation workflows. Abstract-dependent retrieval must treat those records as missing data rather than as negative evidence. The declared scope, per-venue coverage, and exact snapshot identity are in `profiles/security-20/config.yaml` and `data/profiles/security-20/manifest.json`.
 

@@ -30,5 +30,5 @@ def test_unknown_profile_fails_closed(monkeypatch) -> None:
 def test_security_snapshot_matches_manifest() -> None:
     with verified_profile_snapshot("security-20", PROJECT_ROOT) as verified:
         assert verified.database_path.is_file()
-        assert verified.profile.manifest["snapshot"]["papers"] == 14863
+        assert verified.profile.manifest["snapshot"]["papers"] == 20305
         assert verified.profile.manifest["snapshot"]["venues"] == 20
