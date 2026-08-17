@@ -2,6 +2,13 @@
 
 TopVenues is an open-source, local-first tool for constructing and inspecting a declared corpus for cybersecurity literature reviews. This public release is pinned to the immutable `security-20` profile.
 
+## Authors
+
+- Sidnei Barbieri — `sidneibarbieri@gmail.com`
+- Ágney Lopes Roth Ferraz — `agneyroth@gmail.com`
+- Lourenço Alves Pereira Júnior — `lourenco.junior@gp.ita.br`
+
+
 | Property | Value |
 | --- | --- |
 | Release | [`sbseg2026-sf-submission-r1`](https://github.com/sidneibarbieri/topvenues-tool/releases/tag/sbseg2026-sf-submission-r1) |
