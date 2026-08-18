@@ -2,7 +2,6 @@
 
 import gzip
 import hashlib
-import sqlite3
 
 import pandas as pd
 import pytest
@@ -14,6 +13,7 @@ from src.database import (
     refresh_from_gzipped_snapshot,
 )
 from src.models import Paper
+from src.sqlite_connection import managed_sqlite_connection
 
 
 @pytest.fixture
@@ -58,7 +58,7 @@ class TestImportAbstractsFromCsv:
         assert result.skipped_existing == 0
         assert result.missing_in_db == 0
 
-        with sqlite3.connect(db.db_path) as conn:
+        with managed_sqlite_connection(db.db_path) as conn:
             rows = conn.execute(
                 "SELECT paper_id, abstract FROM papers ORDER BY paper_id"
             ).fetchall()
@@ -77,7 +77,7 @@ class TestImportAbstractsFromCsv:
         assert result.skipped_existing == 1
         assert result.missing_in_db == 0
 
-        with sqlite3.connect(db.db_path) as conn:
+        with managed_sqlite_connection(db.db_path) as conn:
             (current,) = conn.execute("SELECT abstract FROM papers WHERE paper_id = '1'").fetchone()
         assert current.startswith("ORIGINAL")
 

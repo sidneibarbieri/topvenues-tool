@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.abstract_fetcher import AbstractFetcher
 from src.collector import Collector, _extract_doi
 from src.extractors.base import AbstractExtractor
+from src.sqlite_connection import managed_sqlite_connection
 
 
 async def _process(paper_id: str, doi: str, fetcher: AbstractFetcher,
@@ -34,7 +35,7 @@ async def _process(paper_id: str, doi: str, fetcher: AbstractFetcher,
     if not abstract:
         return paper_id, False
     cleaned = AbstractExtractor._strip_leading_author_blocks(abstract)
-    with sqlite3.connect(db_path) as conn:
+    with managed_sqlite_connection(db_path) as conn:
         conn.execute(
             "UPDATE papers SET abstract=?, updated_at=CURRENT_TIMESTAMP WHERE paper_id=?",
             (cleaned, paper_id),
@@ -46,7 +47,7 @@ async def main(limit: int | None, concurrency: int) -> None:
     collector = Collector()
     db_path = collector.db.db_path
 
-    with sqlite3.connect(db_path) as conn:
+    with managed_sqlite_connection(db_path) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             "SELECT paper_id, ee FROM papers "

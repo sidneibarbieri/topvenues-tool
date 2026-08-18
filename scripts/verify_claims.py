@@ -1,9 +1,7 @@
 """Assert that the released artifact matches its snapshot manifest."""
 
 import argparse
-import sqlite3
 import sys
-from contextlib import closing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -14,6 +12,7 @@ from src.profiles import (  # noqa: E402
     select_profile_id,
     verified_profile_snapshot,
 )
+from src.sqlite_connection import managed_sqlite_connection  # noqa: E402
 
 
 def main() -> int:
@@ -31,7 +30,7 @@ def main() -> int:
         ROOT,
     ) as verified:
         uri = f"file:{verified.database_path.resolve()}?mode=ro&immutable=1"
-        with closing(sqlite3.connect(uri, uri=True)) as conn:
+        with managed_sqlite_connection(uri, uri=True) as conn:
             total = conn.execute("SELECT COUNT(*) FROM papers").fetchone()[0]
             with_abstract = conn.execute(
                 "SELECT COUNT(*) FROM papers WHERE abstract IS NOT NULL AND TRIM(abstract) != ''"

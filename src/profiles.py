@@ -15,7 +15,7 @@ import shutil
 import sqlite3
 import tempfile
 from collections.abc import Iterator
-from contextlib import closing, contextmanager
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -23,6 +23,7 @@ from typing import Any
 import yaml
 
 from .models import Configuration
+from .sqlite_connection import managed_sqlite_connection
 
 DEFAULT_PROFILE_ID = "security-20"
 PROFILE_ENV_VAR = "TOPVENUES_PROFILE"
@@ -250,10 +251,7 @@ def verified_profile_snapshot(
             )
 
         uri = f"file:{database_path.resolve()}?mode=ro&immutable=1"
-        # sqlite3.Connection's own context manager commits or rolls back; it
-        # does not close the handle. Explicit closure is required before the
-        # temporary directory is removed on Windows.
-        with closing(sqlite3.connect(uri, uri=True)) as connection:
+        with managed_sqlite_connection(uri, uri=True) as connection:
             observed = _database_observation(connection)
         expected = {key: snapshot_declaration.get(key) for key in observed}
         if observed != expected:

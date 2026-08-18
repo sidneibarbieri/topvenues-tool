@@ -8,7 +8,6 @@ Usage::
 
 import argparse
 import asyncio
-import sqlite3
 import sys
 import time
 from pathlib import Path
@@ -18,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.bibtex_fetcher import BibTeXFetcher
 from src.collector import Collector
 from src.models import Paper
+from src.sqlite_connection import managed_sqlite_connection
 
 
 async def main(concurrency: int, limit: int | None) -> None:
@@ -34,7 +34,7 @@ async def main(concurrency: int, limit: int | None) -> None:
         nonlocal recovered, failed, completed
         completed += 1
         if bibtex:
-            with sqlite3.connect(db_path) as conn:
+            with managed_sqlite_connection(db_path) as conn:
                 conn.execute(
                     "UPDATE papers SET bibtex=?, updated_at=CURRENT_TIMESTAMP "
                     "WHERE paper_id=?",

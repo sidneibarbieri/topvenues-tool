@@ -4,12 +4,10 @@ import sqlite3
 
 import pytest
 
-import src.profiles as profiles_module
-
+import src.sqlite_connection as sqlite_connection_module
 from src.profiles import (
     DEFAULT_PROFILE_ID,
     PROJECT_ROOT,
-    load_profile,
     select_profile_id,
     verified_profile_snapshot,
 )
@@ -40,14 +38,14 @@ def test_security_snapshot_matches_manifest() -> None:
 
 def test_verified_snapshot_closes_database_before_temp_cleanup(monkeypatch) -> None:
     connections: list[sqlite3.Connection] = []
-    original_connect = profiles_module.sqlite3.connect
+    original_connect = sqlite_connection_module.sqlite3.connect
 
     def tracked_connect(*args, **kwargs):
         connection = original_connect(*args, **kwargs)
         connections.append(connection)
         return connection
 
-    monkeypatch.setattr(profiles_module.sqlite3, "connect", tracked_connect)
+    monkeypatch.setattr(sqlite_connection_module.sqlite3, "connect", tracked_connect)
     with verified_profile_snapshot("security-20", PROJECT_ROOT):
         pass
 

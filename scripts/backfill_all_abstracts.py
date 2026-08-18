@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import sqlite3
 import sys
 import time
 from pathlib import Path
@@ -27,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.abstract_fetcher import AbstractFetcher
 from src.collector import Collector
 from src.open_abstract_sources import fetch_openalex_by_title, source_for
+from src.sqlite_connection import managed_sqlite_connection
 
 BATCH_SIZE = 200
 
@@ -69,7 +69,7 @@ async def main() -> None:
 
     collector = Collector(base_dir=Path.cwd())
     db_path = collector.db.db_path
-    with sqlite3.connect(db_path) as connection:
+    with managed_sqlite_connection(db_path) as connection:
         query = (
             "SELECT paper_id, title, year, ee FROM papers "
             "WHERE (abstract IS NULL OR abstract = '') AND ee IS NOT NULL"
@@ -100,7 +100,7 @@ async def main() -> None:
             results = await asyncio.gather(*(worker(row) for row in batch))
             updates = [(abstract, pid) for pid, abstract in results if abstract]
             if updates:
-                with sqlite3.connect(db_path) as connection:
+                with managed_sqlite_connection(db_path) as connection:
                     connection.executemany(
                         "UPDATE papers SET abstract = ?, "
                         "updated_at = CURRENT_TIMESTAMP WHERE paper_id = ?",

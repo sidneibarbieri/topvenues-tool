@@ -1,15 +1,31 @@
 <# Reproduce the immutable TopVenues profile on native Windows PowerShell. #>
-param([string]$Profile = "security-20", [switch]$SkipInstall)
+param(
+    [string]$Profile = "security-20",
+    [string]$PythonCommand = "",
+    [switch]$SkipInstall
+)
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
+$env:PYTHONUTF8 = "1"
+$env:PYTHONIOENCODING = "utf-8"
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 if ($Profile -ne "security-20") { throw "This release exposes only the immutable security-20 profile." }
 
 # Prefer the Windows launcher pinned to the supported minor version.  On many
 # Windows hosts `python` still resolves to an older, system-wide installation.
-$python = Get-Command py -ErrorAction SilentlyContinue
+$python = $null
 $pythonArgs = @()
-if ($null -ne $python) {
+if ($PythonCommand) {
+    $python = Get-Command $PythonCommand -ErrorAction SilentlyContinue
+    if ($null -ne $python) {
+        & $python.Source -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
+        if ($LASTEXITCODE -ne 0) { $python = $null }
+    }
+} else {
+    $python = Get-Command py -ErrorAction SilentlyContinue
+}
+if ($null -ne $python -and -not $PythonCommand) {
     foreach ($minor in @("3.12", "3.11")) {
         & $python.Source "-$minor" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
         if ($LASTEXITCODE -eq 0) {
@@ -19,7 +35,7 @@ if ($null -ne $python) {
     }
     if ($pythonArgs.Count -eq 0) { $python = $null }
 }
-if ($null -eq $python) {
+if ($null -eq $python -and -not $PythonCommand) {
     $python = Get-Command python -ErrorAction SilentlyContinue
     if ($null -ne $python) {
         & $python.Source -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"

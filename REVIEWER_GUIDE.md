@@ -7,20 +7,35 @@ This release evaluates the immutable `security-20` profile.
 - 20,305 bibliographic records from 20 declared security and security-relevant venues;
 - 17,491 abstract-enriched records and BibTeX for every record;
 - the compressed SQLite snapshot SHA-256;
-- 238 automated tests; and
+- 243 automated tests; and
 - local FTS5 ranked search and a BibTeX export.
 
 The artifact is a corpus-construction and review-workflow tool. Its evidence is limited to the declared snapshot and the workflows exercised below.
 
 ## Reproduce from a fresh clone
 
+### Linux and macOS
+
+Requires Python 3.11 or 3.12, Git, and Bash.
+
 ```bash
-git clone --branch sbseg2026-sf-submission-r1 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch v1.0.1 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 bash reproduce.sh
 ```
 
-The command creates an isolated Python environment, verifies the immutable snapshot, materializes a disposable database, runs 238 tests, builds FTS5, exercises substring and ranked search, and exports a BibTeX sample. It needs network access only to install Python dependencies on the first run; all validation after installation uses committed files.
+### Native Windows
+
+Requires Python 3.11 or 3.12 with the Python Launcher (`py`), Git, and
+PowerShell.
+
+```powershell
+git clone --branch v1.0.1 https://github.com/sidneibarbieri/topvenues-tool.git
+cd topvenues-tool
+powershell -ExecutionPolicy Bypass -File .\reproduce.ps1
+```
+
+Each command creates an isolated Python environment, verifies the immutable snapshot, materializes a disposable database, runs 243 tests, builds FTS5, exercises substring and ranked search, and exports a BibTeX sample. Network access is needed only to install Python dependencies on the first run; all validation after installation uses committed files.
 
 Expected final line:
 
@@ -34,6 +49,9 @@ Profile security-20 reproduced successfully
 source .venv/bin/activate
 python -m streamlit run web/app.py
 ```
+
+On Windows PowerShell, replace the activation command with
+`.\.venv\Scripts\Activate.ps1`.
 
 Open `http://localhost:8501`, inspect coverage, run a ranked search, and export a result set as BibTeX, CSV, or JSON. An [abstract-evidence capture](docs/assets/topvenues-abstract-search.pdf) applies the **Abstract contains** filter to `intrusion detection`; every displayed row has an abstract preview.
 
