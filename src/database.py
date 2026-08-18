@@ -7,12 +7,13 @@ import shutil
 import sqlite3
 import tempfile
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 import pandas as pd
 
 from .models import AbstractImportResult, Paper
+from .sqlite_connection import managed_sqlite_connection
 
 MIN_ABSTRACT_LENGTH = 50
 
@@ -51,16 +52,14 @@ def _materialization_lock(db_path: Path, *, timeout_seconds: float = 30.0):
     finally:
         if descriptor is not None:
             os.close(descriptor)
-        try:
+        with suppress(FileNotFoundError):
             lock_path.unlink()
-        except FileNotFoundError:
-            pass
 
 
 def _has_records(database: Path) -> bool:
     if not database.exists():
         return False
-    with sqlite3.connect(database) as conn:
+    with managed_sqlite_connection(database) as conn:
         has_table = conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='papers'"
         ).fetchone()
@@ -186,10 +185,8 @@ def _decompress_atomically(gz_path: Path, db_path: Path) -> None:
             shutil.copyfileobj(src, dst, length=1 << 20)
         os.replace(temporary_path, db_path)
     finally:
-        try:
+        with suppress(FileNotFoundError):
             temporary_path.unlink()
-        except FileNotFoundError:
-            pass
 
 
 def write_gzipped_snapshot(db_path: Path) -> Path:
@@ -249,7 +246,7 @@ class DatabaseManager:
         self._init_schema()
 
     def _init_schema(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS papers (
                     score REAL,
@@ -325,13 +322,13 @@ class DatabaseManager:
 
     def upsert_paper(self, paper: Paper) -> None:
         """Insert or update a single paper, preserving any existing abstract."""
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             conn.execute(self._UPSERT_SQL, self._paper_row(paper))
 
     def upsert_papers(self, papers: list[Paper]) -> int:
         """Insert or update papers in a single bulk transaction, preserving existing abstracts."""
         rows = [self._paper_row(p) for p in papers]
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             conn.executemany(self._UPSERT_SQL, rows)
         return len(rows)
 
@@ -376,7 +373,7 @@ class DatabaseManager:
 
     def get_all_papers(self) -> list[dict]:
         """Return all papers as dicts with field names matching the Paper model."""
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 "SELECT * FROM papers ORDER BY year DESC, event, title"
@@ -421,7 +418,7 @@ class DatabaseManager:
             query += " LIMIT ?"
             params.append(limit)
 
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             return [dict(row) for row in conn.execute(query, params).fetchall()]
 
@@ -434,7 +431,7 @@ class DatabaseManager:
     _FTS_WEIGHTS = (5.0, 1.0, 2.0)
 
     def has_fts_index(self) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             row = conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'papers_fts'"
             ).fetchone()
@@ -449,7 +446,7 @@ class DatabaseManager:
         performed outside this class.
         """
         cols = ", ".join(self._FTS_COLUMNS)
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             conn.execute(
                 f"CREATE VIRTUAL TABLE IF NOT EXISTS papers_fts USING fts5("
                 f"{cols}, content='papers', content_rowid='rowid')"
@@ -527,12 +524,12 @@ class DatabaseManager:
             sql += " LIMIT ?"
             params.append(limit)
 
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             return [dict(row) for row in conn.execute(sql, params).fetchall()]
 
     def get_statistics(self) -> dict:
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             total = conn.execute("SELECT COUNT(*) FROM papers").fetchone()[0]
             with_abstracts = conn.execute(
                 "SELECT COUNT(*) FROM papers WHERE abstract IS NOT NULL AND abstract != ''"
@@ -557,13 +554,13 @@ class DatabaseManager:
         }
 
     def export_to_csv(self, csv_path: Path) -> None:
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             pd.read_sql_query("SELECT * FROM papers", conn).to_csv(
                 csv_path, index=False, encoding="utf-8"
             )
 
     def get_paper_by_id(self, paper_id: str) -> dict | None:
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             row = conn.execute(
                 "SELECT * FROM papers WHERE paper_id = ?", (paper_id,)
@@ -571,7 +568,7 @@ class DatabaseManager:
         return dict(row) if row else None
 
     def update_abstract(self, paper_id: str, abstract: str) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             cursor = conn.execute(
                 "UPDATE papers SET abstract = ?, updated_at = CURRENT_TIMESTAMP WHERE paper_id = ?",
                 (abstract, paper_id),
@@ -579,7 +576,7 @@ class DatabaseManager:
         return cursor.rowcount > 0
 
     def update_bibtex(self, paper_id: str, bibtex: str) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             cursor = conn.execute(
                 "UPDATE papers SET bibtex = ?, updated_at = CURRENT_TIMESTAMP WHERE paper_id = ?",
                 (bibtex, paper_id),
@@ -595,7 +592,7 @@ class DatabaseManager:
             params: tuple = (limit,)
         else:
             params = ()
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             return [dict(row) for row in conn.execute(query, params).fetchall()]
 
@@ -615,7 +612,7 @@ class DatabaseManager:
         df = df[df["Abstract"].astype(str).str.len() >= MIN_ABSTRACT_LENGTH]
         candidates = list(zip(df["ID"], df["Abstract"], strict=True))
 
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             conn.execute("DROP TABLE IF EXISTS _abstract_import")
             conn.execute(
                 "CREATE TEMP TABLE _abstract_import "
@@ -673,6 +670,6 @@ class DatabaseManager:
             query += " LIMIT ?"
             params.append(limit)
 
-        with sqlite3.connect(self.db_path) as conn:
+        with managed_sqlite_connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             return [dict(row) for row in conn.execute(query, params).fetchall()]

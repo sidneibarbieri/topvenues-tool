@@ -11,7 +11,7 @@ TopVenues is an open-source, local-first tool for constructing and inspecting a 
 
 | Property | Value |
 | --- | --- |
-| Release | [`sbseg2026-sf-submission-r1`](https://github.com/sidneibarbieri/topvenues-tool/releases/tag/sbseg2026-sf-submission-r1) |
+| Release | [`v1.0.1`](https://github.com/sidneibarbieri/topvenues-tool/releases/tag/v1.0.1) |
 | Scope | 20 declared security and security-relevant venues |
 | Records | 20,305 |
 | Abstract-enriched records | 17,491 (86.1%) |
@@ -22,21 +22,27 @@ The release keeps records with missing abstracts for metadata and citation workf
 
 ## Reviewer quick start
 
+### Linux and macOS
+
+Requires Python 3.11 or 3.12, Git, and Bash.
+
 ```bash
-git clone --branch sbseg2026-sf-submission-r1 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch v1.0.1 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 bash reproduce.sh
 ```
 
-The command installs declared dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs 241 tests, builds FTS5, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
+The command installs declared dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs 243 tests, builds FTS5, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
 
 ### Native Windows
 
-`reproduce.sh` is a Bash/Unix script. On Windows, install Python 3.11 or 3.12
-with the Python Launcher (`py`), then use PowerShell rather than editing that
+Requires Python 3.11 or 3.12 with the Python Launcher (`py`), Git, and
+PowerShell. Use the native PowerShell workflow rather than editing the Unix
 script or mixing Git Bash and PowerShell environments:
 
 ```powershell
+git clone --branch v1.0.1 https://github.com/sidneibarbieri/topvenues-tool.git
+cd topvenues-tool
 powershell -ExecutionPolicy Bypass -File .\reproduce.ps1
 ```
 
@@ -56,6 +62,9 @@ For a concise evidence map, read [REVIEWER_GUIDE.md](REVIEWER_GUIDE.md). For the
 source .venv/bin/activate
 python -m streamlit run web/app.py
 ```
+
+On Windows PowerShell, activate with `.\.venv\Scripts\Activate.ps1` before
+running the same `python -m streamlit run web/app.py` command.
 
 The interface exposes coverage inspection, substring and BM25-ranked search, author and trend exploration, and exports. It runs against the local snapshot at `http://localhost:8501`.
 
@@ -81,7 +90,7 @@ python -m src.cli --profile security-20 search --rank "memory corruption mitigat
 python -m src.cli --profile security-20 export --format bibtex --tech "fuzzing" -o fuzzing.bib
 
 # Build the Hugging Face Parquet export from the immutable profile
-python -m src.cli --profile security-20 export-hf --release-tag sbseg2026-sf-submission-r1
+python -m src.cli --profile security-20 export-hf --release-tag v1.0.1
 ```
 
 Substring and ranked search answer different questions: substring search finds records that mention text, whereas ranked search orders title, abstract, and author matches by BM25. Multi-word ranked queries use token semantics.

@@ -8,13 +8,13 @@ and the same dataset card statistics.
 from __future__ import annotations
 
 import json
-import sqlite3
 from pathlib import Path
 from shutil import copy2
 
 import pandas as pd
 
 from .areas import area_for
+from .sqlite_connection import managed_sqlite_connection
 
 # Columns published on the Hub, in viewer display order. Bookkeeping columns
 # (created_at/updated_at) and sparse internal fields (score/access) stay local.
@@ -186,7 +186,7 @@ def export_hf_dataset(
             f"- **Snapshot record count:** {snapshot['papers']:,}"
         )
 
-    with sqlite3.connect(db_path) as conn:
+    with managed_sqlite_connection(db_path) as conn:
         df = pd.read_sql_query("SELECT * FROM papers", conn)
 
     df["area"] = df["event"].map(area_for)

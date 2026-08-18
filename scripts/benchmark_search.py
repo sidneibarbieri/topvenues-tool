@@ -4,17 +4,16 @@
 from __future__ import annotations
 
 import argparse
-import sqlite3
 import statistics
 import sys
 import time
-from contextlib import closing
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.database import DatabaseManager
 from src.profiles import PROFILE_IDS, PROJECT_ROOT, select_profile_id, verified_profile_snapshot
+from src.sqlite_connection import managed_sqlite_connection
 
 TERMS = ("machine learning", "fuzzing", "intrusion detection", "ransomware")
 
@@ -32,10 +31,7 @@ def benchmark(db_path: Path, trials: int) -> None:
     db.build_fts_index()
     print(f"FTS5 index build: {time.perf_counter() - started:.2f} s")
 
-    # sqlite3's transaction context does not close the connection. This
-    # database belongs to a TemporaryDirectory in the profile workflow, so a
-    # deterministic close is necessary for Windows cleanup.
-    with closing(sqlite3.connect(db_path)) as connection:
+    with managed_sqlite_connection(db_path) as connection:
         for term in TERMS:
             pattern = f"%{term}%"
 

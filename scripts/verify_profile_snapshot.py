@@ -4,12 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
-import sqlite3
 import sys
 import tempfile
-from contextlib import closing
 from pathlib import Path
 
 import yaml
@@ -18,6 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.profiles import PROFILE_IDS, verified_profile_snapshot  # noqa: E402
+from src.sqlite_connection import managed_sqlite_connection  # noqa: E402
 
 SOURCE_METADATA = {
     "security-20": {
@@ -63,7 +63,7 @@ def build_manifest(profile_id: str) -> dict[str, object]:
         database = Path(directory) / "papers.db"
         sqlite_sha256 = materialize(snapshot, database)
         uri = f"file:{database.resolve()}?mode=ro&immutable=1"
-        with closing(sqlite3.connect(uri, uri=True)) as connection:
+        with managed_sqlite_connection(uri, uri=True) as connection:
             totals = connection.execute(
                 """
                 SELECT COUNT(*),

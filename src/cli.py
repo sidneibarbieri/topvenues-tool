@@ -353,9 +353,8 @@ def bibtex(ctx: click.Context, concurrency: int) -> None:
 @click.pass_context
 def bibtex_from_dump(ctx: click.Context, dump_dir: Path | None, force_download: bool) -> None:
     """Fill BibTeX entries from a single download of the DBLP XML dump."""
-    import sqlite3
-
     from .bibtex_dump import download_dump, parse_dump_for_keys
+    from .sqlite_connection import managed_sqlite_connection
 
     base_dir = ctx.obj["base_dir"]
     collector = Collector(base_dir=base_dir)
@@ -377,7 +376,7 @@ def bibtex_from_dump(ctx: click.Context, dump_dir: Path | None, force_download: 
 
     console.print(f"  Matched {len(bibtex_by_key):,}/{len(target_keys):,} keys in dump.")
 
-    with sqlite3.connect(collector.db.db_path) as conn:
+    with managed_sqlite_connection(collector.db.db_path) as conn:
         conn.executemany(
             "UPDATE papers SET bibtex=?, updated_at=CURRENT_TIMESTAMP WHERE key=?",
             [(bib, key) for key, bib in bibtex_by_key.items()],
@@ -394,17 +393,16 @@ def bibtex_from_dump(ctx: click.Context, dump_dir: Path | None, force_download: 
 @click.pass_context
 def bibtex_local(ctx: click.Context, overwrite: bool) -> None:
     """Generate BibTeX offline from fields already in the database."""
-    import sqlite3
-
     from .bibtex_local import paper_to_bibtex
     from .models import Paper
+    from .sqlite_connection import managed_sqlite_connection
 
     base_dir = ctx.obj["base_dir"]
     collector = Collector(base_dir=base_dir)
 
     rows = collector.db.get_all_papers() if overwrite else collector.db.get_papers_without_bibtex()
     populated = 0
-    with sqlite3.connect(collector.db.db_path) as conn:
+    with managed_sqlite_connection(collector.db.db_path) as conn:
         for row in rows:
             paper = Paper(**row)
             entry = paper_to_bibtex(paper)

@@ -3,8 +3,8 @@ message: "If TopVenues contributes to your research, please cite this software r
 title: "TopVenues: An Executable Corpus and Research Tool for Cybersecurity Literature Reviews"
 type: software
 license: MIT
-version: "sbseg2026-sf-submission-r1"
-date-released: 2026-07-25
+version: "1.0.1"
+date-released: 2026-08-18
 repository-code: "https://github.com/sidneibarbieri/topvenues-tool"
 authors:
   - family-names: Barbieri
