@@ -15,7 +15,7 @@ import shutil
 import sqlite3
 import tempfile
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -250,7 +250,10 @@ def verified_profile_snapshot(
             )
 
         uri = f"file:{database_path.resolve()}?mode=ro&immutable=1"
-        with sqlite3.connect(uri, uri=True) as connection:
+        # sqlite3.Connection's own context manager commits or rolls back; it
+        # does not close the handle. Explicit closure is required before the
+        # temporary directory is removed on Windows.
+        with closing(sqlite3.connect(uri, uri=True)) as connection:
             observed = _database_observation(connection)
         expected = {key: snapshot_declaration.get(key) for key in observed}
         if observed != expected:

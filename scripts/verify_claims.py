@@ -3,6 +3,7 @@
 import argparse
 import sqlite3
 import sys
+from contextlib import closing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -30,7 +31,7 @@ def main() -> int:
         ROOT,
     ) as verified:
         uri = f"file:{verified.database_path.resolve()}?mode=ro&immutable=1"
-        with sqlite3.connect(uri, uri=True) as conn:
+        with closing(sqlite3.connect(uri, uri=True)) as conn:
             total = conn.execute("SELECT COUNT(*) FROM papers").fetchone()[0]
             with_abstract = conn.execute(
                 "SELECT COUNT(*) FROM papers WHERE abstract IS NOT NULL AND TRIM(abstract) != ''"

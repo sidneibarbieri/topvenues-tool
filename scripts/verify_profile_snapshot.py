@@ -9,6 +9,7 @@ import json
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 import yaml
@@ -62,7 +63,7 @@ def build_manifest(profile_id: str) -> dict[str, object]:
         database = Path(directory) / "papers.db"
         sqlite_sha256 = materialize(snapshot, database)
         uri = f"file:{database.resolve()}?mode=ro&immutable=1"
-        with sqlite3.connect(uri, uri=True) as connection:
+        with closing(sqlite3.connect(uri, uri=True)) as connection:
             totals = connection.execute(
                 """
                 SELECT COUNT(*),

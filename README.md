@@ -28,7 +28,7 @@ cd topvenues-tool
 bash reproduce.sh
 ```
 
-The command installs declared dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs 240 tests, builds FTS5, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
+The command installs declared dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs 241 tests, builds FTS5, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
 
 ### Native Windows
 

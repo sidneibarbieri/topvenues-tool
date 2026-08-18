@@ -1,6 +1,10 @@
 """Profile isolation and immutable-manifest checks."""
 
+import sqlite3
+
 import pytest
+
+import src.profiles as profiles_module
 
 from src.profiles import (
     DEFAULT_PROFILE_ID,
@@ -32,3 +36,21 @@ def test_security_snapshot_matches_manifest() -> None:
         assert verified.database_path.is_file()
         assert verified.profile.manifest["snapshot"]["papers"] == 20305
         assert verified.profile.manifest["snapshot"]["venues"] == 20
+
+
+def test_verified_snapshot_closes_database_before_temp_cleanup(monkeypatch) -> None:
+    connections: list[sqlite3.Connection] = []
+    original_connect = profiles_module.sqlite3.connect
+
+    def tracked_connect(*args, **kwargs):
+        connection = original_connect(*args, **kwargs)
+        connections.append(connection)
+        return connection
+
+    monkeypatch.setattr(profiles_module.sqlite3, "connect", tracked_connect)
+    with verified_profile_snapshot("security-20", PROJECT_ROOT):
+        pass
+
+    assert len(connections) == 1
+    with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+        connections[0].execute("SELECT 1")
