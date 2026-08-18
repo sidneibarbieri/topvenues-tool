@@ -28,16 +28,21 @@ cd topvenues-tool
 bash reproduce.sh
 ```
 
-The command installs declared dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs 238 tests, builds FTS5, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
+The command installs declared dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs 240 tests, builds FTS5, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
 
 ### Native Windows
 
-`reproduce.sh` is a Bash/Unix script. On Windows, use PowerShell rather than
-editing that script or mixing Git Bash and PowerShell environments:
+`reproduce.sh` is a Bash/Unix script. On Windows, install Python 3.11 or 3.12
+with the Python Launcher (`py`), then use PowerShell rather than editing that
+script or mixing Git Bash and PowerShell environments:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\reproduce.ps1
 ```
+
+The script creates `.venv` and installs `requirements.txt` itself. If a prior
+attempt created `.venv` with Python 3.10 or older, remove only that directory
+before rerunning: `Remove-Item -Recurse -Force .venv`.
 
 Do not start a second reproduction while one is running. The verification
 script refreshes a disposable local SQLite copy; materialization is serialized

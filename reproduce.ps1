@@ -5,20 +5,44 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 if ($Profile -ne "security-20") { throw "This release exposes only the immutable security-20 profile." }
 
-$python = Get-Command python -ErrorAction SilentlyContinue
-if ($null -eq $python) { $python = Get-Command py -ErrorAction SilentlyContinue }
-if ($null -eq $python) { throw "Python 3.11+ is required. Install it from python.org, then rerun." }
+# Prefer the Windows launcher pinned to the supported minor version.  On many
+# Windows hosts `python` still resolves to an older, system-wide installation.
+$python = Get-Command py -ErrorAction SilentlyContinue
+$pythonArgs = @()
+if ($null -ne $python) {
+    foreach ($minor in @("3.12", "3.11")) {
+        & $python.Source "-$minor" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
+        if ($LASTEXITCODE -eq 0) {
+            $pythonArgs = @("-$minor")
+            break
+        }
+    }
+    if ($pythonArgs.Count -eq 0) { $python = $null }
+}
+if ($null -eq $python) {
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -ne $python) {
+        & $python.Source -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
+        if ($LASTEXITCODE -ne 0) { $python = $null }
+    }
+}
+if ($null -eq $python) {
+    throw "Python 3.11+ is required. Install Python 3.11 or 3.12 from python.org, then rerun."
+}
 
 if (-not (Test-Path ".venv")) {
     if ($SkipInstall) { throw "-SkipInstall requires an existing .venv." }
-    if ($python.Name -eq "py") { & py -3.11 -m venv .venv } else { & $python.Source -m venv .venv }
+    & $python.Source @pythonArgs -m venv .venv
+    if ($LASTEXITCODE -ne 0) { throw "Could not create the Python virtual environment." }
 }
 $venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path $venvPython)) {
     throw "The existing .venv is not native Windows. Remove only .venv and rerun; do not remove corpus data."
 }
 & $venvPython -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
-if ($LASTEXITCODE -ne 0) { throw "Python 3.11+ is required." }
+if ($LASTEXITCODE -ne 0) {
+    throw "The existing .venv uses Python older than 3.11. Remove only .venv and rerun; do not remove corpus data."
+}
 if (-not $SkipInstall) {
     & $venvPython -m pip install --disable-pip-version-check --prefer-binary -r requirements.txt
     if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed." }

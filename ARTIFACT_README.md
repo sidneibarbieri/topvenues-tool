@@ -22,7 +22,10 @@ bash reproduce.sh
 
 This is the authoritative zero-cost validation path. It verifies the manifest, materializes the snapshot, runs the test suite, exercises search, and produces a sample export. It does not call live scholarly APIs or reproduce results from another paper.
 
-On native Windows, use `powershell -ExecutionPolicy Bypass -File .\reproduce.ps1`.
+On native Windows, install Python 3.11 or 3.12 with the Python Launcher (`py`),
+then use `powershell -ExecutionPolicy Bypass -File .\reproduce.ps1`. The script
+creates `.venv` and installs `requirements.txt`; if a previous attempt created
+that environment with Python 3.10 or older, remove only `.venv` before rerunning.
 Do not start a second reproduction while one is running; concurrent
 materialization is reported explicitly rather than risking a partial SQLite file.
 
