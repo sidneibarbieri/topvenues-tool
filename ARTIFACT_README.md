@@ -22,6 +22,10 @@ bash reproduce.sh
 
 This is the authoritative zero-cost validation path. It verifies the manifest, materializes the snapshot, runs the test suite, exercises search, and produces a sample export. It does not call live scholarly APIs or reproduce results from another paper.
 
+On native Windows, use `powershell -ExecutionPolicy Bypass -File .\reproduce.ps1`.
+Do not start a second reproduction while one is running; concurrent
+materialization is reported explicitly rather than risking a partial SQLite file.
+
 ## Structure
 
 | Path | Purpose |

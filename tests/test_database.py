@@ -8,8 +8,10 @@ import pandas as pd
 import pytest
 
 from src.database import (
+    CorpusBusyError,
     DatabaseManager,
     bootstrap_from_gzipped_snapshot,
+    refresh_from_gzipped_snapshot,
 )
 from src.models import Paper
 
@@ -141,6 +143,28 @@ class TestBootstrapFromGzippedSnapshot:
         assert (tmp_path / "papers.db.sync-id").exists()
         rows = DatabaseManager(db_path).get_all_papers()
         assert any(r["paper_id"] == "42" for r in rows)
+
+    def test_refresh_replaces_database_atomically(self, tmp_path):
+        db_path = tmp_path / "papers.db"
+        source = tmp_path / "papers.db.gz"
+        source.write_bytes(gzip.compress(self._seeded_db_bytes(tmp_path, "new")))
+        DatabaseManager(db_path).upsert_paper(_paper("old"))
+
+        refresh_from_gzipped_snapshot(db_path, source)
+
+        rows = DatabaseManager(db_path).get_all_papers()
+        assert any(row["paper_id"] == "new" for row in rows)
+        assert not any(row["paper_id"] == "old" for row in rows)
+
+    def test_materialization_lock_reports_concurrent_startup(self, tmp_path):
+        db_path = tmp_path / "papers.db"
+        lock = tmp_path / "papers.db.materializing.lock"
+        lock.write_text("another-process", encoding="utf-8")
+
+        with pytest.raises(CorpusBusyError, match="Timed out waiting"):
+            from src.database import _materialization_lock
+            with _materialization_lock(db_path, timeout_seconds=0):
+                pass
 
     def test_external_snapshot_is_copied_to_disposable_workspace(self, tmp_path):
         snapshot = tmp_path / "data" / "profiles" / "security-20" / "papers.db.gz"

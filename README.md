@@ -30,6 +30,19 @@ bash reproduce.sh
 
 The command installs declared dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs 238 tests, builds FTS5, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
 
+### Native Windows
+
+`reproduce.sh` is a Bash/Unix script. On Windows, use PowerShell rather than
+editing that script or mixing Git Bash and PowerShell environments:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\reproduce.ps1
+```
+
+Do not start a second reproduction while one is running. The verification
+script refreshes a disposable local SQLite copy; materialization is serialized
+and a locked database produces an actionable wait-and-retry error.
+
 For a concise evidence map, read [REVIEWER_GUIDE.md](REVIEWER_GUIDE.md). For the full artifact boundary, read [ARTIFACT_README.md](ARTIFACT_README.md).
 
 ## Use the local interface

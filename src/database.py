@@ -2,8 +2,12 @@
 
 import gzip
 import logging
+import os
 import shutil
 import sqlite3
+import tempfile
+import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import pandas as pd
@@ -17,6 +21,40 @@ logger = logging.getLogger(__name__)
 
 class CorpusNotFoundError(RuntimeError):
     """Raised when a read-only consumer finds no corpus to open."""
+
+
+class CorpusBusyError(RuntimeError):
+    """Raised when a running process prevents a safe snapshot replacement."""
+
+
+@contextmanager
+def _materialization_lock(db_path: Path, *, timeout_seconds: float = 30.0):
+    """Serialize snapshot materialization using an atomic, cross-platform lock."""
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = db_path.with_name(f"{db_path.name}.materializing.lock")
+    deadline = time.monotonic() + timeout_seconds
+    descriptor: int | None = None
+    while descriptor is None:
+        try:
+            descriptor = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(descriptor, str(os.getpid()).encode("ascii"))
+        except FileExistsError:
+            if time.monotonic() >= deadline:
+                raise CorpusBusyError(
+                    f"Timed out waiting for {lock_path.name}. Another TopVenues "
+                    "process may be materializing the corpus; wait for it to finish "
+                    "and retry."
+                ) from None
+            time.sleep(0.1)
+    try:
+        yield
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        try:
+            lock_path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def _has_records(database: Path) -> bool:
@@ -72,16 +110,31 @@ def bootstrap_from_gzipped_snapshot(
     if not gz_path.exists():
         return
 
-    if not db_path.exists():
-        _decompress(gz_path, db_path)
-        _write_sync_marker(db_path, gz_path)
-        logger.info("Bootstrapped %s from %s", db_path.name, gz_path.name)
-        return
+    with _materialization_lock(db_path):
+        if not db_path.exists():
+            _decompress_atomically(gz_path, db_path)
+            _write_sync_marker(db_path, gz_path)
+            logger.info("Bootstrapped %s from %s", db_path.name, gz_path.name)
+            return
+        if should_refresh_from_snapshot(db_path, gz_path):
+            _decompress_atomically(gz_path, db_path)
+            _write_sync_marker(db_path, gz_path)
+            logger.info("Auto-refreshed %s from updated %s", db_path.name, gz_path.name)
 
-    if should_refresh_from_snapshot(db_path, gz_path):
-        _decompress(gz_path, db_path)
-        _write_sync_marker(db_path, gz_path)
-        logger.info("Auto-refreshed %s from updated %s", db_path.name, gz_path.name)
+
+def refresh_from_gzipped_snapshot(db_path: Path, snapshot_path: Path) -> None:
+    """Replace a disposable database atomically from a known snapshot."""
+    if not snapshot_path.exists():
+        raise FileNotFoundError(snapshot_path)
+    with _materialization_lock(db_path):
+        try:
+            _decompress_atomically(snapshot_path, db_path)
+        except PermissionError as error:
+            raise CorpusBusyError(
+                f"Cannot refresh {db_path.name} because it is open. Stop the "
+                "TopVenues Streamlit app (or any process using this corpus), then retry."
+            ) from error
+        _write_sync_marker(db_path, snapshot_path)
 
 
 def should_refresh_from_snapshot(db_path: Path, gz_path: Path) -> bool:
@@ -122,9 +175,21 @@ def should_refresh_from_snapshot(db_path: Path, gz_path: Path) -> bool:
     return False
 
 
-def _decompress(gz_path: Path, db_path: Path) -> None:
-    with gzip.open(gz_path, "rb") as src, db_path.open("wb") as dst:
-        shutil.copyfileobj(src, dst, length=1 << 20)
+def _decompress_atomically(gz_path: Path, db_path: Path) -> None:
+    """Write a candidate beside the DB, then atomically replace it."""
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{db_path.name}.", suffix=".tmp", dir=db_path.parent
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as dst, gzip.open(gz_path, "rb") as src:
+            shutil.copyfileobj(src, dst, length=1 << 20)
+        os.replace(temporary_path, db_path)
+    finally:
+        try:
+            temporary_path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def write_gzipped_snapshot(db_path: Path) -> Path:

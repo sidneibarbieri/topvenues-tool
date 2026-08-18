@@ -22,7 +22,7 @@ from .analytics import (
 )
 from .awards import build_corpus_award_map
 from .collector import Collector
-from .config import set_configuration_path
+from .config import load_configuration, set_configuration_path
 from .models import DownloadStatus, SearchFilters
 from .profiles import PROFILE_IDS, profile_config_path
 
@@ -290,17 +290,23 @@ def backfill_abstracts(
 @click.pass_context
 def refresh_db(ctx: click.Context) -> None:
     """Force-refresh papers.db from the tracked papers.db.gz snapshot."""
-    from .database import bootstrap_from_gzipped_snapshot
+    from .database import CorpusBusyError, refresh_from_gzipped_snapshot
 
     base_dir = ctx.obj["base_dir"]
-    collector = Collector(base_dir=base_dir)
-    gz = collector.db.snapshot_path
+    profile = ctx.obj.get("profile")
+    config_path = profile_config_path(profile, base_dir) if profile else base_dir / "config.yaml"
+    configuration = load_configuration(config_path)
+    db_path = base_dir / configuration.data_dir / "papers.db"
+    gz = Path(configuration.snapshot_path or db_path.with_suffix(".db.gz"))
+    if not gz.is_absolute():
+        gz = base_dir / gz
     if not gz.exists():
         console.print(f"[bold red]No snapshot found at {gz}.[/bold red]")
-        return
-    if collector.db.db_path.exists():
-        collector.db.db_path.unlink()
-    bootstrap_from_gzipped_snapshot(collector.db.db_path, gz)
+        raise click.ClickException("refresh aborted: required snapshot is missing")
+    try:
+        refresh_from_gzipped_snapshot(db_path, gz)
+    except CorpusBusyError as error:
+        raise click.ClickException(str(error)) from error
     console.print(f"[bold green]✓[/bold green] Refreshed from {gz.name}")
 
 
