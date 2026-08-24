@@ -72,7 +72,7 @@ running the same `python -m streamlit run web/app.py` command.
 
 The interface exposes coverage inspection, substring and BM25-ranked search,
 topic trends, Researcher Radar, and exports. Search and author analytics offer
-an explicit Security Big Four (Tier 1) scope: ACM CCS, IEEE S&P, USENIX
+an explicit Security top-4 scope: ACM CCS, IEEE S&P, USENIX
 Security, and NDSS. Aggregates are traceable to supporting records. Researcher
 Radar adds exact-identity trajectories, direct coauthorship, recent publication-
 rate change, portable watchlists, and an explicitly unverified arXiv name-search
@@ -97,20 +97,20 @@ python -m src.cli --profile security-20-v3 stats
 # Search records that mention a term
 python -m src.cli --profile security-20-v3 search --abstract "intrusion detection"
 
-# Restrict a review query to the Security Big Four
+# Restrict a review query to the Security top-4
 python -m src.cli --profile security-20-v3 search --rank "LLM security" \
-  --tier-scope "Security Big Four (Tier 1)" --limit 20
+  --tier-scope "Security top-4" --limit 20
 
 # Build a topic-specific author shortlist from Tier 1 evidence
 python -m src.cli --profile security-20-v3 authors --topic "fuzzing" \
-  --tier-scope "Security Big Four (Tier 1)"
+  --tier-scope "Security top-4"
 
 # Rank records by multi-token FTS5/BM25 relevance
 python -m src.cli --profile security-20-v3 search --rank "memory corruption mitigations" --limit 20
 
 # Export a review-ready subset
 python -m src.cli --profile security-20-v3 export --format bibtex --tech "fuzzing" \
-  --tier-scope "Security Big Four (Tier 1)" -o fuzzing-tier1.bib
+  --tier-scope "Security top-4" -o fuzzing-tier1.bib
 
 # Build the Hugging Face Parquet export from the immutable profile
 python -m src.cli --profile security-20-v3 export-hf --release-tag v1.4.0

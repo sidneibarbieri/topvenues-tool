@@ -2,6 +2,7 @@
 
 import asyncio
 import html
+import json
 import sqlite3
 import sys
 from pathlib import Path
@@ -23,6 +24,7 @@ from src.chart_interactions import selected_chart_value
 from src.collector import Collector
 from src.database import require_corpus
 from src.models import PaperClass, SearchFilters
+from src.release_identity import identity_from_manifest
 from src.tiers import tier_for, tier_scope_options, tiers_in_scope
 
 PAGE_SIZE_OPTIONS = (25, 50, 100, 200)
@@ -450,6 +452,16 @@ def _queue_search_from_chart(**filters: str | int | None) -> None:
     st.rerun()
 
 
+
+@st.cache_data(show_spinner=False)
+def _release_identity(profile_id: str) -> dict:
+    """Reader- and auditor-facing names for the active release."""
+    manifest_path = ARTIFACT_ROOT / "data" / "profiles" / profile_id / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    identity = identity_from_manifest(profile_id, manifest)
+    return {"reader": identity.reader_label, "auditor": identity.auditor_label}
+
+
 def _interactive_bar_chart(
     data: pd.DataFrame,
     category: str,
@@ -535,7 +547,7 @@ def page_artifact() -> None:
     with tier1_col:
         st.markdown("**Reference mapping**  ")
         st.caption(
-            "Use Security Big Four (Tier 1) to identify canonical venue papers and recurring authors."
+            "Use Security top-4 to identify canonical venue papers and recurring authors."
         )
     with broad_col:
         st.markdown("**Review protocol**  ")
@@ -644,7 +656,7 @@ def page_search() -> None:
             tier_scope = st.selectbox(
                 "Venue tier scope",
                 tier_scope_options(),
-                help="Security Big Four (Tier 1): ACM CCS, IEEE S&P, USENIX Security, and NDSS.",
+                help="Security top-4: ACM CCS, IEEE S&P, USENIX Security, and NDSS.",
                 key="search_tier_scope",
             )
             allowed_tiers = tiers_in_scope(tier_scope)
@@ -783,7 +795,8 @@ def page_search() -> None:
     )
     _render_metrics(stats, filtered_count=len(results))
     active_venue = venue_choice if venue_choice != "All venues" else tier_scope
-    st.caption(f"Active venue scope: {active_venue}. Snapshot: {collector.config.profile_id}.")
+    release = _release_identity(collector.config.profile_id or "")
+    st.caption(f"Active venue scope: {active_venue}. Corpus: {release['reader']}.")
 
     if not results:
         st.info("No papers match the current filters. Try widening the search.")
@@ -1142,7 +1155,7 @@ def page_insights() -> None:
     st.subheader("Researcher Radar")
     st.caption(
         "Discover researchers who recur in the selected corpus. Paper count is the "
-        "transparent default; the optional tier-weighted view gives Big Four papers "
+        "transparent default; the optional tier-weighted view gives top-4 papers "
         "more weight. Neither view measures citations, quality, seniority, or authority. "
         "DBLP identity suffixes are preserved to avoid merging homonyms."
     )
@@ -1170,7 +1183,7 @@ def page_insights() -> None:
             "Venue tier scope",
             tier_scope_options(),
             key="authors_tier_scope",
-            help="Use Security Big Four (Tier 1) to identify recurring authors in CCS, S&P, USENIX Security, and NDSS only.",
+            help="Use Security top-4 to identify recurring authors in CCS, S&P, USENIX Security, and NDSS only.",
         )
     with col_position:
         author_position = st.selectbox(
@@ -1460,7 +1473,9 @@ def page_evidence() -> None:
         "Evidence and claim boundaries",
         "What this snapshot verifies, and what requires a separate empirical protocol.",
     )
-    st.subheader("Current release: security-20-v3")
+    release = _release_identity(_load_collector().config.profile_id or "")
+    st.subheader(f"Current release: {release['reader']}")
+    st.caption(f"Snapshot identifier for citation and audit: `{release['auditor']}`")
     st.markdown(
         "This interface verifies the manifest, exact-resource identity policy, coverage, search, "
         "exports, and platform reproduction for the selected snapshot. It does not claim a manual "
@@ -1474,10 +1489,10 @@ def page_evidence() -> None:
         "available in the [frozen evaluation package](https://github.com/sidneibarbieri/topVenues/tree/07674480ff3172f4b195387438ab3af3c9c5655f/evaluation/baseline_validation)."
     )
     st.info(
-        "Those results are evidence for the companion snapshot only. Reusing them as v3 accuracy "
-        "would be invalid; a v3 audit needs a new sampled-label protocol."
+        "Those results are evidence for the companion snapshot only. Reusing them as accuracy for "
+            "this release would be invalid; it needs its own sampled-label protocol."
     )
-    st.subheader("Run a v3 manual audit")
+    st.subheader("Run a manual audit of this release")
     st.markdown(
         "TopVenues generates a deterministic, venue-stratified sample. A human reviewer must "
         "compare each extracted abstract with the linked source and label completeness, "
@@ -1520,10 +1535,11 @@ def page_evidence() -> None:
             )
     st.subheader("Identity policy")
     st.markdown(
-        "v3 inherits exact-resource deduplication, enforces the declared 2019–2026 window, and "
-        "merges two additional DOI aliases confirmed by Crossref. Four same-metadata pairs remain "
-        "distinct because publisher resources remain distinct. Every decision is disclosed in "
-        "data/adjudication/security-20-v3-identity.json."
+        "This release applies exact-resource deduplication, enforces the declared 2019–2026 "
+        "window, and merges DOI aliases confirmed by Crossref. Same-metadata pairs stay distinct "
+        "where the publisher resources are distinct. Ten titles truncated at inline markup were "
+        "repaired against their DBLP records. Every decision is disclosed in the adjudication and "
+        "repair logs shipped with the release."
     )
 
 
