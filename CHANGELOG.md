@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.0 — 2026-08-24
+
+- Add researcher trajectories, direct collaboration evidence, and a transparent
+  recent-versus-prior publication-rate signal with supporting-record drill-down.
+- Add portable watchlists that preserve known paper IDs, successor-profile delta
+  evaluation, and optional arXiv name-match candidate retrieval.
+- Add a deterministic 200-record, venue-stratified v3 manual-audit instrument,
+  upload validation, and Wilson interval summarizer without inventing labels.
+- Keep only the current snapshot in the default package; historical binaries
+  remain immutable in their original release tags and can be fetched with SHA-256
+  verification.
+- Correct DBLP numeric-suffix handling in external arXiv searches and replace the
+  generic trajectory chart with a controlled editorial chart.
+
 ## 1.3.0 — 2026-08-24
 
 - Publish `security-20-v3`, preserving prior snapshots while enforcing the

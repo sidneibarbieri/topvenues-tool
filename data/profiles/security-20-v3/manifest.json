@@ -5,6 +5,9 @@
   "paper_denominator": false,
   "origin": "strict-window, identity-adjudicated successor of security-20-v2",
   "source_release_tag": "v1.2.1",
+  "distribution": {
+    "bundled": true
+  },
   "configuration": {
     "path": "profiles/security-20-v3/config.yaml",
     "event_keys": [

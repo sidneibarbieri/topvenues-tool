@@ -25,9 +25,9 @@ author-visibility view, a chart-to-record transition, and an export.
 | 1:05-2:05 | Search `LLM` or `fuzzing`, restrict to a venue/year, open a paper, and export BibTeX. | Search is a review workflow, not a static catalogue. |
 | 2:05-3:00 | In Insights, click a venue or year bar and show the transferred record filter. | Aggregate claims are traceable to records. |
 | 3:00-4:05 | Enter a topic and show its yearly share and main venues. | Volume is normalized by yearly corpus size. |
-| 4:05-5:10 | Switch author view among any, first, and last author; open one selected author's records. | These are transparent corpus-visibility views, not citation or authority rankings. |
-| 5:10-5:50 | Show abstract coverage by venue and explain that abstract-dependent results are lower bounds where coverage is incomplete. | Missing data is disclosed, not hidden. |
-| 5:50-6:30 | Show Pipeline as read-only for the release and the documented successor-profile process. | A live refresh cannot silently change a cited snapshot. |
+| 4:05-5:25 | Switch author view among any, first, and last author; open one author's records, trajectory, and emerging-activity evidence. | These are transparent corpus observations, not citation, authority, or impact rankings. |
+| 5:25-5:55 | Download a portable watchlist and point to the arXiv candidate handoff without opening the network-dependent page. | The evidence can support later surveillance without making the live demo depend on Wi-Fi. |
+| 5:55-6:30 | Show abstract coverage and the immutable Dataset lifecycle boundary. | Missing data is disclosed and a refresh cannot silently change a cited snapshot. |
 | 6:30-7:00 | Close with the repository, release tag, and the claim boundary. | Researchers can reproduce, inspect, and export the same denominator. |
 
 ## Do not claim

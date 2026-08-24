@@ -212,29 +212,59 @@ def _award_map() -> dict[str, list[str]]:
 
 
 @st.cache_data(show_spinner=False)
-def _cached_topic_trend(
-    db_path: str, topic: str, area: str | None, tier_scope: str
-) -> dict:
+def _cached_topic_trend(db_path: str, topic: str, area: str | None, tier_scope: str) -> dict:
     from src.analytics import topic_trend
 
-    return topic_trend(
-        Path(db_path), topic, area=area, allowed_tiers=tiers_in_scope(tier_scope)
-    )
+    return topic_trend(Path(db_path), topic, area=area, allowed_tiers=tiers_in_scope(tier_scope))
 
 
 @st.cache_data(show_spinner=False)
 def _cached_reference_authors(
-    db_path: str, topic: str | None, area: str | None, position: str,
-    tier_scope: str, ranking_metric: str, limit: int
+    db_path: str,
+    topic: str | None,
+    area: str | None,
+    position: str,
+    tier_scope: str,
+    ranking_metric: str,
+    limit: int,
 ) -> list[dict]:
     from src.analytics import reference_authors
 
     return reference_authors(
-        Path(db_path), topic=topic, area=area, position=position, limit=limit,
+        Path(db_path),
+        topic=topic,
+        area=area,
+        position=position,
+        limit=limit,
         awards_dir=Path(db_path).parent.parent / "awards",
         allowed_tiers=tiers_in_scope(tier_scope),
         ranking_metric=ranking_metric,
     )
+
+
+@st.cache_data(show_spinner=False)
+def _cached_emerging_researchers(
+    db_path: str, topic: str | None, area: str | None, tier_scope: str, limit: int
+) -> list[dict]:
+    from src.research_intelligence import emerging_researchers
+
+    return [
+        signal.model_dump()
+        for signal in emerging_researchers(
+            Path(db_path),
+            topic=topic,
+            area=area,
+            allowed_tiers=tiers_in_scope(tier_scope),
+            limit=limit,
+        )
+    ]
+
+
+@st.cache_data(show_spinner=False)
+def _cached_audit_sample(db_path: str, sample_size: int) -> pd.DataFrame:
+    from src.manual_audit import build_audit_sample
+
+    return build_audit_sample(Path(db_path), sample_size=sample_size)
 
 
 def _award_label(labels: list[str] | None) -> str:
@@ -248,14 +278,14 @@ def _safe_html(value: object) -> str:
     return html.escape(str(value), quote=True)
 
 
-def _venue_options(
-    collector: Collector, allowed_tiers: frozenset[str] | None = None
-) -> list[str]:
-    venues = sorted({
-        paper.event
-        for paper in collector.papers
-        if paper.event and (allowed_tiers is None or tier_for(paper.event) in allowed_tiers)
-    })
+def _venue_options(collector: Collector, allowed_tiers: frozenset[str] | None = None) -> list[str]:
+    venues = sorted(
+        {
+            paper.event
+            for paper in collector.papers
+            if paper.event and (allowed_tiers is None or tier_for(paper.event) in allowed_tiers)
+        }
+    )
     return ["All venues", *venues]
 
 
@@ -345,7 +375,8 @@ def _render_metrics(stats: dict, filtered_count: int | None = None) -> None:
     extra = (
         f'<div class="metric green"><div class="lbl">Currently shown</div>'
         f'<div class="val">{filtered_count:,}</div></div>'
-        if filtered_count is not None else ""
+        if filtered_count is not None
+        else ""
     )
     st.markdown(
         '<div class="metric-row">'
@@ -358,8 +389,8 @@ def _render_metrics(stats: dict, filtered_count: int | None = None) -> None:
         f'<div class="metric rose"><div class="lbl">With BibTeX</div>'
         f'<div class="val">{with_bib:,}</div>'
         f'<div class="sub">{bib_pct:.2f}% coverage</div></div>'
-        f'{extra}'
-        '</div>',
+        f"{extra}"
+        "</div>",
         unsafe_allow_html=True,
     )
 
@@ -459,7 +490,9 @@ def _interactive_bar_chart(
         )
         .configure_view(strokeOpacity=0)
     )
-    event = st.altair_chart(chart, key=key, on_select="rerun", selection_mode=selection_name, theme=None)
+    event = st.altair_chart(
+        chart, key=key, on_select="rerun", selection_mode=selection_name, theme=None
+    )
     return selected_chart_value(event, selection_name, category)
 
 
@@ -491,7 +524,9 @@ def _interactive_line_chart(
         )
         .configure_view(strokeOpacity=0)
     )
-    event = st.altair_chart(chart, key=key, on_select="rerun", selection_mode=selection_name, theme=None)
+    event = st.altair_chart(
+        chart, key=key, on_select="rerun", selection_mode=selection_name, theme=None
+    )
     return selected_chart_value(event, selection_name, x_field)
 
 
@@ -588,7 +623,7 @@ def page_search() -> None:
                 "Ranked search (BM25)",
                 placeholder="e.g., memory corruption mitigations",
                 help="Relevance-ranked full-text search over title, abstract and "
-                     "authors. Overrides the substring filters below.",
+                "authors. Overrides the substring filters below.",
                 key="search_ranked",
             )
             title_query = st.text_input(
@@ -633,7 +668,8 @@ def page_search() -> None:
 
         with st.expander("Paper class", expanded=False):
             class_choices = st.multiselect(
-                "Include", [c.value for c in PaperClass],
+                "Include",
+                [c.value for c in PaperClass],
                 help="Filter by SoK, Survey, Poster, Workshop, Short, Journal or Article.",
                 key="search_class",
             )
@@ -641,12 +677,19 @@ def page_search() -> None:
         with st.expander("Abstract & citation", expanded=False):
             abstract_length = st.selectbox(
                 "Abstract availability / length",
-                ["Any", "Has abstract", "Missing abstract", "Short (≤ 150 words)",
-                 "Medium (151–300 words)", "Long (> 300 words)"],
+                [
+                    "Any",
+                    "Has abstract",
+                    "Missing abstract",
+                    "Short (≤ 150 words)",
+                    "Medium (151–300 words)",
+                    "Long (> 300 words)",
+                ],
                 key="search_abstract_scope",
             )
             only_with_bibtex = st.checkbox(
-                "Has BibTeX", help="Only include papers whose BibTeX entry has been fetched.",
+                "Has BibTeX",
+                help="Only include papers whose BibTeX entry has been fetched.",
                 key="search_bibtex",
             )
 
@@ -665,10 +708,9 @@ def page_search() -> None:
         )
         sort_choice = st.selectbox(
             "Sort by",
-            ["Relevance", "Year (newest first)", "Year (oldest first)",
-             "Title (A–Z)", "Venue"],
+            ["Relevance", "Year (newest first)", "Year (oldest first)", "Title (A–Z)", "Venue"],
             help="Relevance follows the ranked-search order and falls back to "
-                 "newest-first when no ranked query is set.",
+            "newest-first when no ranked query is set.",
             key="search_sort",
         )
 
@@ -700,11 +742,13 @@ def page_search() -> None:
             limit=None,
         )
         results = [
-            Paper(**{
-                field: row[field]
-                for field in Paper.model_fields
-                if field in row and row[field] is not None
-            })
+            Paper(
+                **{
+                    field: row[field]
+                    for field in Paper.model_fields
+                    if field in row and row[field] is not None
+                }
+            )
             for row in ranked_rows
         ]
     else:
@@ -749,9 +793,7 @@ def page_search() -> None:
     )
     _render_metrics(stats, filtered_count=len(results))
     active_venue = venue_choice if venue_choice != "All venues" else tier_scope
-    st.caption(
-        f"Active venue scope: {active_venue}. Snapshot: {collector.config.profile_id}."
-    )
+    st.caption(f"Active venue scope: {active_venue}. Snapshot: {collector.config.profile_id}.")
 
     if not results:
         st.info("No papers match the current filters. Try widening the search.")
@@ -793,7 +835,9 @@ def page_search() -> None:
                     st.session_state["page_no"] -= 1
                     st.rerun()
             with nav_next:
-                if st.button("›", disabled=st.session_state["page_no"] >= total_pages, width="stretch"):
+                if st.button(
+                    "›", disabled=st.session_state["page_no"] >= total_pages, width="stretch"
+                ):
                     st.session_state["page_no"] += 1
                     st.rerun()
             page = int(st.number_input("Page", 1, total_pages, key="page_no"))
@@ -808,8 +852,8 @@ def page_search() -> None:
             f'<div class="results-bar">'
             f'<span class="count">{len(results):,} papers found</span>'
             f'<span class="sub">showing {start + 1:,}–{end:,} · '
-            f'page {page} of {total_pages} · {page_size} per page</span>'
-            f'</div>',
+            f"page {page} of {total_pages} · {page_size} per page</span>"
+            f"</div>",
             unsafe_allow_html=True,
         )
 
@@ -817,7 +861,7 @@ def page_search() -> None:
         {
             "Title": paper.title or "—",
             "Authors": (paper.authors or "—")[:90]
-                       + ("…" if paper.authors and len(paper.authors) > 90 else ""),
+            + ("…" if paper.authors and len(paper.authors) > 90 else ""),
             "Venue": paper.event or "—",
             "Tier": tier_for(paper.event),
             "Year": paper.year,
@@ -838,17 +882,17 @@ def page_search() -> None:
         hide_index=True,
         height=min(700, 70 + len(df) * 56),
         column_config={
-            "Title":    st.column_config.TextColumn("Title", width="medium"),
-            "Authors":  st.column_config.TextColumn("Authors", width="small"),
-            "Venue":    st.column_config.TextColumn("Venue", width="small"),
-            "Tier":     st.column_config.TextColumn("Tier", width="small"),
-            "Year":     st.column_config.NumberColumn("Year", format="%d", width="small"),
-            "Award":    st.column_config.TextColumn("Award", width="small"),
-            "Class":    st.column_config.TextColumn("Class", width="small"),
-            "Words":    st.column_config.NumberColumn("Words", format="%d", width="small"),
+            "Title": st.column_config.TextColumn("Title", width="medium"),
+            "Authors": st.column_config.TextColumn("Authors", width="small"),
+            "Venue": st.column_config.TextColumn("Venue", width="small"),
+            "Tier": st.column_config.TextColumn("Tier", width="small"),
+            "Year": st.column_config.NumberColumn("Year", format="%d", width="small"),
+            "Award": st.column_config.TextColumn("Award", width="small"),
+            "Class": st.column_config.TextColumn("Class", width="small"),
+            "Words": st.column_config.NumberColumn("Words", format="%d", width="small"),
             "Abstract": st.column_config.TextColumn("Abstract preview", width="large"),
-            "Cite":     st.column_config.TextColumn("\\cite{…}", width="small"),
-            "Link":     st.column_config.LinkColumn("DOI / URL", width="small", display_text="open"),
+            "Cite": st.column_config.TextColumn("\\cite{…}", width="small"),
+            "Link": st.column_config.LinkColumn("DOI / URL", width="small", display_text="open"),
         },
     )
 
@@ -899,7 +943,8 @@ def page_search() -> None:
             width="stretch",
             disabled=not bib_text,
             help="LaTeX bibliography file with one BibTeX entry per result."
-                 if bib_text else "BibTeX not yet fetched for any paper in this result set.",
+            if bib_text
+            else "BibTeX not yet fetched for any paper in this result set.",
         )
 
     st.divider()
@@ -913,33 +958,32 @@ def page_search() -> None:
         paper = page_slice[idx]
         link = paper.ee or paper.url
         link_html = (
-            f'<a href="{_safe_html(link)}" target="_blank">{_safe_html(link)}</a>'
-            if link else "—"
+            f'<a href="{_safe_html(link)}" target="_blank">{_safe_html(link)}</a>' if link else "—"
         )
         doi_html = (
             f'<a href="https://doi.org/{_safe_html(paper.doi)}" target="_blank">{_safe_html(paper.doi)}</a>'
-            if paper.doi else "—"
+            if paper.doi
+            else "—"
         )
         abstract_html = (
-            _safe_html(paper.abstract) if paper.abstract
-            else "<i>No abstract available.</i>"
+            _safe_html(paper.abstract) if paper.abstract else "<i>No abstract available.</i>"
         )
         st.markdown(
             '<div class="paper-card">'
-            f'<h3>{_safe_html(paper.title)}</h3>'
+            f"<h3>{_safe_html(paper.title)}</h3>"
             '<div class="paper-meta">'
-            f'<span><b>Authors:</b> {_safe_html(paper.authors)}</span>'
-            f'<span><b>Venue:</b> {_safe_html(paper.event)}</span>'
-            f'<span><b>Tier:</b> {_safe_html(tier_for(paper.event))}</span>'
-            f'<span><b>Year:</b> {_safe_html(paper.year)}</span>'
-            f'<span><b>Words:</b> {paper.abstract_words:,}</span>'
-            f'<span><b>DOI:</b> {doi_html}</span>'
-            f'<span><b>Link:</b> {link_html}</span>'
-            '</div>'
-            f'<div>{_class_badge(paper.paper_class)}</div>'
+            f"<span><b>Authors:</b> {_safe_html(paper.authors)}</span>"
+            f"<span><b>Venue:</b> {_safe_html(paper.event)}</span>"
+            f"<span><b>Tier:</b> {_safe_html(tier_for(paper.event))}</span>"
+            f"<span><b>Year:</b> {_safe_html(paper.year)}</span>"
+            f"<span><b>Words:</b> {paper.abstract_words:,}</span>"
+            f"<span><b>DOI:</b> {doi_html}</span>"
+            f"<span><b>Link:</b> {link_html}</span>"
+            "</div>"
+            f"<div>{_class_badge(paper.paper_class)}</div>"
             '<hr style="border:none; border-top:1px solid var(--border); margin:1rem 0">'
             f'<div class="paper-abstract">{abstract_html}</div>'
-            '</div>',
+            "</div>",
             unsafe_allow_html=True,
         )
 
@@ -966,8 +1010,10 @@ def page_insights() -> None:
     with col1:
         st.subheader("Papers by venue")
         venue_df = pd.DataFrame(
-            [{"Venue": k, "Papers": v} for k, v in
-             sorted(stats["by_event"].items(), key=lambda x: x[1], reverse=True)]
+            [
+                {"Venue": k, "Papers": v}
+                for k, v in sorted(stats["by_event"].items(), key=lambda x: x[1], reverse=True)
+            ]
         )
         selected_venue = _interactive_bar_chart(venue_df, "Venue", "Papers", "venue_chart", 460)
         st.caption("Click a bar to open that venue's records. Double-click clears the selection.")
@@ -1006,8 +1052,10 @@ def page_insights() -> None:
     for paper in collector.papers:
         class_counts[paper.paper_class.value] = class_counts.get(paper.paper_class.value, 0) + 1
     class_df = pd.DataFrame(
-        [{"Class": k, "Papers": v} for k, v in
-         sorted(class_counts.items(), key=lambda x: x[1], reverse=True)]
+        [
+            {"Class": k, "Papers": v}
+            for k, v in sorted(class_counts.items(), key=lambda x: x[1], reverse=True)
+        ]
     )
     selected_class = _interactive_bar_chart(
         class_df, "Class", "Papers", "class_chart", 320, color="#a35f25"
@@ -1028,13 +1076,14 @@ def page_insights() -> None:
     col_trend_topic, col_trend_area, col_trend_tier = st.columns([2, 1, 1.4])
     with col_trend_topic:
         trend_topic = st.text_input(
-            "Topic", placeholder="e.g., LLM, ransomware, fuzzing",
+            "Topic",
+            placeholder="e.g., LLM, ransomware, fuzzing",
             key="trend_topic",
         )
     with col_trend_area:
         trend_area = st.selectbox(
-            "Area", ["All areas", "security", "ai", "networks", "mobile",
-                     "systems", "cross-area"],
+            "Area",
+            ["All areas", "security", "ai", "networks", "mobile", "systems", "cross-area"],
             key="trend_area",
         )
     with col_trend_tier:
@@ -1045,7 +1094,8 @@ def page_insights() -> None:
         )
     if trend_topic:
         trend = _cached_topic_trend(
-            str(collector.db.db_path), trend_topic,
+            str(collector.db.db_path),
+            trend_topic,
             None if trend_area == "All areas" else trend_area,
             trend_tier_scope,
         )
@@ -1075,13 +1125,10 @@ def page_insights() -> None:
                     "trend_share_chart",
                     280,
                 )
-            venues = " · ".join(
-                f"{event} ({count:,})" for event, count in trend["top_venues"]
-            )
+            venues = " · ".join(f"{event} ({count:,})" for event, count in trend["top_venues"])
             st.markdown(f"**Main venues:** {venues}")
             partial_trend_years = sorted(
-                set(collector.config.partial_years)
-                & {row["year"] for row in trend["by_year"]}
+                set(collector.config.partial_years) & {row["year"] for row in trend["by_year"]}
             )
             if partial_trend_years:
                 partial_year_labels = ", ".join(str(year) for year in partial_trend_years)
@@ -1090,9 +1137,7 @@ def page_insights() -> None:
                     "completed annual trends."
                 )
             selected_topic_year = (
-                selected_trend_year
-                if selected_trend_year is not None
-                else selected_share_year
+                selected_trend_year if selected_trend_year is not None else selected_share_year
             )
             if selected_topic_year is not None:
                 _queue_search_from_chart(
@@ -1120,13 +1165,14 @@ def page_insights() -> None:
     )
     with col_topic:
         author_topic = st.text_input(
-            "Topic (title/abstract contains)", placeholder="e.g., LLM, fuzzing",
+            "Topic (title/abstract contains)",
+            placeholder="e.g., LLM, fuzzing",
             key="authors_topic",
         )
     with col_area:
         author_area = st.selectbox(
-            "Area", ["All areas", "security", "ai", "networks", "mobile",
-                     "systems", "cross-area"],
+            "Area",
+            ["All areas", "security", "ai", "networks", "mobile", "systems", "cross-area"],
             key="authors_area",
         )
     with col_tier:
@@ -1138,7 +1184,8 @@ def page_insights() -> None:
         )
     with col_position:
         author_position = st.selectbox(
-            "Authorship", ["Any author", "First author", "Last author"],
+            "Authorship",
+            ["Any author", "First author", "Last author"],
             key="authors_position",
             help="Rank all appearances, first-author appearances, or last-author appearances.",
         )
@@ -1158,35 +1205,35 @@ def page_insights() -> None:
         None if author_area == "All areas" else author_area,
         {"Any author": "any", "First author": "first", "Last author": "last"}[author_position],
         author_tier_scope,
-        {"Paper count": "paper_count", "Tier-weighted visibility": "tier_weighted"}[
-            author_metric
-        ],
+        {"Paper count": "paper_count", "Tier-weighted visibility": "tier_weighted"}[author_metric],
         int(author_limit),
     )
     if ranked_authors:
-        author_table = pd.DataFrame([
-            {
-                "#": position,
-                "Author": entry["author"],
-                "Tier-weighted score": entry["score"],
-                "Papers": entry["papers"],
-                "Top-4": entry["top4"],
-                "Other top-tier": entry["top_tier"],
-                "Top-4 regional": entry["top4_regional"],
-                "Awards": entry["awards"],
-                f"Recent ({entry['recent_since']}–{entry['recent_through']})": entry[
-                    "recent_papers"
-                ],
-                "Active": f"{entry['first_year']}–{entry['last_year']}",
-                "Main venues": ", ".join(entry["venues"]),
-                "Tier scope": author_tier_scope,
-                "Topic": author_topic or "",
-                "Area": "" if author_area == "All areas" else author_area,
-                "Authorship": author_position,
-                "Ranking metric": author_metric,
-            }
-            for position, entry in enumerate(ranked_authors, start=1)
-        ])
+        author_table = pd.DataFrame(
+            [
+                {
+                    "#": position,
+                    "Author": entry["author"],
+                    "Tier-weighted score": entry["score"],
+                    "Papers": entry["papers"],
+                    "Top-4": entry["top4"],
+                    "Other top-tier": entry["top_tier"],
+                    "Top-4 regional": entry["top4_regional"],
+                    "Awards": entry["awards"],
+                    f"Recent ({entry['recent_since']}–{entry['recent_through']})": entry[
+                        "recent_papers"
+                    ],
+                    "Active": f"{entry['first_year']}–{entry['last_year']}",
+                    "Main venues": ", ".join(entry["venues"]),
+                    "Tier scope": author_tier_scope,
+                    "Topic": author_topic or "",
+                    "Area": "" if author_area == "All areas" else author_area,
+                    "Authorship": author_position,
+                    "Ranking metric": author_metric,
+                }
+                for position, entry in enumerate(ranked_authors, start=1)
+            ]
+        )
         st.caption(
             f"Active scope: {author_tier_scope} · {author_position.lower()} · "
             f"{author_area} · {author_metric.lower()} · topic: {author_topic or 'any'}"
@@ -1224,6 +1271,162 @@ def page_insights() -> None:
                 mime="text/csv",
                 width="stretch",
             )
+
+        st.markdown("#### Follow the evidence forward")
+        st.caption(
+            "Trajectory and coauthorship use exact identities in this snapshot. The arXiv link "
+            "is an external name search, not a verified cross-source identity match."
+        )
+        from src.research_intelligence import (
+            ResearchWatchlist,
+            arxiv_author_search_url,
+            collaboration_network,
+            researcher_trajectory,
+            watchlist_matching_ids,
+        )
+
+        trajectory = researcher_trajectory(collector.db.db_path, selected_author)
+        trajectory_frame = pd.DataFrame(
+            [
+                {
+                    "Year": point.year,
+                    "Papers": point.papers,
+                    "First author": point.first_author_papers,
+                    "Last author": point.last_author_papers,
+                    "Venues": ", ".join(point.venues),
+                }
+                for point in trajectory
+            ]
+        )
+        trajectory_col, collaboration_col = st.columns(2)
+        with trajectory_col:
+            st.caption(f"Publication trajectory — {selected_author}")
+            if not trajectory_frame.empty:
+                trajectory_long = trajectory_frame.melt(
+                    id_vars=["Year", "Venues"],
+                    value_vars=["Papers", "First author", "Last author"],
+                    var_name="Measure",
+                    value_name="Count",
+                )
+                trajectory_chart = (
+                    alt.Chart(trajectory_long)
+                    .mark_line(point=True, strokeWidth=2.3)
+                    .encode(
+                        x=alt.X(
+                            "Year:O",
+                            sort="ascending",
+                            axis=alt.Axis(labelAngle=0),
+                            title="Year",
+                        ),
+                        y=alt.Y("Count:Q", title="Papers", scale=alt.Scale(zero=True)),
+                        color=alt.Color(
+                            "Measure:N",
+                            scale=alt.Scale(
+                                domain=["Papers", "First author", "Last author"],
+                                range=["#2f6f73", "#b36b2c", "#334e68"],
+                            ),
+                            title=None,
+                        ),
+                        tooltip=["Year:O", "Measure:N", "Count:Q", "Venues:N"],
+                    )
+                    .properties(height=280)
+                )
+                st.altair_chart(
+                    trajectory_chart,
+                    width="stretch",
+                    theme=None,
+                )
+                with st.expander("Trajectory evidence"):
+                    st.dataframe(trajectory_frame, width="stretch", hide_index=True)
+        with collaboration_col:
+            collaborations = collaboration_network(collector.db.db_path, selected_author)
+            collaboration_frame = pd.DataFrame(
+                [
+                    {
+                        "Collaborator": item.collaborator,
+                        "Joint papers": item.joint_papers,
+                        "Active": f"{item.first_year}–{item.last_year}",
+                        "Main venues": ", ".join(item.venues),
+                    }
+                    for item in collaborations
+                ]
+            )
+            st.caption("Direct collaboration evidence")
+            if collaboration_frame.empty:
+                st.info("No direct coauthors in the selected corpus.")
+            else:
+                st.dataframe(collaboration_frame.head(10), width="stretch", hide_index=True)
+
+        arxiv_col, watch_col = st.columns(2)
+        with arxiv_col:
+            st.link_button(
+                "Search this name on arXiv",
+                arxiv_author_search_url(selected_author),
+                width="stretch",
+            )
+        with watch_col:
+            watchlist = ResearchWatchlist(
+                profile_id=collector.config.profile_id or "unknown",
+                name=f"Research watch — {author_topic or selected_author}",
+                authors=[selected_author],
+                topics=[author_topic] if author_topic else [],
+                tier_scope=author_tier_scope,
+            )
+            watchlist.known_paper_ids = watchlist_matching_ids(collector.db.db_path, watchlist)
+            st.download_button(
+                "Download portable watchlist",
+                watchlist.model_dump_json(indent=2).encode("utf-8"),
+                file_name="topvenues-watchlist.json",
+                mime="application/json",
+                width="stretch",
+            )
+
+        st.markdown("#### Emerging activity")
+        st.caption(
+            "Ranks the increase in annual paper rate during the latest three corpus years versus "
+            "earlier years. This is a descriptive monitoring signal, not a forecast of impact."
+        )
+        emerging = _cached_emerging_researchers(
+            str(collector.db.db_path),
+            author_topic or None,
+            None if author_area == "All areas" else author_area,
+            author_tier_scope,
+            int(author_limit),
+        )
+        emerging_frame = pd.DataFrame(
+            [
+                {
+                    "Author": item["author"],
+                    f"Recent papers ({item['recent_since']}–{item['through_year']})": item[
+                        "recent_papers"
+                    ],
+                    "Earlier papers": item["prior_papers"],
+                    "Recent papers/year": item["recent_rate"],
+                    "Earlier papers/year": item["prior_rate"],
+                    "Rate change": item["rate_change"],
+                    "Observed": f"{item['first_year']}–{item['last_year']}",
+                }
+                for item in emerging
+            ]
+        )
+        st.dataframe(emerging_frame, width="stretch", hide_index=True)
+        if not emerging_frame.empty:
+            emerging_author = st.selectbox(
+                "Inspect emerging-activity evidence",
+                emerging_frame["Author"].tolist(),
+                key="emerging_author",
+            )
+            st.button(
+                "Open emerging-author records",
+                key="open_emerging_author_records",
+                on_click=_open_search_from_insight,
+                kwargs={
+                    "author": emerging_author,
+                    "topic": author_topic or None,
+                    "area": None if author_area == "All areas" else author_area,
+                    "tier_scope": author_tier_scope,
+                },
+            )
     else:
         st.info("No authors match the current topic/area scope.")
 
@@ -1237,12 +1440,14 @@ def page_insights() -> None:
                 "WHERE event=? AND abstract IS NOT NULL AND abstract!=''",
                 (venue,),
             ).fetchone()[0]
-            rows.append({
-                "Venue": venue,
-                "Total": total,
-                "With abstract": with_abs,
-                "Coverage": f"{with_abs / total * 100:.1f}%" if total else "—",
-            })
+            rows.append(
+                {
+                    "Venue": venue,
+                    "Total": total,
+                    "With abstract": with_abs,
+                    "Coverage": f"{with_abs / total * 100:.1f}%" if total else "—",
+                }
+            )
     coverage_df = pd.DataFrame(rows)
     coverage_df["Coverage (%)"] = coverage_df["Coverage"].str.rstrip("%").astype(float)
     selected_coverage_venue = _interactive_bar_chart(
@@ -1282,6 +1487,47 @@ def page_evidence() -> None:
         "Those results are evidence for the companion snapshot only. Reusing them as v3 accuracy "
         "would be invalid; a v3 audit needs a new sampled-label protocol."
     )
+    st.subheader("Run a v3 manual audit")
+    st.markdown(
+        "TopVenues generates a deterministic, venue-stratified sample. A human reviewer must "
+        "compare each extracted abstract with the linked source and label completeness, "
+        "contamination, and paper identity. Automated labels would not satisfy this protocol."
+    )
+    collector = _load_collector()
+    audit_size = st.number_input(
+        "Audit sample size", min_value=20, max_value=500, value=200, step=20
+    )
+    sample = _cached_audit_sample(str(collector.db.db_path), int(audit_size))
+    st.download_button(
+        "Download annotation sheet (CSV)",
+        sample.to_csv(index=False).encode("utf-8"),
+        file_name=f"{collector.config.profile_id}-manual-audit.csv",
+        mime="text/csv",
+        width="stretch",
+    )
+    uploaded_audit = st.file_uploader(
+        "Upload completed annotation sheet",
+        type=["csv"],
+        help="Accepted labels: yes/no, true/false, 1/0. Partially labelled rows are excluded.",
+    )
+    if uploaded_audit is not None:
+        from src.manual_audit import summarize_audit
+
+        audit_frame = pd.read_csv(uploaded_audit, keep_default_na=False)
+        summary = summarize_audit(audit_frame)
+        if summary.labelled == 0:
+            st.warning("The uploaded sheet contains no fully labelled rows.")
+        else:
+            st.metric(
+                "Usable abstract rate among labelled records",
+                f"{summary.usable_rate:.1%}",
+                help="A record is usable only when all three audit labels are positive.",
+            )
+            st.caption(
+                f"{summary.usable}/{summary.labelled} usable; 95% Wilson interval "
+                f"{summary.ci95_low:.1%}–{summary.ci95_high:.1%}. "
+                f"Completion: {summary.labelled}/{summary.sampled} sampled records."
+            )
     st.subheader("Identity policy")
     st.markdown(
         "v3 inherits exact-resource deduplication, enforces the declared 2019–2026 window, and "
@@ -1310,13 +1556,53 @@ def page_pipeline() -> None:
             "topvenues-tool/blob/main/docs/PROFILE_REFRESH.md). The current snapshot is never "
             "modified in place."
         )
+        lifecycle = pd.DataFrame(
+            [
+                {
+                    "Gate": "1. Declare",
+                    "Evidence": "New profile ID, venues, years, and source policy",
+                },
+                {"Gate": "2. Collect", "Evidence": "Timestamped source logs and field provenance"},
+                {
+                    "Gate": "3. Identify",
+                    "Evidence": "Exact-resource merges and manual adjudication queue",
+                },
+                {
+                    "Gate": "4. Enrich",
+                    "Evidence": "Abstract/BibTeX coverage and missing-data report",
+                },
+                {
+                    "Gate": "5. Compare",
+                    "Evidence": "Added, removed, retained, coverage, venue, and year deltas",
+                },
+                {
+                    "Gate": "6. Audit",
+                    "Evidence": "Automated tests plus a new snapshot-bound manual sample",
+                },
+                {
+                    "Gate": "7. Freeze",
+                    "Evidence": "Manifest, SHA-256, clean reviewer reproduction, and release tag",
+                },
+            ]
+        )
+        st.dataframe(lifecycle, width="stretch", hide_index=True)
+        st.code(
+            "python scripts/compare_profiles.py PREVIOUS SUCCESSOR --output profile-diff.json",
+            language="bash",
+        )
+        st.caption(
+            "Historical snapshot binaries are fetched explicitly before comparison; they are "
+            "not duplicated in every current release."
+        )
         return
 
     tab_dl, tab_cons, tab_extr = st.tabs(["Download", "Consolidate", "Extract abstracts"])
 
     with tab_dl:
-        st.write("Fetches DBLP JSON files for every configured venue and year. "
-                 "Skips files that already exist and validate cleanly.")
+        st.write(
+            "Fetches DBLP JSON files for every configured venue and year. "
+            "Skips files that already exist and validate cleanly."
+        )
         if st.button("Run download", type="primary", width="stretch", key="dl_btn"):
             with st.spinner("Downloading…"):
                 _run_async(Collector().run_download())
@@ -1324,8 +1610,10 @@ def page_pipeline() -> None:
                 st.cache_resource.clear()
 
     with tab_cons:
-        st.write("Merges downloaded JSON into the SQLite database. Existing abstracts "
-                 "are preserved (idempotent upsert with `COALESCE`).")
+        st.write(
+            "Merges downloaded JSON into the SQLite database. Existing abstracts "
+            "are preserved (idempotent upsert with `COALESCE`)."
+        )
         if st.button("Run consolidate", type="primary", width="stretch", key="cons_btn"):
             with st.spinner("Consolidating…"):
                 _run_async(Collector().run_consolidate())
@@ -1392,9 +1680,9 @@ def main() -> None:
     with st.sidebar:
         st.markdown(
             '<h2 style="color:#fff !important; border:none !important;'
-            'font-size:1.15rem !important; text-transform:none !important;'
+            "font-size:1.15rem !important; text-transform:none !important;"
             'letter-spacing:0 !important; margin-bottom:1rem !important">'
-            'TopVenues</h2>',
+            "TopVenues</h2>",
             unsafe_allow_html=True,
         )
         page = st.radio("Navigate", list(pages.keys()), label_visibility="collapsed", key="page")
@@ -1404,7 +1692,7 @@ def main() -> None:
 
     st.markdown(
         '<div class="footer">TopVenues — bibliographic explorer · '
-        'data sourced from DBLP, Semantic Scholar, OpenAlex, CrossRef</div>',
+        "data sourced from DBLP, Semantic Scholar, OpenAlex, CrossRef</div>",
         unsafe_allow_html=True,
     )
 
