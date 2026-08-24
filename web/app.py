@@ -6,6 +6,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -14,6 +15,7 @@ sys.path.insert(0, str(ARTIFACT_ROOT))
 
 from src.abstract_fetcher import AbstractFetcher
 from src.awards import build_corpus_award_map
+from src.chart_interactions import selected_chart_value
 from src.collector import Collector
 from src.database import require_corpus
 from src.models import PaperClass, SearchFilters
@@ -344,11 +346,46 @@ def _render_metrics(stats: dict, filtered_count: int | None = None) -> None:
     )
 
 
-def _open_search_from_insight(venue: str | None = None, year: int | None = None) -> None:
+def _open_search_from_insight(
+    venue: str | None = None,
+    year: int | None = None,
+    topic: str | None = None,
+    author: str | None = None,
+) -> None:
     """Transfer one insight dimension into the search workflow."""
     st.session_state["search_venue"] = venue or "All venues"
     st.session_state["search_year"] = year or "All years"
+    st.session_state["search_topic"] = topic or ""
+    st.session_state["search_author"] = author or ""
     st.session_state["page"] = "Search"
+
+
+def _queue_search_from_chart(**filters: str | int | None) -> None:
+    """Navigate after a chart event without mutating an instantiated widget."""
+    st.session_state["pending_search_navigation"] = filters
+    st.rerun()
+
+
+def _interactive_bar_chart(
+    data: pd.DataFrame, category: str, value: str, key: str, height: int
+) -> object | None:
+    """Render a restrained selectable chart and return its selected category."""
+    selection_name = f"{key}_selection"
+    selection = alt.selection_point(selection_name, fields=[category], on="click", clear="dblclick")
+    chart = (
+        alt.Chart(data)
+        .mark_bar(color="#2f6f73")
+        .encode(
+            x=alt.X(f"{value}:Q", title=value),
+            y=alt.Y(f"{category}:N", sort="-x", title=None),
+            tooltip=[alt.Tooltip(f"{category}:N"), alt.Tooltip(f"{value}:Q", format=",")],
+            opacity=alt.condition(selection, alt.value(1.0), alt.value(0.58)),
+        )
+        .add_params(selection)
+        .properties(height=height)
+    )
+    event = st.altair_chart(chart, key=key, on_select="rerun", selection_mode=selection_name, theme=None)
+    return selected_chart_value(event, selection_name, category)
 
 
 # ── Pages ──────────────────────────────────────────────────────────────────
@@ -430,8 +467,12 @@ def page_search() -> None:
             )
             title_query = st.text_input("Title contains", placeholder="e.g., authentication")
             abstract_query = st.text_input("Abstract contains", placeholder="e.g., LLM, SGX")
-            author_query = st.text_input("Author contains", placeholder="e.g., Sekar")
-            tech_query = st.text_input("Topic / tech", placeholder="e.g., blockchain, 5G")
+            author_query = st.text_input(
+                "Author contains", placeholder="e.g., Sekar", key="search_author"
+            )
+            tech_query = st.text_input(
+                "Topic / tech", placeholder="e.g., blockchain, 5G", key="search_topic"
+            )
 
         with st.expander("Venue & year", expanded=True):
             venue_choice = st.selectbox("Venue", _venue_options(collector), key="search_venue")
@@ -742,37 +783,21 @@ def page_insights() -> None:
         venue_df = pd.DataFrame(
             [{"Venue": k, "Papers": v} for k, v in
              sorted(stats["by_event"].items(), key=lambda x: x[1], reverse=True)]
-        ).set_index("Venue")
-        st.bar_chart(venue_df, height=380)
-        selected_venue = st.selectbox(
-            "Inspect records for venue", ["Choose a venue", *venue_df.index.tolist()],
-            key="insight_venue",
         )
-        if selected_venue != "Choose a venue":
-            st.button(
-                "Open venue records",
-                key="open_venue_records",
-                on_click=_open_search_from_insight,
-                args=(selected_venue, None),
-            )
+        selected_venue = _interactive_bar_chart(venue_df, "Venue", "Papers", "venue_chart", 460)
+        st.caption("Click a bar to open that venue's records. Double-click clears the selection.")
+        if selected_venue:
+            _queue_search_from_chart(venue=str(selected_venue))
 
     with col2:
         st.subheader("Papers by year")
         year_df = pd.DataFrame(
             [{"Year": k, "Papers": v} for k, v in sorted(stats["by_year"].items())]
-        ).set_index("Year")
-        st.bar_chart(year_df, height=380)
-        selected_year = st.selectbox(
-            "Inspect records for year", ["Choose a year", *year_df.index.tolist()],
-            key="insight_year",
         )
-        if selected_year != "Choose a year":
-            st.button(
-                "Open year records",
-                key="open_year_records",
-                on_click=_open_search_from_insight,
-                args=(None, selected_year),
-            )
+        selected_year = _interactive_bar_chart(year_df, "Year", "Papers", "year_chart", 460)
+        st.caption("Click a bar to open that year's records. Double-click clears the selection.")
+        if selected_year is not None:
+            _queue_search_from_chart(year=int(selected_year))
 
     st.divider()
     st.subheader("Papers by class")
@@ -816,7 +841,10 @@ def page_insights() -> None:
             col_abs, col_share = st.columns(2)
             with col_abs:
                 st.caption(f"Papers per year — {trend['total']:,} total")
-                st.bar_chart(trend_df["papers"], height=280)
+                selected_trend_year = _interactive_bar_chart(
+                    trend_df.reset_index().rename(columns={"year": "Year", "papers": "Papers"}),
+                    "Year", "Papers", "trend_chart", 280,
+                )
             with col_share:
                 st.caption("Share of the year's corpus (%)")
                 st.line_chart(trend_df["share_pct"], height=280)
@@ -824,6 +852,8 @@ def page_insights() -> None:
                 f"{event} ({count:,})" for event, count in trend["top_venues"]
             )
             st.markdown(f"**Main venues:** {venues}")
+            if selected_trend_year is not None:
+                _queue_search_from_chart(year=int(selected_trend_year), topic=trend_topic)
         else:
             st.info("No papers match this topic in the selected scope.")
 
@@ -888,6 +918,15 @@ def page_insights() -> None:
             width="stretch",
             hide_index=True,
         )
+        selected_author = st.selectbox(
+            "Inspect an author's corpus records", [entry["author"] for entry in ranked_authors]
+        )
+        st.button(
+            "Open author records",
+            key="open_author_records",
+            on_click=_open_search_from_insight,
+            kwargs={"author": selected_author},
+        )
     else:
         st.info("No authors match the current topic/area scope.")
 
@@ -911,10 +950,20 @@ def page_insights() -> None:
 
 
 def page_pipeline() -> None:
+    collector = _load_collector()
     _render_header(
         "Pipeline",
         "Run the data collection pipeline. Each step is incremental and safe to repeat.",
     )
+
+    if collector.config.immutable_snapshot:
+        st.warning(
+            "This is a released immutable profile. Interactive refresh controls are disabled so "
+            "a live API run cannot alter the corpus shown in this release. Create, validate, and "
+            "publish a separate successor profile for any refresh."
+        )
+        st.code("python scripts/build_deduplicated_profile.py", language="bash")
+        return
 
     tab_dl, tab_cons, tab_extr = st.tabs(["Download", "Consolidate", "Extract abstracts"])
 
@@ -983,6 +1032,9 @@ def page_pipeline() -> None:
 
 
 def main() -> None:
+    pending = st.session_state.pop("pending_search_navigation", None)
+    if pending:
+        _open_search_from_insight(**pending)
     pages = {
         "Overview": page_artifact,
         "Search": page_search,
