@@ -238,6 +238,8 @@ class Configuration(BaseModel):
     )
     year_start: int = 2019
     years: list[int] = Field(default_factory=list)
+    partial_years: list[int] = Field(default_factory=list)
+
     def effective_years(self) -> list[int]:
         """Return years to process."""
         if self.years:

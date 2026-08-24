@@ -16,6 +16,11 @@ Only after those checks pass should the new snapshot receive a new semantic
 release tag and replace the default researcher-facing profile. Never overwrite
 an existing release snapshot or reinterpret its published counts.
 
+The historical `scripts/build_deduplicated_profile.py` builder refuses to run
+when its target already exists. It is not a refresh command. A maintainer must
+first declare a new profile identifier, target directory, configuration, and
+manifest, then review the resulting snapshot as a new scientific object.
+
 The current exact-resource policy merges records only when a canonical DOI or
 stable landing page is identical. Similar titles, journal extensions, and
 records with different canonical resources remain distinct until they are

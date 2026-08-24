@@ -37,6 +37,11 @@ def _write_gzip_snapshot(source: Path, target: Path) -> None:
 
 def main() -> None:
     target_snapshot = ROOT / "data" / "profiles" / TARGET_PROFILE / "papers.db.gz"
+    if target_snapshot.exists():
+        raise FileExistsError(
+            f"refusing to overwrite immutable profile {TARGET_PROFILE!r}: {target_snapshot}. "
+            "Declare a new target profile and manifest for a successor release."
+        )
     target_snapshot.parent.mkdir(parents=True, exist_ok=True)
 
     with (

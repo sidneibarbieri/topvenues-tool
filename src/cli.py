@@ -25,6 +25,12 @@ from .collector import Collector
 from .config import load_configuration, set_configuration_path
 from .models import DownloadStatus, SearchFilters
 from .profiles import PROFILE_IDS, profile_config_path
+from .tiers import (
+    ALL_TIERS_SCOPE,
+    tier_for,
+    tier_scope_options,
+    tiers_in_scope,
+)
 
 console = Console()
 
@@ -60,6 +66,12 @@ def _build_filters(
     if tech:
         filters.technology = tech
     return filters
+
+
+def _paper_in_tier_scope(event: str | None, tier_scope: str) -> bool:
+    """Return whether an event belongs to the requested declared tier scope."""
+    allowed_tiers = tiers_in_scope(tier_scope)
+    return allowed_tiers is None or tier_for(event) in allowed_tiers
 
 
 def _materialized_json_years(json_dir: Path) -> dict[str, set[int]]:
@@ -437,6 +449,13 @@ def run_all(ctx: click.Context) -> None:
     "--rank", "-r", "rank_query", help="BM25-ranked full-text search over title/abstract/authors"
 )
 @click.option("--award", "-w", is_flag=True, help="Only papers with a recorded paper award")
+@click.option(
+    "--tier-scope",
+    type=click.Choice(tier_scope_options()),
+    default=ALL_TIERS_SCOPE,
+    show_default=True,
+    help="Restrict results to a declared venue-tier scope.",
+)
 @click.option("--limit", "-l", type=int, default=50, help="Limit results")
 @click.pass_context
 def search(
@@ -449,6 +468,7 @@ def search(
     tech: str | None,
     rank_query: str | None,
     award: bool,
+    tier_scope: str,
     limit: int,
 ) -> None:
     """Search papers with filters, or rank by relevance with --rank."""
@@ -465,21 +485,26 @@ def search(
                 rank_query,
                 event=event,
                 year=year,
-                limit=None if award else limit,
+                limit=None,
             )
+            rows = [row for row in rows if _paper_in_tier_scope(row["event"], tier_scope)]
             if award:
-                rows = [row for row in rows if row["paper_id"] in award_map][:limit]
+                rows = [row for row in rows if row["paper_id"] in award_map]
+            rows = rows[:limit]
             _print_ranked_results(rank_query, rows, award_map)
             return
         filters = _build_filters(title, abstract, author, event, year, tech)
-        results = collector.search(filters, limit=None if award else limit)
+        results = collector.search(filters, limit=None)
+    results = [paper for paper in results if _paper_in_tier_scope(paper.event, tier_scope)]
     if award:
-        results = [paper for paper in results if paper.paper_id in award_map][:limit]
+        results = [paper for paper in results if paper.paper_id in award_map]
+    results = results[:limit]
 
     table = Table(title=f"Search Results ({len(results)} papers)")
     table.add_column("Title", style="cyan", no_wrap=False)
     table.add_column("Authors", style="green")
     table.add_column("Conference", style="yellow")
+    table.add_column("Tier", style="magenta")
     table.add_column("Year", style="blue")
     table.add_column("Award", style="gold1")
 
@@ -489,6 +514,7 @@ def search(
             paper.title or "N/A",
             (paper.authors or "N/A")[:50],
             paper.event or "Unknown",
+            tier_for(paper.event),
             str(paper.year),
             "; ".join(labels) if labels else "—",
         )
@@ -502,6 +528,7 @@ def _print_ranked_results(query: str, rows: list[dict], award_map: dict[str, lis
     table.add_column("Title", style="cyan", no_wrap=False)
     table.add_column("Authors", style="green")
     table.add_column("Conference", style="yellow")
+    table.add_column("Tier", style="magenta")
     table.add_column("Year", style="blue")
     table.add_column("Award", style="gold1")
 
@@ -513,6 +540,7 @@ def _print_ranked_results(query: str, rows: list[dict], award_map: dict[str, lis
             row["title"] or "N/A",
             (row["authors"] or "N/A")[:50],
             row["event"] or "Unknown",
+            tier_for(row["event"]),
             str(row["year"]),
             "; ".join(labels) if labels else "—",
         )
@@ -542,6 +570,13 @@ def _print_ranked_results(query: str, rows: list[dict], award_map: dict[str, lis
 @click.option(
     "--limit", "-l", type=int, default=15, show_default=True, help="Number of authors to show"
 )
+@click.option(
+    "--tier-scope",
+    type=click.Choice(tier_scope_options()),
+    default=ALL_TIERS_SCOPE,
+    show_default=True,
+    help="Restrict the author ranking to a declared venue-tier scope.",
+)
 @click.pass_context
 def authors(
     ctx: click.Context,
@@ -549,6 +584,7 @@ def authors(
     area: str | None,
     position: str,
     limit: int,
+    tier_scope: str,
 ) -> None:
     """Rank author visibility in this corpus, weighted by venue tier.
 
@@ -567,6 +603,7 @@ def authors(
             limit=limit,
             awards_dir=awards_dir,
             position=position,
+            allowed_tiers=tiers_in_scope(tier_scope),
         )
 
     scope = (
@@ -577,6 +614,7 @@ def authors(
                     f"topic: {topic}" if topic else None,
                     f"area: {area}" if area else None,
                     f"position: {position}",
+                    f"tier scope: {tier_scope}",
                 ],
             )
         )
@@ -619,16 +657,37 @@ def authors(
     help="Restrict to a research area: security, ai, networks, mobile, systems, cross-area",
 )
 @click.option("--since", type=int, default=None, help="First year to include, e.g. 2019")
+@click.option(
+    "--tier-scope",
+    type=click.Choice(tier_scope_options()),
+    default=ALL_TIERS_SCOPE,
+    show_default=True,
+    help="Restrict the trend denominator and matches to a declared venue-tier scope.",
+)
 @click.pass_context
-def trends(ctx: click.Context, topic: str, area: str | None, since: int | None) -> None:
+def trends(
+    ctx: click.Context,
+    topic: str,
+    area: str | None,
+    since: int | None,
+    tier_scope: str,
+) -> None:
     """Trace a topic's yearly volume, corpus share, and main venues."""
     base_dir = ctx.obj["base_dir"]
     collector = Collector(base_dir=base_dir)
 
     with console.status("[bold green]Computing topic trend..."):
-        trend = topic_trend(collector.db.db_path, topic, area=area, year_start=since)
+        trend = topic_trend(
+            collector.db.db_path,
+            topic,
+            area=area,
+            year_start=since,
+            allowed_tiers=tiers_in_scope(tier_scope),
+        )
 
-    scope = f"topic: {topic}" + (f" · area: {area}" if area else "")
+    scope = f"topic: {topic} · tier scope: {tier_scope}"
+    if area:
+        scope += f" · area: {area}"
     table = Table(title=f"Topic trend — {scope} ({trend['total']:,} papers)")
     table.add_column("Year", style="blue")
     table.add_column("Papers", justify="right")
@@ -641,6 +700,15 @@ def trends(ctx: click.Context, topic: str, area: str | None, since: int | None) 
         table.add_row(str(row["year"]), f"{row['papers']:,}", f"{row['share_pct']:.2f}%", bar)
 
     console.print(table)
+    partial_years = sorted(
+        set(collector.config.partial_years) & {row["year"] for row in trend["by_year"]}
+    )
+    if partial_years:
+        labels = ", ".join(str(year) for year in partial_years)
+        console.print(
+            f"[yellow]Partial publication year(s): {labels}. "
+            "Do not interpret them as completed annual trends.[/yellow]"
+        )
     if trend["top_venues"]:
         venues = ", ".join(f"{event} ({count:,})" for event, count in trend["top_venues"])
         console.print(f"[bold]Main venues:[/bold] {venues}")
@@ -670,6 +738,13 @@ def build_fts(ctx: click.Context) -> None:
 @click.option("--event", "-e", help="Filter by configured event name")
 @click.option("--year", "-y", type=int, help="Filter by year")
 @click.option("--tech", "-T", help="Search technology/topic")
+@click.option(
+    "--tier-scope",
+    type=click.Choice(tier_scope_options()),
+    default=ALL_TIERS_SCOPE,
+    show_default=True,
+    help="Restrict exported rows to a declared venue-tier scope.",
+)
 @click.option("--limit", "-l", type=int, default=None, help="Limit exported rows")
 @click.pass_context
 def export_results(
@@ -682,13 +757,17 @@ def export_results(
     event: str | None,
     year: int | None,
     tech: str | None,
+    tier_scope: str,
     limit: int | None,
 ) -> None:
     """Export filtered results as BibTeX, CSV, or JSON."""
     base_dir = ctx.obj["base_dir"]
     filters = _build_filters(title, abstract, author, event, year, tech)
     collector = Collector(base_dir=base_dir)
-    rows = collector.search(filters, limit=limit)
+    rows = collector.search(filters, limit=None)
+    rows = [paper for paper in rows if _paper_in_tier_scope(paper.event, tier_scope)]
+    if limit is not None:
+        rows = rows[:limit]
 
     if fmt == "bibtex":
         payload = "\n\n".join(paper.bibtex for paper in rows if paper.bibtex)

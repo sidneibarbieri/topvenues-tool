@@ -18,6 +18,13 @@ WORKSHOP = "workshop"
 JOURNAL = "journal"
 UNKNOWN = "unknown"
 
+ALL_TIERS_SCOPE = "All declared venues"
+SECURITY_TIER_1_SCOPE = "Security Big Four (Tier 1)"
+REGIONAL_TIER_1_SCOPE = "Tier 1 plus regional editions"
+OTHER_TOP_TIER_SCOPE = "Other top-tier venues"
+STRONG_SCOPE = "Strong venues"
+SURVEY_SCOPE = "Survey journals"
+
 TIER_BY_EVENT: dict[str, str] = {
     # The Big Four (security top tier).
     "ACM CCS": TOP4,
@@ -95,3 +102,31 @@ def tier_for(event: str | None) -> str:
     if not event:
         return UNKNOWN
     return _TIER_BY_LOWER.get(event.strip().lower(), UNKNOWN)
+
+
+def tier_scope_options() -> tuple[str, ...]:
+    """Return researcher-facing scopes in a stable, non-overlapping order."""
+    return (
+        ALL_TIERS_SCOPE,
+        SECURITY_TIER_1_SCOPE,
+        REGIONAL_TIER_1_SCOPE,
+        OTHER_TOP_TIER_SCOPE,
+        STRONG_SCOPE,
+        SURVEY_SCOPE,
+    )
+
+
+def tiers_in_scope(scope: str) -> frozenset[str] | None:
+    """Map a declared UI scope to tiers; ``None`` means no tier restriction."""
+    scopes = {
+        ALL_TIERS_SCOPE: None,
+        SECURITY_TIER_1_SCOPE: frozenset({TOP4}),
+        REGIONAL_TIER_1_SCOPE: frozenset({TOP4, TOP4_REGIONAL}),
+        OTHER_TOP_TIER_SCOPE: frozenset({TOP_TIER}),
+        STRONG_SCOPE: frozenset({STRONG}),
+        SURVEY_SCOPE: frozenset({JOURNAL}),
+    }
+    try:
+        return scopes[scope]
+    except KeyError as error:
+        raise ValueError(f"unknown tier scope {scope!r}") from error

@@ -54,7 +54,7 @@ if [[ -n "${PYTHON:-}" ]]; then
   python_bin="$PYTHON"
 else
   python_bin=""
-  for candidate in python3.12 python3.11 python3; do
+  for candidate in python3.14 python3.13 python3.12 python3.11 python3; do
     if command -v "$candidate" >/dev/null 2>&1; then
       python_bin="$candidate"
       break
@@ -90,10 +90,11 @@ ok "active environment: $(python --version)"
 
 if [[ "$skip_install" == false ]]; then
   if command -v uv >/dev/null 2>&1; then
-    uv pip install --quiet -r requirements.txt
+    uv pip install --quiet -r requirements.txt -r requirements-web.txt
   else
     PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1 \
-      pip install --quiet --prefer-binary --timeout 60 -r requirements.txt
+      pip install --quiet --prefer-binary --timeout 60 \
+        -r requirements.txt -r requirements-web.txt
   fi
   ok "dependencies installed"
 else
@@ -133,6 +134,10 @@ echo "$test_output" | grep -qE "failed|error" && fail "test suite did not pass c
 test_count=$(echo "$test_output" | awk '/passed/ {print $1}' | head -1)
 [[ -n "$test_count" ]] || fail "no tests ran"
 ok "all $test_count tests pass"
+
+step "Starting the research interface"
+python scripts/smoke_web_app.py || fail "web interface did not become healthy"
+ok "Streamlit interface reached its health endpoint"
 
 step "Benchmarking search on a verified disposable copy"
 python scripts/benchmark_search.py --profile "$profile" --trials 11 || \

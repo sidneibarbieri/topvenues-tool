@@ -13,7 +13,8 @@ The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submis
 
 | Property | Value |
 | --- | --- |
-| Release | `v1.1.0` |
+| Tool release | `v1.2.0` |
+| Snapshot source release | `v1.1.0` |
 | Scope | 20 declared security and security-relevant venues |
 | Records | 14,863 distinct canonical resources |
 | Abstract-enriched records | 13,991 (94.1%) |
@@ -26,29 +27,30 @@ The successor merges only exact canonical resource locators (DOI or stable landi
 
 ### Linux and macOS
 
-Requires Python 3.11 or 3.12, Git, and Bash.
+Requires Python 3.11 or newer, Git, and Bash.
 
 ```bash
-git clone --branch v1.1.0 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch v1.2.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 bash reproduce.sh --profile security-20-v2
 ```
 
-The command installs declared dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs the regression suite, builds FTS5, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
+The command installs the CLI and web dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs the regression suite, starts and health-checks the Streamlit interface, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
 
 ### Native Windows
 
-Requires Python 3.11 or 3.12 with the Python Launcher (`py`), Git, and
+Requires Python 3.11 or newer with the Python Launcher (`py`), Git, and
 PowerShell. Use the native PowerShell workflow rather than editing the Unix
 script or mixing Git Bash and PowerShell environments:
 
 ```powershell
-git clone --branch v1.1.0 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch v1.2.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 powershell -ExecutionPolicy Bypass -File .\reproduce.ps1 -Profile security-20-v2
 ```
 
-The script creates `.venv` and installs `requirements.txt` itself. If a prior
+The script creates `.venv` and installs both `requirements.txt` and
+`requirements-web.txt` itself. If a prior
 attempt created `.venv` with Python 3.10 or older, remove only that directory
 before rerunning: `Remove-Item -Recurse -Force .venv`.
 
@@ -68,7 +70,7 @@ python -m streamlit run web/app.py
 On Windows PowerShell, activate with `.\.venv\Scripts\Activate.ps1` before
 running the same `python -m streamlit run web/app.py` command.
 
-The interface exposes coverage inspection, substring and BM25-ranked search, author and trend exploration, and exports. Insights are traceable: selecting a venue, year, or topic-trend bar opens the corresponding records, while each author view can open that author's supporting papers. Author views measure corpus visibility under a declared venue-tier heuristic; they do not measure citations, quality, seniority, or authority. It runs against the local snapshot at `http://localhost:8501`.
+The interface exposes coverage inspection, substring and BM25-ranked search, author and trend exploration, and exports. Search and author analytics offer an explicit Security Big Four (Tier 1) scope: ACM CCS, IEEE S&P, USENIX Security, and NDSS. Insights are traceable: selecting a venue, year, or topic-trend bar opens the corresponding records, while each author view can open that author's supporting papers. Author views measure corpus visibility under a declared venue-tier heuristic; they do not measure citations, quality, seniority, or authority. See [docs/RESEARCH_WORKFLOWS.md](docs/RESEARCH_WORKFLOWS.md) before using a tier restriction in a review protocol. It runs against the local snapshot at `http://localhost:8501`.
 
 ## Inspect abstract evidence
 
@@ -85,11 +87,20 @@ python -m src.cli --profile security-20-v2 stats
 # Search records that mention a term
 python -m src.cli --profile security-20-v2 search --abstract "intrusion detection"
 
+# Restrict a review query to the Security Big Four
+python -m src.cli --profile security-20-v2 search --rank "LLM security" \
+  --tier-scope "Security Big Four (Tier 1)" --limit 20
+
+# Build a topic-specific author shortlist from Tier 1 evidence
+python -m src.cli --profile security-20-v2 authors --topic "fuzzing" \
+  --tier-scope "Security Big Four (Tier 1)"
+
 # Rank records by multi-token FTS5/BM25 relevance
 python -m src.cli --profile security-20-v2 search --rank "memory corruption mitigations" --limit 20
 
 # Export a review-ready subset
-python -m src.cli --profile security-20-v2 export --format bibtex --tech "fuzzing" -o fuzzing.bib
+python -m src.cli --profile security-20-v2 export --format bibtex --tech "fuzzing" \
+  --tier-scope "Security Big Four (Tier 1)" -o fuzzing-tier1.bib
 
 # Build the Hugging Face Parquet export from the immutable profile
 python -m src.cli --profile security-20-v2 export-hf --release-tag v1.1.0

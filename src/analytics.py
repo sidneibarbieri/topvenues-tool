@@ -84,6 +84,7 @@ def reference_authors(
     limit: int = 20,
     awards_dir: Path | None = None,
     position: str = "any",
+    allowed_tiers: frozenset[str] | None = None,
 ) -> list[dict]:
     """Tier-weighted ranking of the reference authors for a topic or area.
 
@@ -120,6 +121,8 @@ def reference_authors(
             if area is not None and area_for(event) != area:
                 continue
             tier = tier_for(event)
+            if allowed_tiers is not None and tier not in allowed_tiers:
+                continue
             weight = weight_for(tier)
             for author in _authors_at_position(authors, position):
                 entry = stats.setdefault(author, {
@@ -167,6 +170,7 @@ def topic_trend(
     topic: str,
     area: str | None = None,
     year_start: int | None = None,
+    allowed_tiers: frozenset[str] | None = None,
 ) -> dict:
     """Yearly volume and corpus share for a topic, plus its main venues.
 
@@ -192,6 +196,8 @@ def topic_trend(
         )
         for event, year, matched in rows:
             if area is not None and area_for(event) != area:
+                continue
+            if allowed_tiers is not None and tier_for(event) not in allowed_tiers:
                 continue
             year = int(year)
             if year_start is not None and year < year_start:

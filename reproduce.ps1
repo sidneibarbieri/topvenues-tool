@@ -28,7 +28,7 @@ if ($PythonCommand) {
     $python = Get-Command py -ErrorAction SilentlyContinue
 }
 if ($null -ne $python -and -not $PythonCommand) {
-    foreach ($minor in @("3.12", "3.11")) {
+    foreach ($minor in @("3.14", "3.13", "3.12", "3.11")) {
         & $python.Source "-$minor" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
         if ($LASTEXITCODE -eq 0) {
             $pythonArgs = @("-$minor")
@@ -45,7 +45,7 @@ if ($null -eq $python -and -not $PythonCommand) {
     }
 }
 if ($null -eq $python) {
-    throw "Python 3.11+ is required. Install Python 3.11 or 3.12 from python.org, then rerun."
+    throw "Python 3.11+ is required. Install a supported Python from python.org, then rerun."
 }
 
 if (-not (Test-Path ".venv")) {
@@ -62,7 +62,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "The existing .venv uses Python older than 3.11. Remove only .venv and rerun; do not remove corpus data."
 }
 if (-not $SkipInstall) {
-    & $venvPython -m pip install --disable-pip-version-check --prefer-binary -r requirements.txt
+    & $venvPython -m pip install --disable-pip-version-check --prefer-binary -r requirements.txt -r requirements-web.txt
     if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed." }
 }
 & $venvPython scripts\verify_profile_snapshot.py --profile $Profile
@@ -74,6 +74,8 @@ if ($LASTEXITCODE -ne 0) { throw "Database refresh failed." }
 if ($LASTEXITCODE -ne 0) { throw "Statistics check failed." }
 & $venvPython -m pytest -q
 if ($LASTEXITCODE -ne 0) { throw "Test suite failed." }
+& $venvPython scripts\smoke_web_app.py
+if ($LASTEXITCODE -ne 0) { throw "Web interface smoke test failed." }
 & $venvPython scripts\benchmark_search.py --profile $Profile --trials 11
 if ($LASTEXITCODE -ne 0) { throw "Search exercise failed." }
 $sample = Join-Path ([System.IO.Path]::GetTempPath()) ("topvenues_repro_" + [guid]::NewGuid().ToString() + ".bib")

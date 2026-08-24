@@ -50,6 +50,15 @@ def _seed(base_dir):
             abstract="This paper studies cryptographic protocols.",
             bibtex="@inproceedings{crypto2024, title={Cryptographic Protocols}, year={2024}}",
         ),
+        Paper(
+            paper_id="3",
+            title="Intrusion Detection in Enterprise Networks",
+            authors="Carol",
+            year=2025,
+            event="IEEE CNS",
+            abstract="This paper studies intrusion detection in a strong venue.",
+            bibtex="@inproceedings{cns2025, title={Intrusion Detection}, year={2025}}",
+        ),
     ]
     db.upsert_papers(papers)
     for paper in papers:
@@ -91,6 +100,28 @@ def test_export_json_filtered_to_file(tmp_path):
     text = output.read_text(encoding="utf-8")
     assert "Cryptographic Protocols" in text
     assert "Intrusion Detection" not in text
+
+
+def test_export_can_restrict_to_security_big_four(tmp_path):
+    _seed(tmp_path)
+    result = CliRunner().invoke(
+        cli,
+        [
+            "--base-dir",
+            str(tmp_path),
+            "export",
+            "--format",
+            "json",
+            "--tech",
+            "intrusion",
+            "--tier-scope",
+            "Security Big Four (Tier 1)",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Intrusion Detection with Logs" in result.output
+    assert "Enterprise Networks" not in result.output
 
 
 def test_backfill_abstracts_cli_invokes_collector(tmp_path, monkeypatch):

@@ -83,6 +83,21 @@ def test_reference_authors_supports_first_and_last_author_views(tmp_path: Path) 
     assert reference_authors(manager.db_path, position="last")[0]["author"] == "Bob"
 
 
+def test_reference_authors_can_restrict_to_security_big_four(tmp_path: Path) -> None:
+    from src.analytics import reference_authors
+    from src.database import DatabaseManager
+    from src.tiers import TOP4
+
+    manager = DatabaseManager(tmp_path / "papers.db")
+    manager.upsert_papers([
+        Paper(paper_id="1", title="Top", year=2024, event="ACM CCS", authors="Alice"),
+        Paper(paper_id="2", title="Strong", year=2024, event="IEEE CNS", authors="Bob"),
+    ])
+
+    authors = reference_authors(manager.db_path, allowed_tiers=frozenset({TOP4}))
+    assert [entry["author"] for entry in authors] == ["Alice"]
+
+
 class TestTopicTrend:
     @pytest.fixture
     def trend_db(self, tmp_path):
@@ -125,6 +140,18 @@ class TestTopicTrend:
         assert trend["by_year"] == [
             {"year": 2024, "papers": 2, "share_pct": 100.0},
             {"year": 2025, "papers": 1, "share_pct": 100.0},
+        ]
+
+    def test_tier_filter_scopes_both_numerator_and_denominator(self, trend_db):
+        from src.analytics import topic_trend
+        from src.tiers import TOP_TIER
+
+        trend = topic_trend(trend_db, "LLM", allowed_tiers=frozenset({TOP_TIER}))
+
+        assert trend["total"] == 0
+        assert trend["by_year"] == [
+            {"year": 2024, "papers": 0, "share_pct": 0.0},
+            {"year": 2025, "papers": 0, "share_pct": 0.0},
         ]
 
     def test_year_start_cuts_earlier_years(self, trend_db):

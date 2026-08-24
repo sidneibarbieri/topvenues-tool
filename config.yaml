@@ -23,6 +23,8 @@ events:
 - ieee_comst
 - fnt_privsec
 year_start: 2019
+partial_years:
+- 2026
 request_timeout: 180
 default_interval:
 - 5.0
