@@ -78,12 +78,12 @@ def bar_chart(
     if horizontal:
         base = alt.Chart(data).encode(
             y=alt.Y(f"{category}:N", sort=sort, title=category_title, axis=category_axis),
-            x=alt.X(f"{value}:Q", title=value_title),
+            x=alt.X(f"{value}:Q", title=value_title, axis=alt.Axis(tickCount=4)),
         )
     else:
         base = alt.Chart(data).encode(
             x=alt.X(f"{category}:O", sort=sort, title=category_title, axis=category_axis),
-            y=alt.Y(f"{value}:Q", title=value_title),
+            y=alt.Y(f"{value}:Q", title=value_title, axis=alt.Axis(tickCount=4)),
         )
 
     bars = base.mark_bar(color=color, cornerRadiusEnd=2).encode(

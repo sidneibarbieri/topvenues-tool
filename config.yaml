@@ -1,6 +1,6 @@
-profile_id: security-20-v3
+profile_id: security-20-v4
 immutable_snapshot: true
-snapshot_path: data/profiles/security-20-v3/papers.db.gz
+snapshot_path: data/profiles/security-20-v4/papers.db.gz
 events:
 - ccs
 - asiaccs
@@ -23,42 +23,10 @@ events:
 - ieee_comst
 - fnt_privsec
 year_start: 2019
-partial_years:
-- 2026
-request_timeout: 180
-default_interval:
-- 5.0
-- 15.0
-acm_wait_min: 60.0
-acm_wait_max: 300.0
-batch_size: 10
-acm_failure_threshold: 3
-acm_backoff_initial: 60.0
-acm_backoff_max: 600.0
-max_retries: 10
-retry_backoff_factor: 2.0
-cache_enabled: true
-cache_ttl_hours: 168
-checkpoint_enabled: true
-checkpoint_interval: 5
-base_dir: .
-data_dir: data/workspaces/security-20-v3/dataset
-log_dir: data/workspaces/security-20-v3/log
-json_dir: data/workspaces/security-20-v3/json
-cache_dir: data/workspaces/security-20-v3/cache
-checkpoint_dir: data/workspaces/security-20-v3/checkpoints
-user_agents:
-- Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)
-  Chrome/129.0.0.0 Safari/537.36
-- Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6_1) AppleWebKit/537.36 (KHTML, like Gecko)
-  Chrome/129.0.0.0 Safari/537.36
-- Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0
-- Mozilla/5.0 (Macintosh; Intel Mac OS X 14.6) AppleWebKit/605.1.15 (KHTML, like Gecko)
-  Version/18.0 Safari/605.1.15
-- Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)
-  Edge/129.0.2792.79 Safari/537.36
-headers:
-  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
-  Accept-Language: en-US,en;q=0.5
-  Connection: keep-alive
-  Cache-Control: no-cache
+years: [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+partial_years: [2026]
+data_dir: data/workspaces/security-20-v4/dataset
+log_dir: data/workspaces/security-20-v4/log
+json_dir: data/workspaces/security-20-v4/json
+cache_dir: data/workspaces/security-20-v4/cache
+checkpoint_dir: data/workspaces/security-20-v4/checkpoints
