@@ -18,6 +18,9 @@ from src.awards import AwardMatch, load_award_records, match_awards_to_corpus
 from src.tiers import TOP4, TOP4_REGIONAL, TOP_TIER, tier_for, weight_for
 
 _AUTHOR_SPLIT = re.compile(r"\s*,\s*|\s+and\s+")
+AUTHOR_POSITIONS = ("any", "first", "last")
+
+
 def _split_authors(raw: str | None) -> list[str]:
     if not raw:
         return []
@@ -28,6 +31,18 @@ def _split_authors(raw: str | None) -> list[str]:
         for name in _AUTHOR_SPLIT.split(raw)
         if name.strip()
     ]
+
+
+def _authors_at_position(raw: str | None, position: str) -> list[str]:
+    """Return identities for one declared authorship-position view."""
+    if position not in AUTHOR_POSITIONS:
+        raise ValueError(f"unknown author position {position!r}")
+    authors = _split_authors(raw)
+    if position == "any":
+        return authors
+    if not authors:
+        return []
+    return [authors[0] if position == "first" else authors[-1]]
 
 
 def area_year_counts(db_path: Path) -> dict[str, dict[int, int]]:
@@ -68,6 +83,7 @@ def reference_authors(
     area: str | None = None,
     limit: int = 20,
     awards_dir: Path | None = None,
+    position: str = "any",
 ) -> list[dict]:
     """Tier-weighted ranking of the reference authors for a topic or area.
 
@@ -83,6 +99,8 @@ def reference_authors(
     metric. Each entry exposes the evidence used by the heuristic so users do
     not have to interpret an opaque score.
     """
+    if position not in AUTHOR_POSITIONS:
+        raise ValueError(f"unknown author position {position!r}")
     sql = "select paper_id, authors, event, year from papers where authors is not null"
     params: list = []
     if topic:
@@ -103,7 +121,7 @@ def reference_authors(
                 continue
             tier = tier_for(event)
             weight = weight_for(tier)
-            for author in _split_authors(authors):
+            for author in _authors_at_position(authors, position):
                 entry = stats.setdefault(author, {
                     "author": author,
                     "score": 0.0,

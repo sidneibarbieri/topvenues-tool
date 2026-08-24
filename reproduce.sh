@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Reproduce the immutable security-20 tool-release profile.
+# Reproduce one immutable TopVenues profile.
 
 set -euo pipefail
 
 cd "$(dirname "$0")"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$PWD/.cache/uv}"
 
-profile="${TOPVENUES_PROFILE:-security-20}"
+profile="${TOPVENUES_PROFILE:-security-20-v2}"
 skip_install=false
 
 usage() {
-  printf 'Usage: %s [--profile security-20] [--skip-install]\n' "$0"
+  printf 'Usage: %s [--profile security-20|security-20-v2] [--skip-install]\n' "$0"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -37,7 +37,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$profile" in
-  security-20) ;;
+  security-20|security-20-v2) ;;
   *)
     printf 'Unknown profile: %s\n' "$profile" >&2
     exit 2

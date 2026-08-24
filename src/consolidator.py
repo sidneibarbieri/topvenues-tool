@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from .deduplication import deduplicate_papers
 from .event_normalizer import EventNormalizer
 from .models import Paper
 
@@ -53,13 +54,7 @@ class DataConsolidator:
 
     @staticmethod
     def _deduplicate(papers: list[Paper]) -> list[Paper]:
-        seen: set[str] = set()
-        unique: list[Paper] = []
-        for paper in papers:
-            if paper.paper_id in seen:
-                continue
-            seen.add(paper.paper_id)
-            unique.append(paper)
+        unique, _ = deduplicate_papers(papers)
         return unique
 
     _PAPER_TYPE_MAP: dict[str, str] = {
@@ -151,4 +146,3 @@ class DataConsolidator:
         df.to_pickle(master_file)
         df.to_csv(csv_file, index=False, encoding="utf-8")
         return master_file, csv_file
-

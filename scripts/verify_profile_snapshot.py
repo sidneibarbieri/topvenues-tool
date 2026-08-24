@@ -26,6 +26,12 @@ SOURCE_METADATA = {
         "origin": "security-oriented Salão de Ferramentas release",
         "source_release_tag": "sbseg2026-sf-submission-r1",
     },
+    "security-20-v2": {
+        "release_status": "post-publication-successor",
+        "paper_denominator": False,
+        "origin": "deduplicated successor of the security-oriented Salão de Ferramentas release",
+        "source_release_tag": "v1.1.0",
+    },
 }
 
 
@@ -88,6 +94,28 @@ def build_manifest(profile_id: str) -> dict[str, object]:
                 ORDER BY event
                 """
             ).fetchall()
+            duplicate_resource_groups = connection.execute(
+                """
+                SELECT COUNT(*) FROM (
+                    SELECT LOWER(TRIM(ee))
+                    FROM papers
+                    WHERE ee IS NOT NULL AND TRIM(ee) <> ''
+                    GROUP BY LOWER(TRIM(ee))
+                    HAVING COUNT(*) > 1
+                )
+                """
+            ).fetchone()[0]
+            unresolved_bibliographic_conflicts = connection.execute(
+                """
+                SELECT COUNT(*) FROM (
+                    SELECT LOWER(TRIM(title)), LOWER(TRIM(COALESCE(authors, ''))),
+                           year, LOWER(TRIM(COALESCE(pages, '')))
+                    FROM papers
+                    GROUP BY 1, 2, 3, 4
+                    HAVING COUNT(*) > 1
+                )
+                """
+            ).fetchone()[0]
         sqlite_bytes = database.stat().st_size
 
     return {
@@ -123,6 +151,15 @@ def build_manifest(profile_id: str) -> dict[str, object]:
                 }
                 for row in event_rows
             ],
+        },
+        "identity_policy": {
+            "merged_on": "exact canonical DOI or stable landing page",
+            "remaining_duplicate_resource_groups": duplicate_resource_groups,
+            "unresolved_same_metadata_groups": unresolved_bibliographic_conflicts,
+            "note": (
+                "Records with different canonical resources remain distinct even when "
+                "title, authors, year, and pages coincide."
+            ),
         },
     }
 

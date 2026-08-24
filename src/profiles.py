@@ -27,7 +27,7 @@ from .sqlite_connection import managed_sqlite_connection
 
 DEFAULT_PROFILE_ID = "security-20"
 PROFILE_ENV_VAR = "TOPVENUES_PROFILE"
-PROFILE_IDS = (DEFAULT_PROFILE_ID,)
+PROFILE_IDS = (DEFAULT_PROFILE_ID, "security-20-v2")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 

@@ -1,6 +1,6 @@
-# TopVenues Research Artifact
+# TopVenues SBSeg-SF Research Artifact (Frozen)
 
-TopVenues materializes a declared cybersecurity-literature scope as a local, versioned SQLite corpus. This release packages the `security-20` profile.
+TopVenues materializes a declared cybersecurity-literature scope as a local, versioned SQLite corpus. This document packages the frozen `security-20` profile used by the accepted SBSeg-SF paper. The evolving tool uses `security-20-v2` with a separate manifest.
 
 ## Artifact identity
 

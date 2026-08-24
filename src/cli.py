@@ -533,10 +533,23 @@ def _print_ranked_results(query: str, rows: list[dict], award_map: dict[str, lis
     help="Restrict to a research area: security, ai, networks, mobile, systems, cross-area",
 )
 @click.option(
+    "--position",
+    type=click.Choice(["any", "first", "last"]),
+    default="any",
+    show_default=True,
+    help="Count appearances in any, first, or last authorship position.",
+)
+@click.option(
     "--limit", "-l", type=int, default=15, show_default=True, help="Number of authors to show"
 )
 @click.pass_context
-def authors(ctx: click.Context, topic: str | None, area: str | None, limit: int) -> None:
+def authors(
+    ctx: click.Context,
+    topic: str | None,
+    area: str | None,
+    position: str,
+    limit: int,
+) -> None:
     """Rank author visibility in this corpus, weighted by venue tier.
 
     A Big Four paper (CCS, S&P, USENIX Security, NDSS) weighs 5.0; other
@@ -553,6 +566,7 @@ def authors(ctx: click.Context, topic: str | None, area: str | None, limit: int)
             area=area,
             limit=limit,
             awards_dir=awards_dir,
+            position=position,
         )
 
     scope = (
@@ -562,6 +576,7 @@ def authors(ctx: click.Context, topic: str | None, area: str | None, limit: int)
                 [
                     f"topic: {topic}" if topic else None,
                     f"area: {area}" if area else None,
+                    f"position: {position}",
                 ],
             )
         )
