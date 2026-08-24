@@ -13,6 +13,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from urllib.parse import urlsplit, urlunsplit
 
+from src.abstract_quality import select_best_abstract
 from src.models import Paper
 
 
@@ -80,7 +81,7 @@ def _merge_group(candidates: list[Paper]) -> Paper:
     primary = max(candidates, key=_candidate_key)
     return primary.model_copy(
         update={
-            "abstract": _best_text(candidates, "abstract"),
+            "abstract": select_best_abstract(paper.abstract for paper in candidates),
             "bibtex": _best_text(candidates, "bibtex"),
         }
     )

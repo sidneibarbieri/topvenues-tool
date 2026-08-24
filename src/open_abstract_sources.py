@@ -13,7 +13,7 @@ import re
 
 import httpx
 
-from .abstract_quality import looks_like_abstract
+from .abstract_quality import looks_like_abstract, normalize_abstract_text
 
 
 def source_for(ee: str | None):
@@ -51,7 +51,7 @@ async def fetch_openreview(client: httpx.AsyncClient, ee: str) -> str | None:
             if isinstance(abstract, dict):
                 abstract = abstract.get("value")
             if abstract and looks_like_abstract(abstract):
-                return abstract.strip()
+                return normalize_abstract_text(abstract)
     return None
 
 
@@ -67,8 +67,7 @@ async def fetch_pmlr(client: httpx.AsyncClient, ee: str) -> str | None:
     )
     if not match:
         return None
-    abstract = re.sub(r"<.*?>", " ", match.group(1))
-    abstract = re.sub(r"\s+", " ", abstract).strip()
+    abstract = normalize_abstract_text(match.group(1))
     return abstract if looks_like_abstract(abstract) else None
 
 
@@ -84,8 +83,7 @@ async def fetch_neurips(client: httpx.AsyncClient, ee: str) -> str | None:
     )
     if not match:
         return None
-    abstract = re.sub(r"<.*?>", " ", match.group(1))
-    abstract = re.sub(r"\s+", " ", abstract).strip()
+    abstract = normalize_abstract_text(match.group(1))
     return abstract if looks_like_abstract(abstract) else None
 
 
@@ -124,7 +122,7 @@ async def fetch_openalex_by_title(
                 positions[index] = word
         abstract = " ".join(positions[index] for index in sorted(positions))
         if looks_like_abstract(abstract):
-            return abstract
+            return normalize_abstract_text(abstract)
     return None
 
 

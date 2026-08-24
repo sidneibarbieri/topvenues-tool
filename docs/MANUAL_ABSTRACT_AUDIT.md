@@ -21,6 +21,13 @@ and enter `yes` or `no` in all three fields:
   are absent;
 - `label_matches_paper`: the abstract belongs to the sampled title.
 
+The frozen `security-20-v3` snapshot normalized all whitespace before release,
+so it does not preserve publisher paragraph boundaries. Do not infer missing
+content from formatting alone. Mark `label_complete=no` only when comparison
+with the linked source shows omitted or truncated prose; otherwise note
+`paragraph boundaries flattened` when that distinction is relevant. Successor
+profiles preserve paragraph boundaries explicitly exposed by upstream sources.
+
 Record the reviewer identity or code and a short note for every negative label.
 Do not infer labels from string length or another automated heuristic: that would
 not be a manual validation.

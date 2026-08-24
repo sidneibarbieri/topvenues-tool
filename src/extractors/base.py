@@ -1,7 +1,6 @@
 """Base extractor with xidel runner and text cleaning."""
 
 import asyncio
-import html
 import random
 import re
 import subprocess
@@ -10,6 +9,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..collector import Collector
+
+from ..abstract_quality import normalize_abstract_text
 
 
 class AbstractExtractor(ABC):
@@ -39,12 +40,10 @@ class AbstractExtractor(ABC):
     def _clean_abstract(self, text: str | None) -> str | None:
         if not text:
             return None
-        text = html.unescape(text)
         text = self._strip_leading_author_blocks(text)
         text = re.sub(r"USENIX is committed to Open Access.*", "", text, flags=re.IGNORECASE)
         text = re.sub(r"^Abstract\s*[:\?\-]?\s*", "", text, flags=re.IGNORECASE)
-        text = re.sub(r"\s+", " ", text)
-        return text.strip() or None
+        return normalize_abstract_text(text)
 
     @classmethod
     def _strip_leading_author_blocks(cls, text: str) -> str:

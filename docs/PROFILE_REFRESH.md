@@ -36,3 +36,12 @@ The current exact-resource policy merges records only when a canonical DOI or
 stable landing page is identical. Similar titles, journal extensions, and
 records with different canonical resources remain distinct until they are
 manually adjudicated.
+
+When an exact-resource group or multiple abstract providers expose different
+abstract texts, selection is deterministic but not based on character count
+alone. Candidates are normalized while preserving source-exposed paragraph
+boundaries, rejected metadata is ranked below valid prose, a candidate with a
+terminal sentence is ranked above a likely truncation, and word count is used
+only after those quality checks. The final lexical tie-break makes a replay
+stable. A successor must rerun the manual audit because this rule can change
+abstract bytes without changing the bibliographic denominator.
