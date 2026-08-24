@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from src.analytics import _split_authors, area_year_counts, top_authors
+from src.analytics import _authors_at_position, _split_authors, area_year_counts, top_authors
+from src.models import Paper
 
 
 def _corpus(db_path: Path) -> None:
@@ -47,6 +48,39 @@ def test_dblp_identity_suffix_is_preserved() -> None:
     assert _split_authors("Wei Wang 0001, Wei Wang 0002") == [
         "Wei Wang 0001", "Wei Wang 0002"
     ]
+
+
+def test_author_position_views_preserve_dblp_identity_suffixes() -> None:
+    authors = "Alice 0001, Bob 0002, Carol 0003"
+    assert _authors_at_position(authors, "any") == ["Alice 0001", "Bob 0002", "Carol 0003"]
+    assert _authors_at_position(authors, "first") == ["Alice 0001"]
+    assert _authors_at_position(authors, "last") == ["Carol 0003"]
+
+
+def test_reference_authors_supports_first_and_last_author_views(tmp_path: Path) -> None:
+    from src.analytics import reference_authors
+    from src.database import DatabaseManager
+
+    manager = DatabaseManager(tmp_path / "papers.db")
+    manager.upsert_papers([
+        Paper(
+            paper_id="conf/ccs/One24",
+            title="One",
+            year=2024,
+            event="ACM CCS",
+            authors="Alice, Bob",
+        ),
+        Paper(
+            paper_id="conf/ndss/Two25",
+            title="Two",
+            year=2025,
+            event="NDSS",
+            authors="Carol, Bob",
+        ),
+    ])
+
+    assert reference_authors(manager.db_path, position="first")[0]["author"] == "Alice"
+    assert reference_authors(manager.db_path, position="last")[0]["author"] == "Bob"
 
 
 class TestTopicTrend:

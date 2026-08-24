@@ -215,12 +215,12 @@ def _cached_topic_trend(db_path: str, topic: str, area: str | None) -> dict:
 
 @st.cache_data(show_spinner=False)
 def _cached_reference_authors(
-    db_path: str, topic: str | None, area: str | None, limit: int
+    db_path: str, topic: str | None, area: str | None, position: str, limit: int
 ) -> list[dict]:
     from src.analytics import reference_authors
 
     return reference_authors(
-        Path(db_path), topic=topic, area=area, limit=limit,
+        Path(db_path), topic=topic, area=area, position=position, limit=limit,
         awards_dir=Path(db_path).parent.parent / "awards",
     )
 
@@ -297,7 +297,7 @@ def _artifact_claims(stats: dict) -> tuple[tuple[str, str, str], ...]:
             f"{with_bibtex / total:.1%}" if total else "n/a",
             "records ready for citation export",
         ),
-        ("Verification", "238 tests", "offline checks for the released snapshot"),
+        ("Verification", "Offline", "integrity checks for the selected snapshot"),
     )
 
 
@@ -342,6 +342,13 @@ def _render_metrics(stats: dict, filtered_count: int | None = None) -> None:
         '</div>',
         unsafe_allow_html=True,
     )
+
+
+def _open_search_from_insight(venue: str | None = None, year: int | None = None) -> None:
+    """Transfer one insight dimension into the search workflow."""
+    st.session_state["search_venue"] = venue or "All venues"
+    st.session_state["search_year"] = year or "All years"
+    st.session_state["page"] = "Search"
 
 
 # ── Pages ──────────────────────────────────────────────────────────────────
@@ -427,9 +434,9 @@ def page_search() -> None:
             tech_query = st.text_input("Topic / tech", placeholder="e.g., blockchain, 5G")
 
         with st.expander("Venue & year", expanded=True):
-            venue_choice = st.selectbox("Venue", _venue_options(collector))
+            venue_choice = st.selectbox("Venue", _venue_options(collector), key="search_venue")
             year_choice = st.selectbox(
-                "Year", ["All years", *sorted(stats["by_year"], reverse=True)]
+                "Year", ["All years", *sorted(stats["by_year"], reverse=True)], key="search_year"
             )
 
         with st.expander("Paper class", expanded=False):
@@ -737,6 +744,17 @@ def page_insights() -> None:
              sorted(stats["by_event"].items(), key=lambda x: x[1], reverse=True)]
         ).set_index("Venue")
         st.bar_chart(venue_df, height=380)
+        selected_venue = st.selectbox(
+            "Inspect records for venue", ["Choose a venue", *venue_df.index.tolist()],
+            key="insight_venue",
+        )
+        if selected_venue != "Choose a venue":
+            st.button(
+                "Open venue records",
+                key="open_venue_records",
+                on_click=_open_search_from_insight,
+                args=(selected_venue, None),
+            )
 
     with col2:
         st.subheader("Papers by year")
@@ -744,6 +762,17 @@ def page_insights() -> None:
             [{"Year": k, "Papers": v} for k, v in sorted(stats["by_year"].items())]
         ).set_index("Year")
         st.bar_chart(year_df, height=380)
+        selected_year = st.selectbox(
+            "Inspect records for year", ["Choose a year", *year_df.index.tolist()],
+            key="insight_year",
+        )
+        if selected_year != "Choose a year":
+            st.button(
+                "Open year records",
+                key="open_year_records",
+                on_click=_open_search_from_insight,
+                args=(None, selected_year),
+            )
 
     st.divider()
     st.subheader("Papers by class")
@@ -807,7 +836,11 @@ def page_insights() -> None:
         "citation, quality, or authority ranking. DBLP identity suffixes are "
         "preserved to avoid merging homonyms."
     )
-    col_topic, col_area, col_n = st.columns([2, 1, 1])
+    st.caption(
+        "Choose all, first, or last authorship position to answer different "
+        "literature-review questions; none is a proxy for citation impact or seniority."
+    )
+    col_topic, col_area, col_position, col_n = st.columns([2, 1, 1, 1])
     with col_topic:
         author_topic = st.text_input(
             "Topic (title/abstract contains)", placeholder="e.g., LLM, fuzzing",
@@ -819,6 +852,12 @@ def page_insights() -> None:
                      "systems", "cross-area"],
             key="authors_area",
         )
+    with col_position:
+        author_position = st.selectbox(
+            "Authorship", ["Any author", "First author", "Last author"],
+            key="authors_position",
+            help="Rank all appearances, first-author appearances, or last-author appearances.",
+        )
     with col_n:
         author_limit = st.number_input("Authors", 5, 50, 15, key="authors_limit")
 
@@ -826,6 +865,7 @@ def page_insights() -> None:
         str(collector.db.db_path),
         author_topic or None,
         None if author_area == "All areas" else author_area,
+        {"Any author": "any", "First author": "first", "Last author": "last"}[author_position],
         int(author_limit),
     )
     if ranked_authors:
@@ -957,7 +997,7 @@ def main() -> None:
             'TopVenues</h2>',
             unsafe_allow_html=True,
         )
-        page = st.radio("Navigate", list(pages.keys()), label_visibility="collapsed")
+        page = st.radio("Navigate", list(pages.keys()), label_visibility="collapsed", key="page")
         st.markdown("<br>", unsafe_allow_html=True)
 
     pages[page]()

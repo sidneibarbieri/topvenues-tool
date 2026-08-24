@@ -1,6 +1,8 @@
 # TopVenues
 
-TopVenues is an open-source, local-first tool for constructing and inspecting a declared corpus for cybersecurity literature reviews. This public release is pinned to the immutable `security-20` profile.
+TopVenues is an open-source, local-first tool for constructing and inspecting a declared corpus for cybersecurity literature reviews. The current researcher-facing release is pinned to the immutable `security-20-v2` profile.
+
+The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submission-r1`](https://github.com/sidneibarbieri/topvenues-tool/releases/tag/sbseg2026-sf-submission-r1) release and its `security-20` snapshot. It is preserved unchanged; do not use current counts to verify claims in that paper.
 
 ## Authors
 
@@ -11,14 +13,14 @@ TopVenues is an open-source, local-first tool for constructing and inspecting a 
 
 | Property | Value |
 | --- | --- |
-| Release | [`v1.0.1`](https://github.com/sidneibarbieri/topvenues-tool/releases/tag/v1.0.1) |
+| Release | `v1.1.0` |
 | Scope | 20 declared security and security-relevant venues |
-| Records | 20,305 |
-| Abstract-enriched records | 17,491 (86.1%) |
-| BibTeX entries | 20,305 |
-| Snapshot SHA-256 | `5a35bd6e3ec6845a0fde4cc3d6aa05b1db04e511cb39e783eeaee2cea7493b08` |
+| Records | 14,863 distinct canonical resources |
+| Abstract-enriched records | 13,991 (94.1%) |
+| BibTeX entries | 14,863 |
+| Snapshot SHA-256 | `a25e5fce289f2ac5bbffef1ac6905279f9c11e2234c7da9e6c0a7c5a77d8ea15` |
 
-The release keeps records with missing abstracts for metadata and citation workflows. Abstract-dependent retrieval must treat those records as missing data rather than as negative evidence. The declared scope, per-venue coverage, and exact snapshot identity are in `profiles/security-20/config.yaml` and `data/profiles/security-20/manifest.json`.
+The successor merges only exact canonical resource locators (DOI or stable landing page); it does not collapse records merely because their titles are similar. Six same-metadata groups with different canonical resources remain explicitly unresolved rather than being silently discarded. The release keeps records with missing abstracts for metadata and citation workflows. Abstract-dependent retrieval must treat those records as missing data rather than as negative evidence. The declared scope, per-venue coverage, identity policy, and exact snapshot identity are in `profiles/security-20-v2/config.yaml` and `data/profiles/security-20-v2/manifest.json`.
 
 ## Reviewer quick start
 
@@ -27,12 +29,12 @@ The release keeps records with missing abstracts for metadata and citation workf
 Requires Python 3.11 or 3.12, Git, and Bash.
 
 ```bash
-git clone --branch v1.0.1 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch v1.1.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
-bash reproduce.sh
+bash reproduce.sh --profile security-20-v2
 ```
 
-The command installs declared dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs 243 tests, builds FTS5, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
+The command installs declared dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs the regression suite, builds FTS5, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
 
 ### Native Windows
 
@@ -41,9 +43,9 @@ PowerShell. Use the native PowerShell workflow rather than editing the Unix
 script or mixing Git Bash and PowerShell environments:
 
 ```powershell
-git clone --branch v1.0.1 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch v1.1.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
-powershell -ExecutionPolicy Bypass -File .\reproduce.ps1
+powershell -ExecutionPolicy Bypass -File .\reproduce.ps1 -Profile security-20-v2
 ```
 
 The script creates `.venv` and installs `requirements.txt` itself. If a prior
@@ -72,25 +74,25 @@ The interface exposes coverage inspection, substring and BM25-ranked search, aut
 
 [![Abstract-text search with populated previews](docs/assets/topvenues-abstract-search.png)](docs/assets/topvenues-abstract-search.pdf)
 
-This capture applies the interface's **Abstract contains** filter to `intrusion detection` in `security-20`. Every displayed row has an abstract preview. The linked [high-resolution PDF](docs/assets/topvenues-abstract-search.pdf) preserves the capture for close inspection.
+This capture applies the interface's **Abstract contains** filter to `intrusion detection` in the frozen `security-20` profile. Every displayed row has an abstract preview. The linked [high-resolution PDF](docs/assets/topvenues-abstract-search.pdf) preserves the capture for close inspection.
 
 ## Command-line workflows
 
 ```bash
 # Inspect corpus state and coverage
-python -m src.cli --profile security-20 stats
+python -m src.cli --profile security-20-v2 stats
 
 # Search records that mention a term
-python -m src.cli --profile security-20 search --abstract "intrusion detection"
+python -m src.cli --profile security-20-v2 search --abstract "intrusion detection"
 
 # Rank records by multi-token FTS5/BM25 relevance
-python -m src.cli --profile security-20 search --rank "memory corruption mitigations" --limit 20
+python -m src.cli --profile security-20-v2 search --rank "memory corruption mitigations" --limit 20
 
 # Export a review-ready subset
-python -m src.cli --profile security-20 export --format bibtex --tech "fuzzing" -o fuzzing.bib
+python -m src.cli --profile security-20-v2 export --format bibtex --tech "fuzzing" -o fuzzing.bib
 
 # Build the Hugging Face Parquet export from the immutable profile
-python -m src.cli --profile security-20 export-hf --release-tag v1.0.1
+python -m src.cli --profile security-20-v2 export-hf --release-tag v1.1.0
 ```
 
 Substring and ranked search answer different questions: substring search finds records that mention text, whereas ranked search orders title, abstract, and author matches by BM25. Multi-word ranked queries use token semantics.
@@ -103,7 +105,7 @@ Live `download`, `consolidate`, `extract`, and `bibtex` commands are maintenance
 
 ## Hugging Face export
 
-The public dataset is at [sidneibarbieri/topvenues](https://huggingface.co/datasets/sidneibarbieri/topvenues). It is a two-shard Parquet export of `security-20`; its dataset card records the profile, source tag, and snapshot SHA-256.
+The public dataset is at [sidneibarbieri/topvenues](https://huggingface.co/datasets/sidneibarbieri/topvenues). The dataset card records the selected profile, source tag, and snapshot SHA-256.
 
 ## License and provenance
 
