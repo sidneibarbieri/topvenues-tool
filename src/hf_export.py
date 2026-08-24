@@ -93,7 +93,7 @@ security = corpus.filter(lambda paper: paper["area"] == "security")
 [![Abstract-text search with populated previews](assets/topvenues-abstract-search.png)](assets/topvenues-abstract-search.pdf)
 
 The capture applies the local interface's **Abstract contains** filter to
-`intrusion detection` in `security-20`. Every displayed row has an abstract
+`intrusion detection` in `{profile_id}`. Every displayed row has an abstract
 preview. Open the [high-resolution PDF](assets/topvenues-abstract-search.pdf)
 for close inspection.
 
@@ -243,6 +243,7 @@ def export_hf_dataset(
     card = _CARD_TEMPLATE.format(
         venue_table="\n".join(venue_rows),
         repo_id=repo_id,
+        profile_id=profile_id or "the selected profile",
         release_identity=release_identity,
         release_tag=release_tag or "unreleased",
         **stats,
