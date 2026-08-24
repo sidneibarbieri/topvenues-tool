@@ -68,7 +68,7 @@ python -m streamlit run web/app.py
 On Windows PowerShell, activate with `.\.venv\Scripts\Activate.ps1` before
 running the same `python -m streamlit run web/app.py` command.
 
-The interface exposes coverage inspection, substring and BM25-ranked search, author and trend exploration, and exports. It runs against the local snapshot at `http://localhost:8501`.
+The interface exposes coverage inspection, substring and BM25-ranked search, author and trend exploration, and exports. Insights are traceable: selecting a venue, year, or topic-trend bar opens the corresponding records, while each author view can open that author's supporting papers. Author views measure corpus visibility under a declared venue-tier heuristic; they do not measure citations, quality, seniority, or authority. It runs against the local snapshot at `http://localhost:8501`.
 
 ## Inspect abstract evidence
 
@@ -102,6 +102,10 @@ Substring and ranked search answer different questions: substring search finds r
 Venue names and policies are explicit because they define the scientific denominator. Adding a venue requires a deliberate configuration change, normalization mapping, coverage check, a new immutable profile snapshot, and a new release tag. It is not a routine refresh of this object.
 
 Live `download`, `consolidate`, `extract`, and `bibtex` commands are maintenance operations. They may use changing external services; they do not alter the committed release snapshot. Unexpected collection errors surface to the caller rather than being silently converted into successful enrichment.
+
+The released profile disables live refresh controls in the web interface. The controlled successor-profile procedure is in [docs/PROFILE_REFRESH.md](docs/PROFILE_REFRESH.md); the SBSeg bench and seven-minute presentation walkthrough is in [docs/SBSEG_2026_DEMO_SCRIPT.md](docs/SBSEG_2026_DEMO_SCRIPT.md).
+
+The companion full paper's 200-record manual audit and live baseline comparison are documented in [docs/COMPANION_FULL_PAPER_EVALUATION.md](docs/COMPANION_FULL_PAPER_EVALUATION.md). They remain explicitly bound to that paper's frozen snapshot and are not reused as a v2 accuracy claim.
 
 ## Hugging Face export
 
