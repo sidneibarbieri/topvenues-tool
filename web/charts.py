@@ -16,6 +16,12 @@ import pandas as pd
 
 # One accent, one ink, one muted tone. Extra colour here would carry no meaning.
 ACCENT = "#2f6f73"
+# Coverage answers "where can this corpus not speak?", so it reads apart from
+# the volume charts on purpose.
+COVERAGE = "#537a4a"
+# Multi-series charts need one hue per series to stay readable. Single-series
+# charts do not: there, a second colour would mean nothing.
+SERIES = ("#2f6f73", "#b36b2c", "#334e68")
 INK = "#1f2933"
 MUTED = "#64748b"
 RULE = "#e8edf1"

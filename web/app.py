@@ -1036,7 +1036,6 @@ def page_insights() -> None:
             460,
             horizontal=False,
             sort="ascending",
-            color="#334e68",
         )
         st.caption("Click a bar to open that year's records. Double-click clears the selection.")
         partial_years = sorted(set(collector.config.partial_years) & set(stats["by_year"]))
@@ -1061,7 +1060,7 @@ def page_insights() -> None:
         ]
     )
     selected_class = _interactive_bar_chart(
-        class_df, "Class", "Papers", "class_chart", 320, color="#a35f25"
+        class_df, "Class", "Papers", "class_chart", 320
     )
     st.caption("Click a bar to open records in that paper class.")
     if selected_class:
@@ -1115,7 +1114,6 @@ def page_insights() -> None:
                     280,
                     horizontal=False,
                     sort="ascending",
-                    color="#2f6f73",
                 )
             with col_share:
                 st.caption("Share of the year's corpus (%)")
@@ -1326,7 +1324,7 @@ def page_insights() -> None:
                             "Measure:N",
                             scale=alt.Scale(
                                 domain=["Papers", "First author", "Last author"],
-                                range=["#2f6f73", "#b36b2c", "#334e68"],
+                                range=list(charts.SERIES),
                             ),
                             title=None,
                         ),
@@ -1459,7 +1457,7 @@ def page_insights() -> None:
         "Coverage (%)",
         "coverage_chart",
         460,
-        color="#537a4a",
+        color=charts.COVERAGE,
     )
     st.caption("Click a coverage bar to inspect the venue's records and missing abstracts.")
     if selected_coverage_venue:
