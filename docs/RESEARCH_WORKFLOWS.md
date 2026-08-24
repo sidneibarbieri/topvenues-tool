@@ -11,11 +11,13 @@ stream. It is not a claim that work outside those venues is unimportant.
 
 ## 2. Find recurring authors without overstating the result
 
-In Insights, choose a topic and select `Any author`, `First author`, or `Last
-author`, then apply a tier scope. Open an author's records before treating the
-rank as actionable. The score is a transparent corpus-visibility heuristic; it
-does not measure citation impact, quality, seniority, or identity-resolved
-individuals.
+In **Researcher Radar**, choose a topic and select `Any author`, `First author`,
+or `Last author`, then apply a tier scope. Use **Paper count** for the literal
+frequency ranking requested by the research team. Use **Tier-weighted
+visibility** only when the protocol explicitly justifies the declared venue
+weights. Open an author's records before treating either ordering as
+actionable. Neither metric measures citation impact, quality, seniority, or
+fully identity-resolved individuals.
 
 ## 3. Build a systematic-review candidate set
 

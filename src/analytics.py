@@ -19,6 +19,9 @@ from src.tiers import TOP4, TOP4_REGIONAL, TOP_TIER, tier_for, weight_for
 
 _AUTHOR_SPLIT = re.compile(r"\s*,\s*|\s+and\s+")
 AUTHOR_POSITIONS = ("any", "first", "last")
+PAPER_COUNT_METRIC = "paper_count"
+TIER_WEIGHTED_METRIC = "tier_weighted"
+AUTHOR_RANKING_METRICS = (PAPER_COUNT_METRIC, TIER_WEIGHTED_METRIC)
 
 
 def _split_authors(raw: str | None) -> list[str]:
@@ -33,7 +36,7 @@ def _split_authors(raw: str | None) -> list[str]:
     ]
 
 
-def _authors_at_position(raw: str | None, position: str) -> list[str]:
+def authors_at_position(raw: str | None, position: str) -> list[str]:
     """Return identities for one declared authorship-position view."""
     if position not in AUTHOR_POSITIONS:
         raise ValueError(f"unknown author position {position!r}")
@@ -43,6 +46,12 @@ def _authors_at_position(raw: str | None, position: str) -> list[str]:
     if not authors:
         return []
     return [authors[0] if position == "first" else authors[-1]]
+
+
+def _author_sort_key(entry: dict, ranking_metric: str) -> tuple:
+    if ranking_metric == PAPER_COUNT_METRIC:
+        return (-entry["papers"], -entry["top4"], -entry["score"], entry["author"])
+    return (-entry["score"], -entry["top4"], -entry["papers"], entry["author"])
 
 
 def area_year_counts(db_path: Path) -> dict[str, dict[int, int]]:
@@ -85,13 +94,13 @@ def reference_authors(
     awards_dir: Path | None = None,
     position: str = "any",
     allowed_tiers: frozenset[str] | None = None,
+    ranking_metric: str = PAPER_COUNT_METRIC,
 ) -> list[dict]:
-    """Tier-weighted ranking of the reference authors for a topic or area.
+    """Rank author visibility by paper count or an explicit tier heuristic.
 
-    A raw publication count treats a workshop paper and an IEEE S&P paper as
-    equal; this ranking does not. Each paper contributes its venue-tier weight
-    (``tiers.WEIGHT_BY_TIER``) to every listed author, so recurring top-tier
-    names dominate the list. The optional ``topic`` restricts scope with a
+    Paper count is the transparent default. The optional tier-weighted view
+    contributes ``tiers.WEIGHT_BY_TIER`` for each paper, so recurring top-tier
+    names dominate that view. The optional ``topic`` restricts scope with a
     case-insensitive match over title and abstract; ``area`` restricts by the
     venue-to-area registry. Deterministic: ties break by top-4 count, paper
     count, then name.
@@ -102,6 +111,8 @@ def reference_authors(
     """
     if position not in AUTHOR_POSITIONS:
         raise ValueError(f"unknown author position {position!r}")
+    if ranking_metric not in AUTHOR_RANKING_METRICS:
+        raise ValueError(f"unknown author ranking metric {ranking_metric!r}")
     sql = "select paper_id, authors, event, year from papers where authors is not null"
     params: list = []
     if topic:
@@ -117,6 +128,8 @@ def reference_authors(
     stats: dict[str, dict] = {}
     connection = sqlite3.connect(db_path)
     try:
+        latest_year = connection.execute("SELECT MAX(year) FROM papers").fetchone()[0]
+        recent_since = int(latest_year) - 2 if latest_year is not None else None
         for paper_id, authors, event, year in connection.execute(sql, params):
             if area is not None and area_for(event) != area:
                 continue
@@ -124,7 +137,7 @@ def reference_authors(
             if allowed_tiers is not None and tier not in allowed_tiers:
                 continue
             weight = weight_for(tier)
-            for author in _authors_at_position(authors, position):
+            for author in authors_at_position(authors, position):
                 entry = stats.setdefault(author, {
                     "author": author,
                     "score": 0.0,
@@ -133,6 +146,9 @@ def reference_authors(
                     "top_tier": 0,
                     "top4_regional": 0,
                     "awards": 0,
+                    "recent_papers": 0,
+                    "recent_since": recent_since,
+                    "recent_through": latest_year,
                     "first_year": year,
                     "last_year": year,
                     "_venues": collections.Counter(),
@@ -147,6 +163,8 @@ def reference_authors(
                     entry["top4_regional"] += 1
                 if paper_id in awarded_ids:
                     entry["awards"] += 1
+                if year is not None and recent_since is not None and year >= recent_since:
+                    entry["recent_papers"] += 1
                 if year is not None:
                     entry["first_year"] = min(entry["first_year"] or year, year)
                     entry["last_year"] = max(entry["last_year"] or year, year)
@@ -156,8 +174,7 @@ def reference_authors(
         connection.close()
 
     ranked = sorted(
-        stats.values(),
-        key=lambda e: (-e["score"], -e["top4"], -e["papers"], e["author"]),
+        stats.values(), key=lambda entry: _author_sort_key(entry, ranking_metric)
     )[:limit]
     for entry in ranked:
         entry["venues"] = [venue for venue, _ in entry.pop("_venues").most_common(3)]

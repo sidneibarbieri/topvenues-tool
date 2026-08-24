@@ -1,6 +1,6 @@
-profile_id: security-20-v2
+profile_id: security-20-v3
 immutable_snapshot: true
-snapshot_path: data/profiles/security-20-v2/papers.db.gz
+snapshot_path: data/profiles/security-20-v3/papers.db.gz
 events:
 - ccs
 - asiaccs
@@ -42,11 +42,11 @@ cache_ttl_hours: 168
 checkpoint_enabled: true
 checkpoint_interval: 5
 base_dir: .
-data_dir: data/workspaces/security-20-v2/dataset
-log_dir: data/workspaces/security-20-v2/log
-json_dir: data/workspaces/security-20-v2/json
-cache_dir: data/workspaces/security-20-v2/cache
-checkpoint_dir: data/workspaces/security-20-v2/checkpoints
+data_dir: data/workspaces/security-20-v3/dataset
+log_dir: data/workspaces/security-20-v3/log
+json_dir: data/workspaces/security-20-v3/json
+cache_dir: data/workspaces/security-20-v3/cache
+checkpoint_dir: data/workspaces/security-20-v3/checkpoints
 user_agents:
 - Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)
   Chrome/129.0.0.0 Safari/537.36

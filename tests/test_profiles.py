@@ -15,7 +15,7 @@ from src.profiles import (
 
 def test_default_profile_is_the_tool_denominator(monkeypatch) -> None:
     monkeypatch.delenv("TOPVENUES_PROFILE", raising=False)
-    assert select_profile_id() == DEFAULT_PROFILE_ID == "security-20"
+    assert select_profile_id() == DEFAULT_PROFILE_ID == "security-20-v3"
 
 
 def test_environment_can_select_an_explicit_profile(monkeypatch) -> None:
@@ -34,6 +34,14 @@ def test_security_snapshot_matches_manifest() -> None:
         assert verified.database_path.is_file()
         assert verified.profile.manifest["snapshot"]["papers"] == 20305
         assert verified.profile.manifest["snapshot"]["venues"] == 20
+
+
+def test_current_snapshot_matches_strict_declared_window() -> None:
+    with verified_profile_snapshot("security-20-v3", PROJECT_ROOT) as verified:
+        snapshot = verified.profile.manifest["snapshot"]
+        assert snapshot["papers"] == 14859
+        assert snapshot["observed_year_min"] == 2019
+        assert snapshot["observed_year_max"] == 2026
 
 
 def test_verified_snapshot_closes_database_before_temp_cleanup(monkeypatch) -> None:

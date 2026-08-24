@@ -1,6 +1,6 @@
 <# Reproduce the immutable TopVenues profile on native Windows PowerShell. #>
 param(
-    [string]$Profile = "security-20-v2",
+    [string]$Profile = "security-20-v3",
     [string]$PythonCommand = "",
     [switch]$SkipInstall
 )
@@ -10,8 +10,8 @@ Set-Location $PSScriptRoot
 $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-if ($Profile -notin @("security-20", "security-20-v2")) {
-    throw "Unknown profile. Choose security-20 or security-20-v2."
+if ($Profile -notin @("security-20", "security-20-v2", "security-20-v3")) {
+    throw "Unknown profile. Choose security-20, security-20-v2, or security-20-v3."
 }
 
 # Prefer the Windows launcher pinned to the supported minor version.  On many
@@ -21,7 +21,7 @@ $pythonArgs = @()
 if ($PythonCommand) {
     $python = Get-Command $PythonCommand -ErrorAction SilentlyContinue
     if ($null -ne $python) {
-        & $python.Source -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
+        & $python.Source -c "import sys; raise SystemExit(0 if (3, 11) <= sys.version_info < (3, 15) else 1)"
         if ($LASTEXITCODE -ne 0) { $python = $null }
     }
 } else {
@@ -29,7 +29,7 @@ if ($PythonCommand) {
 }
 if ($null -ne $python -and -not $PythonCommand) {
     foreach ($minor in @("3.14", "3.13", "3.12", "3.11")) {
-        & $python.Source "-$minor" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
+        & $python.Source "-$minor" -c "import sys; raise SystemExit(0 if (3, 11) <= sys.version_info < (3, 15) else 1)"
         if ($LASTEXITCODE -eq 0) {
             $pythonArgs = @("-$minor")
             break
@@ -40,12 +40,12 @@ if ($null -ne $python -and -not $PythonCommand) {
 if ($null -eq $python -and -not $PythonCommand) {
     $python = Get-Command python -ErrorAction SilentlyContinue
     if ($null -ne $python) {
-        & $python.Source -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
+        & $python.Source -c "import sys; raise SystemExit(0 if (3, 11) <= sys.version_info < (3, 15) else 1)"
         if ($LASTEXITCODE -ne 0) { $python = $null }
     }
 }
 if ($null -eq $python) {
-    throw "Python 3.11+ is required. Install a supported Python from python.org, then rerun."
+    throw "Python 3.11-3.14 is required. Install a supported Python from python.org, then rerun."
 }
 
 if (-not (Test-Path ".venv")) {
@@ -57,12 +57,12 @@ $venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path $venvPython)) {
     throw "The existing .venv is not native Windows. Remove only .venv and rerun; do not remove corpus data."
 }
-& $venvPython -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
+& $venvPython -c "import sys; raise SystemExit(0 if (3, 11) <= sys.version_info < (3, 15) else 1)"
 if ($LASTEXITCODE -ne 0) {
     throw "The existing .venv uses Python older than 3.11. Remove only .venv and rerun; do not remove corpus data."
 }
 if (-not $SkipInstall) {
-    & $venvPython -m pip install --disable-pip-version-check --prefer-binary -r requirements.txt -r requirements-web.txt
+    & $venvPython -m pip install --disable-pip-version-check --prefer-binary --require-hashes -r requirements-frozen.txt
     if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed." }
 }
 & $venvPython scripts\verify_profile_snapshot.py --profile $Profile

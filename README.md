@@ -1,6 +1,6 @@
 # TopVenues
 
-TopVenues is an open-source, local-first tool for constructing and inspecting a declared corpus for cybersecurity literature reviews. The current researcher-facing release is pinned to the immutable `security-20-v2` profile.
+TopVenues is an open-source, local-first tool for constructing and inspecting a declared corpus for cybersecurity literature reviews. The current researcher-facing release is pinned to the immutable `security-20-v3` profile.
 
 The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submission-r1`](https://github.com/sidneibarbieri/topvenues-tool/releases/tag/sbseg2026-sf-submission-r1) release and its `security-20` snapshot. It is preserved unchanged; do not use current counts to verify claims in that paper.
 
@@ -13,44 +13,44 @@ The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submis
 
 | Property | Value |
 | --- | --- |
-| Tool release | `v1.2.1` |
-| Snapshot source release | `v1.1.0` |
+| Tool release | `v1.3.0` |
+| Snapshot source release | `v1.2.1` |
 | Scope | 20 declared security and security-relevant venues |
-| Records | 14,863 distinct canonical resources |
-| Abstract-enriched records | 13,991 (94.1%) |
-| BibTeX entries | 14,863 |
-| Snapshot SHA-256 | `a25e5fce289f2ac5bbffef1ac6905279f9c11e2234c7da9e6c0a7c5a77d8ea15` |
+| Records | 14,859 corpus records |
+| Abstract-enriched records | 13,987 (94.1%) |
+| BibTeX entries | 14,859 |
+| Snapshot SHA-256 | `3fd34ac5cb67e528ad9789f52e1a1d2302c51f5e37044bc7d688af976ac36ff5` |
 
-The successor merges only exact canonical resource locators (DOI or stable landing page); it does not collapse records merely because their titles are similar. Six same-metadata groups with different canonical resources remain explicitly unresolved rather than being silently discarded. The release keeps records with missing abstracts for metadata and citation workflows. Abstract-dependent retrieval must treat those records as missing data rather than as negative evidence. The declared scope, per-venue coverage, identity policy, and exact snapshot identity are in `profiles/security-20-v2/config.yaml` and `data/profiles/security-20-v2/manifest.json`.
+The successor enforces the declared 2019–2026 window, inherits exact-resource deduplication, and merges two additional DOI aliases confirmed by Crossref. Four same-metadata pairs remain separate because their publisher resources remain distinct; metadata similarity alone is not identity evidence. The versioned decision record is in `data/adjudication/security-20-v3-identity.json`. Records without abstracts remain available for metadata and citation workflows; abstract-dependent retrieval must treat them as missing data, not negative evidence. The declared scope, per-venue coverage, identity policy, and exact snapshot identity are in `profiles/security-20-v3/config.yaml` and `data/profiles/security-20-v3/manifest.json`.
 
 ## Reviewer quick start
 
 ### Linux and macOS
 
-Requires Python 3.11 or newer, Git, and Bash.
+Requires Python 3.11–3.14, Git, and Bash.
 
 ```bash
-git clone --branch v1.2.1 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch v1.3.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
-bash reproduce.sh --profile security-20-v2
+bash reproduce.sh --profile security-20-v3
 ```
 
 The command installs the CLI and web dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs the regression suite, starts and health-checks the Streamlit interface, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
 
 ### Native Windows
 
-Requires Python 3.11 or newer with the Python Launcher (`py`), Git, and
+Requires Python 3.11–3.14 with the Python Launcher (`py`), Git, and
 PowerShell. Use the native PowerShell workflow rather than editing the Unix
 script or mixing Git Bash and PowerShell environments:
 
 ```powershell
-git clone --branch v1.2.1 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch v1.3.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
-powershell -ExecutionPolicy Bypass -File .\reproduce.ps1 -Profile security-20-v2
+powershell -ExecutionPolicy Bypass -File .\reproduce.ps1 -Profile security-20-v3
 ```
 
-The script creates `.venv` and installs both `requirements.txt` and
-`requirements-web.txt` itself. If a prior
+The script creates `.venv` and installs the hash-locked cross-platform
+`requirements-frozen.txt` itself. If a prior
 attempt created `.venv` with Python 3.10 or older, remove only that directory
 before rerunning: `Remove-Item -Recurse -Force .venv`.
 
@@ -70,7 +70,7 @@ python -m streamlit run web/app.py
 On Windows PowerShell, activate with `.\.venv\Scripts\Activate.ps1` before
 running the same `python -m streamlit run web/app.py` command.
 
-The interface exposes coverage inspection, substring and BM25-ranked search, author and trend exploration, and exports. Search and author analytics offer an explicit Security Big Four (Tier 1) scope: ACM CCS, IEEE S&P, USENIX Security, and NDSS. Insights are traceable: selecting a venue, year, or topic-trend bar opens the corresponding records, while each author view can open that author's supporting papers. Author views measure corpus visibility under a declared venue-tier heuristic; they do not measure citations, quality, seniority, or authority. See [docs/RESEARCH_WORKFLOWS.md](docs/RESEARCH_WORKFLOWS.md) before using a tier restriction in a review protocol. It runs against the local snapshot at `http://localhost:8501`.
+The interface exposes coverage inspection, substring and BM25-ranked search, Researcher Radar, topic trends, and exports. Search and author analytics offer an explicit Security Big Four (Tier 1) scope: ACM CCS, IEEE S&P, USENIX Security, and NDSS. Insights are traceable: selecting a venue, year, or topic-trend bar opens the corresponding records, while each author view can open that author's supporting papers. Researcher Radar defaults to raw paper count and also exposes a separately labeled venue-tier heuristic; neither measures citations, quality, seniority, or authority. See [docs/RESEARCH_WORKFLOWS.md](docs/RESEARCH_WORKFLOWS.md) before using a tier restriction in a review protocol. It runs against the local snapshot at `http://localhost:8501`.
 
 ## Inspect abstract evidence
 
@@ -82,28 +82,28 @@ This capture applies the interface's **Abstract contains** filter to `intrusion 
 
 ```bash
 # Inspect corpus state and coverage
-python -m src.cli --profile security-20-v2 stats
+python -m src.cli --profile security-20-v3 stats
 
 # Search records that mention a term
-python -m src.cli --profile security-20-v2 search --abstract "intrusion detection"
+python -m src.cli --profile security-20-v3 search --abstract "intrusion detection"
 
 # Restrict a review query to the Security Big Four
-python -m src.cli --profile security-20-v2 search --rank "LLM security" \
+python -m src.cli --profile security-20-v3 search --rank "LLM security" \
   --tier-scope "Security Big Four (Tier 1)" --limit 20
 
 # Build a topic-specific author shortlist from Tier 1 evidence
-python -m src.cli --profile security-20-v2 authors --topic "fuzzing" \
+python -m src.cli --profile security-20-v3 authors --topic "fuzzing" \
   --tier-scope "Security Big Four (Tier 1)"
 
 # Rank records by multi-token FTS5/BM25 relevance
-python -m src.cli --profile security-20-v2 search --rank "memory corruption mitigations" --limit 20
+python -m src.cli --profile security-20-v3 search --rank "memory corruption mitigations" --limit 20
 
 # Export a review-ready subset
-python -m src.cli --profile security-20-v2 export --format bibtex --tech "fuzzing" \
+python -m src.cli --profile security-20-v3 export --format bibtex --tech "fuzzing" \
   --tier-scope "Security Big Four (Tier 1)" -o fuzzing-tier1.bib
 
 # Build the Hugging Face Parquet export from the immutable profile
-python -m src.cli --profile security-20-v2 export-hf --release-tag v1.1.0
+python -m src.cli --profile security-20-v3 export-hf --release-tag v1.3.0
 ```
 
 Substring and ranked search answer different questions: substring search finds records that mention text, whereas ranked search orders title, abstract, and author matches by BM25. Multi-word ranked queries use token semantics.
@@ -114,9 +114,9 @@ Venue names and policies are explicit because they define the scientific denomin
 
 Live `download`, `consolidate`, `extract`, and `bibtex` commands are maintenance operations. They may use changing external services; they do not alter the committed release snapshot. Unexpected collection errors surface to the caller rather than being silently converted into successful enrichment.
 
-The released profile disables live refresh controls in the web interface. The controlled successor-profile procedure is in [docs/PROFILE_REFRESH.md](docs/PROFILE_REFRESH.md); the SBSeg bench and seven-minute presentation walkthrough is in [docs/SBSEG_2026_DEMO_SCRIPT.md](docs/SBSEG_2026_DEMO_SCRIPT.md).
+The released profile disables live refresh controls in the web interface. The **Dataset lifecycle** page describes the boundary; the controlled successor-profile procedure is in [docs/PROFILE_REFRESH.md](docs/PROFILE_REFRESH.md). The SBSeg bench and seven-minute presentation walkthrough is in [docs/SBSEG_2026_DEMO_SCRIPT.md](docs/SBSEG_2026_DEMO_SCRIPT.md).
 
-The companion full paper's 200-record manual audit and live baseline comparison are documented in [docs/COMPANION_FULL_PAPER_EVALUATION.md](docs/COMPANION_FULL_PAPER_EVALUATION.md). They remain explicitly bound to that paper's frozen snapshot and are not reused as a v2 accuracy claim.
+The companion full paper's 200-record manual audit and live baseline comparison are documented in [docs/COMPANION_FULL_PAPER_EVALUATION.md](docs/COMPANION_FULL_PAPER_EVALUATION.md). They remain explicitly bound to that paper's frozen snapshot and are not reused as a v3 accuracy claim.
 
 ## Hugging Face export
 

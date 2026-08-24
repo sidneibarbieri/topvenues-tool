@@ -577,6 +577,13 @@ def _print_ranked_results(query: str, rows: list[dict], award_map: dict[str, lis
     show_default=True,
     help="Restrict the author ranking to a declared venue-tier scope.",
 )
+@click.option(
+    "--metric",
+    type=click.Choice(["paper_count", "tier_weighted"]),
+    default="paper_count",
+    show_default=True,
+    help="Order by raw paper appearances or the declared venue-tier heuristic.",
+)
 @click.pass_context
 def authors(
     ctx: click.Context,
@@ -585,12 +592,9 @@ def authors(
     position: str,
     limit: int,
     tier_scope: str,
+    metric: str,
 ) -> None:
-    """Rank author visibility in this corpus, weighted by venue tier.
-
-    A Big Four paper (CCS, S&P, USENIX Security, NDSS) weighs 5.0; other
-    top-tier venues 3.0; survey journals 2.0; strong venues 1.5; workshops 0.5.
-    """
+    """Rank author visibility in this corpus with a declared metric."""
     base_dir = ctx.obj["base_dir"]
     collector = Collector(base_dir=base_dir)
     awards_dir = collector.db.db_path.parent.parent / "awards"
@@ -604,6 +608,7 @@ def authors(
             awards_dir=awards_dir,
             position=position,
             allowed_tiers=tiers_in_scope(tier_scope),
+            ranking_metric=metric,
         )
 
     scope = (
@@ -615,6 +620,7 @@ def authors(
                     f"area: {area}" if area else None,
                     f"position: {position}",
                     f"tier scope: {tier_scope}",
+                    f"metric: {metric}",
                 ],
             )
         )
@@ -628,6 +634,7 @@ def authors(
     table.add_column("Top-4", style="bold", justify="right")
     table.add_column("Other top-tier", justify="right")
     table.add_column("Awards", style="gold1", justify="right")
+    table.add_column("Recent", justify="right")
     table.add_column("Active", style="blue")
     table.add_column("Main venues", style="yellow")
 
@@ -640,6 +647,7 @@ def authors(
             str(entry["top4"]),
             str(entry["top_tier"]),
             str(entry["awards"]) if entry["awards"] else "—",
+            str(entry["recent_papers"]),
             f"{entry['first_year']}–{entry['last_year']}",
             ", ".join(entry["venues"]),
         )

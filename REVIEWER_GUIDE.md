@@ -1,6 +1,6 @@
 # TopVenues Reviewer Guide
 
-This guide evaluates the immutable `security-20` profile used by the accepted SBSeg-SF paper. The evolving `security-20-v2` profile is a separate, post-publication successor.
+This guide evaluates the immutable `security-20` profile used by the accepted SBSeg-SF paper. The evolving `security-20-v3` profile is a separate, post-publication successor.
 
 ## What the release verifies
 
