@@ -105,6 +105,8 @@ Live `download`, `consolidate`, `extract`, and `bibtex` commands are maintenance
 
 The released profile disables live refresh controls in the web interface. The controlled successor-profile procedure is in [docs/PROFILE_REFRESH.md](docs/PROFILE_REFRESH.md); the SBSeg bench and seven-minute presentation walkthrough is in [docs/SBSEG_2026_DEMO_SCRIPT.md](docs/SBSEG_2026_DEMO_SCRIPT.md).
 
+The companion full paper's 200-record manual audit and live baseline comparison are documented in [docs/COMPANION_FULL_PAPER_EVALUATION.md](docs/COMPANION_FULL_PAPER_EVALUATION.md). They remain explicitly bound to that paper's frozen snapshot and are not reused as a v2 accuracy claim.
+
 ## Hugging Face export
 
 The public dataset is at [sidneibarbieri/topvenues](https://huggingface.co/datasets/sidneibarbieri/topvenues). The dataset card records the selected profile, source tag, and snapshot SHA-256.

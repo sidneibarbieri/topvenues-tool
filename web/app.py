@@ -351,12 +351,14 @@ def _open_search_from_insight(
     year: int | None = None,
     topic: str | None = None,
     author: str | None = None,
+    paper_class: str | None = None,
 ) -> None:
     """Transfer one insight dimension into the search workflow."""
     st.session_state["search_venue"] = venue or "All venues"
     st.session_state["search_year"] = year or "All years"
     st.session_state["search_topic"] = topic or ""
     st.session_state["search_author"] = author or ""
+    st.session_state["search_class"] = [paper_class] if paper_class else []
     st.session_state["page"] = "Search"
 
 
@@ -484,6 +486,7 @@ def page_search() -> None:
             class_choices = st.multiselect(
                 "Include", [c.value for c in PaperClass],
                 help="Filter by SoK, Survey, Poster, Workshop, Short, Journal or Article.",
+                key="search_class",
             )
 
         with st.expander("Abstract & citation", expanded=False):
@@ -807,8 +810,11 @@ def page_insights() -> None:
     class_df = pd.DataFrame(
         [{"Class": k, "Papers": v} for k, v in
          sorted(class_counts.items(), key=lambda x: x[1], reverse=True)]
-    ).set_index("Class")
-    st.bar_chart(class_df, height=320)
+    )
+    selected_class = _interactive_bar_chart(class_df, "Class", "Papers", "class_chart", 320)
+    st.caption("Click a bar to open records in that paper class.")
+    if selected_class:
+        _queue_search_from_chart(paper_class=str(selected_class))
 
     st.divider()
     st.subheader("Topic trend")
@@ -946,7 +952,46 @@ def page_insights() -> None:
                 "With abstract": with_abs,
                 "Coverage": f"{with_abs / total * 100:.1f}%" if total else "—",
             })
-    st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+    coverage_df = pd.DataFrame(rows)
+    coverage_df["Coverage (%)"] = coverage_df["Coverage"].str.rstrip("%").astype(float)
+    selected_coverage_venue = _interactive_bar_chart(
+        coverage_df, "Venue", "Coverage (%)", "coverage_chart", 460
+    )
+    st.caption("Click a coverage bar to inspect the venue's records and missing abstracts.")
+    if selected_coverage_venue:
+        _queue_search_from_chart(venue=str(selected_coverage_venue))
+    st.dataframe(coverage_df.drop(columns="Coverage (%)"), width="stretch", hide_index=True)
+
+
+def page_evidence() -> None:
+    """Keep released-profile claims separate from companion-study evidence."""
+    _render_header(
+        "Evidence and claim boundaries",
+        "What this snapshot verifies, and what requires a separate empirical protocol.",
+    )
+    st.subheader("Current release: security-20-v2")
+    st.markdown(
+        "This interface verifies the manifest, exact-resource identity policy, coverage, search, "
+        "exports, and platform reproduction for the selected snapshot. It does not claim a manual "
+        "accuracy audit or cross-index comparison for this successor profile."
+    )
+    st.subheader("Companion full-paper evaluation")
+    st.markdown(
+        "The published full-paper protocol is bound to a different frozen 9,925-record snapshot "
+        "(SHA-256 `0f4dbaa9…ef64cd`): a venue-stratified 200-record live comparison and a 200-record "
+        "manual publisher-source audit. Its data, instrument, labels, and offline summarizer are "
+        "available in the [frozen evaluation package](https://github.com/sidneibarbieri/topVenues/tree/07674480ff3172f4b195387438ab3af3c9c5655f/evaluation/baseline_validation)."
+    )
+    st.info(
+        "Those results are evidence for the companion snapshot only. Reusing them as v2 accuracy "
+        "would be invalid; a v2 audit needs a new sampled-label protocol."
+    )
+    st.subheader("Identity policy")
+    st.markdown(
+        "v2 merges only records with an identical canonical DOI or stable landing page. It does not "
+        "infer identity from title similarity. Six same-metadata groups with distinct canonical "
+        "resources remain disclosed rather than silently collapsed."
+    )
 
 
 def page_pipeline() -> None:
@@ -1039,6 +1084,7 @@ def main() -> None:
         "Overview": page_artifact,
         "Search": page_search,
         "Insights": page_insights,
+        "Evidence": page_evidence,
         "Pipeline": page_pipeline,
     }
     with st.sidebar:
