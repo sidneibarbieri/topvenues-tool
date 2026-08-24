@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from pathlib import Path
 
@@ -5,6 +6,7 @@ import pandas as pd
 import pytest
 
 from src.manual_audit import (
+    append_audit_decision,
     build_audit_sample,
     load_audit_progress,
     save_audit_progress,
@@ -73,3 +75,33 @@ def test_audit_progress_rejects_a_different_sample(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="paper_id"):
         load_audit_progress(different_sample, progress_path)
+
+
+def test_decision_log_is_append_only(tmp_path: Path) -> None:
+    database = tmp_path / "papers.db"
+    progress_path = tmp_path / "progress.csv"
+    decision_log_path = tmp_path / "decisions.jsonl"
+    _audit_database(database)
+    sample = build_audit_sample(database, sample_size=5)
+    sample.loc[0, ["label_complete", "label_uncontaminated", "label_matches_paper"]] = "yes"
+    sample.loc[0, "reviewer"] = "Human supervisor; Codex assistant"
+    sample.loc[0, "decision_mode"] = "human_supervised_codex_assisted"
+
+    first = append_audit_decision(
+        sample.loc[0],
+        profile_id="test-profile",
+        sample_size=len(sample),
+        progress_path=progress_path,
+        decision_log_path=decision_log_path,
+    )
+    second = append_audit_decision(
+        sample.loc[0],
+        profile_id="test-profile",
+        sample_size=len(sample),
+        progress_path=progress_path,
+        decision_log_path=decision_log_path,
+    )
+
+    rows = [json.loads(line) for line in decision_log_path.read_text().splitlines()]
+    assert [row["decision_id"] for row in rows] == [first.decision_id, second.decision_id]
+    assert all(row["decision_mode"] == "human_supervised_codex_assisted" for row in rows)

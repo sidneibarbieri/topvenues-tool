@@ -7,13 +7,40 @@ import math
 import os
 import sqlite3
 import tempfile
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
 from pydantic import BaseModel
 
 AUDIT_LABELS = ("label_complete", "label_uncontaminated", "label_matches_paper")
 AUDIT_ID_COLUMNS = ("sample_id", "paper_id")
+AUDIT_DECISION_MODES = ("human_only", "human_supervised_codex_assisted")
+
+
+class AuditDecision(BaseModel):
+    """Append-only provenance for one saved audit decision."""
+
+    schema_version: str = "1.0"
+    decision_id: str
+    timestamp_utc: datetime
+    policy_version: str = "manual-abstract-audit-v3.1"
+    profile_id: str
+    sample_size: int
+    sample_id: int
+    paper_id: str
+    source_url: str
+    source_mode: Literal["live_publisher_or_landing_page"]
+    decision_mode: Literal["human_only", "human_supervised_codex_assisted"]
+    reviewer: str
+    label_complete: str
+    label_uncontaminated: str
+    label_matches_paper: str
+    extracted_abstract_sha256: str
+    notes_sha256: str
+    progress_file: str
 
 
 class AuditSummary(BaseModel):
@@ -78,6 +105,7 @@ def build_audit_sample(
                 "label_uncontaminated": "",
                 "label_matches_paper": "",
                 "reviewer": "",
+                "decision_mode": "",
                 "notes": "",
             }
             for index, (paper_id, event, year, title, ee, abstract) in enumerate(selected, start=1)
@@ -99,6 +127,13 @@ def load_audit_progress(sample: pd.DataFrame, progress_path: Path) -> pd.DataFra
     if not progress_path.exists():
         return sample.copy()
     progress = pd.read_csv(progress_path, keep_default_na=False)
+    if "decision_mode" not in progress.columns:
+        progress["decision_mode"] = progress.apply(
+            lambda row: "human_only"
+            if all(_as_label(row[label]) is not None for label in AUDIT_LABELS)
+            else "",
+            axis=1,
+        )
     missing_columns = set(sample.columns) - set(progress.columns)
     if missing_columns:
         raise ValueError(f"audit progress is missing columns: {sorted(missing_columns)}")
@@ -128,6 +163,43 @@ def save_audit_progress(frame: pd.DataFrame, progress_path: Path) -> None:
         frame.to_csv(temporary_file, index=False)
         temporary_path = Path(temporary_file.name)
     os.replace(temporary_path, progress_path)
+
+
+def append_audit_decision(
+    frame_row: pd.Series,
+    *,
+    profile_id: str,
+    sample_size: int,
+    progress_path: Path,
+    decision_log_path: Path,
+) -> AuditDecision:
+    """Append one replayable decision record without rewriting prior entries."""
+    decision = AuditDecision(
+        decision_id=str(uuid.uuid4()),
+        timestamp_utc=datetime.now(UTC),
+        profile_id=profile_id,
+        sample_size=sample_size,
+        sample_id=int(frame_row["sample_id"]),
+        paper_id=str(frame_row["paper_id"]),
+        source_url=str(frame_row["source_url"]),
+        source_mode="live_publisher_or_landing_page",
+        decision_mode=str(frame_row["decision_mode"]),
+        reviewer=str(frame_row["reviewer"]),
+        label_complete=str(frame_row["label_complete"]),
+        label_uncontaminated=str(frame_row["label_uncontaminated"]),
+        label_matches_paper=str(frame_row["label_matches_paper"]),
+        extracted_abstract_sha256=hashlib.sha256(
+            str(frame_row["abstract"]).encode("utf-8")
+        ).hexdigest(),
+        notes_sha256=hashlib.sha256(str(frame_row["notes"]).encode("utf-8")).hexdigest(),
+        progress_file=str(progress_path),
+    )
+    decision_log_path.parent.mkdir(parents=True, exist_ok=True)
+    with decision_log_path.open("a", encoding="utf-8") as decision_log:
+        decision_log.write(decision.model_dump_json() + "\n")
+        decision_log.flush()
+        os.fsync(decision_log.fileno())
+    return decision
 
 
 def _wilson_interval(successes: int, total: int) -> tuple[float, float]:

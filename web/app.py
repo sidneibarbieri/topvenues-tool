@@ -1475,13 +1475,21 @@ def _audit_choice(value: object) -> str:
 
 
 def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
-    from src.manual_audit import load_audit_progress, save_audit_progress, summarize_audit
+    from src.manual_audit import (
+        append_audit_decision,
+        load_audit_progress,
+        save_audit_progress,
+        summarize_audit,
+    )
 
     progress_path = (
         ARTIFACT_ROOT
         / "output"
         / "manual_audit"
         / f"{profile_id}-{len(sample)}-progress.csv"
+    )
+    decision_log_path = progress_path.with_name(
+        f"{profile_id}-{len(sample)}-decisions.jsonl"
     )
     audit_frame = load_audit_progress(sample, progress_path)
     summary = summarize_audit(audit_frame)
@@ -1494,7 +1502,11 @@ def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
         "Usable among completed",
         f"{summary.usable_rate:.1%}" if summary.usable_rate is not None else "—",
     )
-    st.caption(f"Progress is saved atomically to `{progress_path.relative_to(ARTIFACT_ROOT)}`.")
+    st.caption(
+        f"Progress is saved atomically to `{progress_path.relative_to(ARTIFACT_ROOT)}`; "
+        f"decision provenance is append-only in "
+        f"`{decision_log_path.relative_to(ARTIFACT_ROOT)}`."
+    )
 
     if "audit_position" not in st.session_state:
         labelled_mask = audit_frame[
@@ -1540,7 +1552,23 @@ def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
     )
 
     choices = ("Unlabelled", "Yes", "No")
+    decision_mode_labels = {
+        "Human only": "human_only",
+        "Human-supervised, Codex-assisted": "human_supervised_codex_assisted",
+    }
+    stored_mode = str(row["decision_mode"]).strip() or st.session_state.get(
+        "audit_decision_mode", "human_only"
+    )
+    selected_mode_label = next(
+        label for label, value in decision_mode_labels.items() if value == stored_mode
+    )
     with st.form(f"audit_form_{row['sample_id']}"):
+        decision_mode_label = st.selectbox(
+            "Decision mode",
+            tuple(decision_mode_labels),
+            index=tuple(decision_mode_labels).index(selected_mode_label),
+            help="Assisted decisions remain human-supervised but are not represented as human-only.",
+        )
         reviewer = st.text_input(
             "Reviewer",
             value=str(row["reviewer"]).strip()
@@ -1578,9 +1606,20 @@ def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
             audit_frame.loc[position, "label_uncontaminated"] = label_uncontaminated.casefold()
             audit_frame.loc[position, "label_matches_paper"] = label_matches_paper.casefold()
             audit_frame.loc[position, "reviewer"] = reviewer.strip()
+            audit_frame.loc[position, "decision_mode"] = decision_mode_labels[
+                decision_mode_label
+            ]
             audit_frame.loc[position, "notes"] = notes.strip()
             save_audit_progress(audit_frame, progress_path)
+            append_audit_decision(
+                audit_frame.loc[position],
+                profile_id=profile_id,
+                sample_size=len(audit_frame),
+                progress_path=progress_path.relative_to(ARTIFACT_ROOT),
+                decision_log_path=decision_log_path,
+            )
             st.session_state.audit_reviewer = reviewer.strip()
+            st.session_state.audit_decision_mode = decision_mode_labels[decision_mode_label]
             st.session_state.audit_position = min(position + 1, len(audit_frame) - 1)
             st.rerun()
 
