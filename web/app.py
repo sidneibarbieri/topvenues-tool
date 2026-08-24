@@ -19,6 +19,7 @@ from src.chart_interactions import selected_chart_value
 from src.collector import Collector
 from src.database import require_corpus
 from src.models import PaperClass, SearchFilters
+from src.tiers import tier_for, tier_scope_options, tiers_in_scope
 
 PAGE_SIZE_OPTIONS = (25, 50, 100, 200)
 ABSTRACT_PREVIEW_CHARS = 280
@@ -217,13 +218,14 @@ def _cached_topic_trend(db_path: str, topic: str, area: str | None) -> dict:
 
 @st.cache_data(show_spinner=False)
 def _cached_reference_authors(
-    db_path: str, topic: str | None, area: str | None, position: str, limit: int
+    db_path: str, topic: str | None, area: str | None, position: str, tier_scope: str, limit: int
 ) -> list[dict]:
     from src.analytics import reference_authors
 
     return reference_authors(
         Path(db_path), topic=topic, area=area, position=position, limit=limit,
         awards_dir=Path(db_path).parent.parent / "awards",
+        allowed_tiers=tiers_in_scope(tier_scope),
     )
 
 
@@ -352,6 +354,7 @@ def _open_search_from_insight(
     topic: str | None = None,
     author: str | None = None,
     paper_class: str | None = None,
+    tier_scope: str | None = None,
 ) -> None:
     """Transfer one insight dimension into the search workflow."""
     st.session_state["search_venue"] = venue or "All venues"
@@ -359,6 +362,7 @@ def _open_search_from_insight(
     st.session_state["search_topic"] = topic or ""
     st.session_state["search_author"] = author or ""
     st.session_state["search_class"] = [paper_class] if paper_class else []
+    st.session_state["search_tier_scope"] = tier_scope or "All declared venues"
     st.session_state["page"] = "Search"
 
 
@@ -399,6 +403,24 @@ def page_artifact() -> None:
         "Reproduce the corpus, inspect coverage, and export ready-to-cite references from a local snapshot.",
     )
     _render_claims(_load_collector().db.get_statistics())
+
+    st.subheader("Start from a research question")
+    tier1_col, broad_col, monitor_col = st.columns(3)
+    with tier1_col:
+        st.markdown("**Reference mapping**  ")
+        st.caption(
+            "Use Security Big Four (Tier 1) to identify canonical venue papers and recurring authors."
+        )
+    with broad_col:
+        st.markdown("**Review protocol**  ")
+        st.caption(
+            "Start with the declared full scope, then record any venue restriction as an inclusion decision."
+        )
+    with monitor_col:
+        st.markdown("**Research monitoring**  ")
+        st.caption(
+            "Use topic, year, tier, and author-position filters to decide which new work to inspect."
+        )
 
     st.subheader("Verification path")
     st.markdown(
@@ -477,6 +499,12 @@ def page_search() -> None:
             )
 
         with st.expander("Venue & year", expanded=True):
+            tier_scope = st.selectbox(
+                "Venue tier scope",
+                tier_scope_options(),
+                help="Security Big Four (Tier 1): ACM CCS, IEEE S&P, USENIX Security, and NDSS.",
+                key="search_tier_scope",
+            )
             venue_choice = st.selectbox("Venue", _venue_options(collector), key="search_venue")
             year_choice = st.selectbox(
                 "Year", ["All years", *sorted(stats["by_year"], reverse=True)], key="search_year"
@@ -530,6 +558,7 @@ def page_search() -> None:
         filters.event = venue_choice
     if year_choice != "All years":
         filters.year = int(year_choice)
+    allowed_tiers = tiers_in_scope(tier_scope)
 
     award_map = _award_map()
     if rank_query:
@@ -553,6 +582,8 @@ def page_search() -> None:
         ]
     else:
         results = collector.search(filters, limit=None)
+    if allowed_tiers is not None:
+        results = [paper for paper in results if tier_for(paper.event) in allowed_tiers]
     if class_choices:
         wanted = {PaperClass(value) for value in class_choices}
         results = [p for p in results if p.paper_class in wanted]
@@ -591,6 +622,7 @@ def page_search() -> None:
         tech_query,
         venue_choice,
         year_choice,
+        tier_scope,
         tuple(class_choices),
         abstract_length,
         only_with_bibtex,
@@ -876,7 +908,7 @@ def page_insights() -> None:
         "Choose all, first, or last authorship position to answer different "
         "literature-review questions; none is a proxy for citation impact or seniority."
     )
-    col_topic, col_area, col_position, col_n = st.columns([2, 1, 1, 1])
+    col_topic, col_area, col_tier, col_position, col_n = st.columns([2, 1, 1.4, 1, 1])
     with col_topic:
         author_topic = st.text_input(
             "Topic (title/abstract contains)", placeholder="e.g., LLM, fuzzing",
@@ -887,6 +919,13 @@ def page_insights() -> None:
             "Area", ["All areas", "security", "ai", "networks", "mobile",
                      "systems", "cross-area"],
             key="authors_area",
+        )
+    with col_tier:
+        author_tier_scope = st.selectbox(
+            "Venue tier scope",
+            tier_scope_options(),
+            key="authors_tier_scope",
+            help="Use Security Big Four (Tier 1) to identify recurring authors in CCS, S&P, USENIX Security, and NDSS only.",
         )
     with col_position:
         author_position = st.selectbox(
@@ -902,6 +941,7 @@ def page_insights() -> None:
         author_topic or None,
         None if author_area == "All areas" else author_area,
         {"Any author": "any", "First author": "first", "Last author": "last"}[author_position],
+        author_tier_scope,
         int(author_limit),
     )
     if ranked_authors:
@@ -931,7 +971,7 @@ def page_insights() -> None:
             "Open author records",
             key="open_author_records",
             on_click=_open_search_from_insight,
-            kwargs={"author": selected_author},
+            kwargs={"author": selected_author, "tier_scope": author_tier_scope},
         )
     else:
         st.info("No authors match the current topic/area scope.")

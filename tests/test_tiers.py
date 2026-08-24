@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from src.tiers import TOP4, TOP4_REGIONAL, UNKNOWN, tier_for
+from src.tiers import (
+    SECURITY_TIER_1_SCOPE,
+    TOP4,
+    TOP4_REGIONAL,
+    UNKNOWN,
+    tier_for,
+    tiers_in_scope,
+)
 
 
 def test_tier_for_big_four_and_neighbors() -> None:
@@ -15,3 +22,7 @@ def test_tier_for_big_four_and_neighbors() -> None:
     assert tier_for("ACM Computing Surveys") == "journal"
     assert tier_for("Unconfigured Venue") == UNKNOWN
     assert tier_for(None) == UNKNOWN
+
+
+def test_security_tier_1_scope_is_exactly_the_big_four() -> None:
+    assert tiers_in_scope(SECURITY_TIER_1_SCOPE) == frozenset({TOP4})

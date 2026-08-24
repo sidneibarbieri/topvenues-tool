@@ -68,7 +68,7 @@ python -m streamlit run web/app.py
 On Windows PowerShell, activate with `.\.venv\Scripts\Activate.ps1` before
 running the same `python -m streamlit run web/app.py` command.
 
-The interface exposes coverage inspection, substring and BM25-ranked search, author and trend exploration, and exports. Insights are traceable: selecting a venue, year, or topic-trend bar opens the corresponding records, while each author view can open that author's supporting papers. Author views measure corpus visibility under a declared venue-tier heuristic; they do not measure citations, quality, seniority, or authority. It runs against the local snapshot at `http://localhost:8501`.
+The interface exposes coverage inspection, substring and BM25-ranked search, author and trend exploration, and exports. Search and author analytics offer an explicit Security Big Four (Tier 1) scope: ACM CCS, IEEE S&P, USENIX Security, and NDSS. Insights are traceable: selecting a venue, year, or topic-trend bar opens the corresponding records, while each author view can open that author's supporting papers. Author views measure corpus visibility under a declared venue-tier heuristic; they do not measure citations, quality, seniority, or authority. See [docs/RESEARCH_WORKFLOWS.md](docs/RESEARCH_WORKFLOWS.md) before using a tier restriction in a review protocol. It runs against the local snapshot at `http://localhost:8501`.
 
 ## Inspect abstract evidence
 
