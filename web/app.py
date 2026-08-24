@@ -1559,21 +1559,15 @@ def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
     prior_decisions = audit_frame.iloc[:position].loc[
         lambda frame: frame["decision_mode"].astype(str).str.strip().ne("")
     ]
-    prior_mode = (
-        str(prior_decisions.iloc[-1]["decision_mode"]).strip()
-        if not prior_decisions.empty
-        else "human_only"
-    )
     prior_reviewer = (
         str(prior_decisions.iloc[-1]["reviewer"]).strip()
         if not prior_decisions.empty
         else "Sidnei Barbieri"
     )
-    stored_mode = (
-        str(row["decision_mode"]).strip()
-        or st.session_state.get("audit_decision_mode")
-        or prior_mode
-    )
+    # Provenance is a claim about who judged THIS record, so it is never carried
+    # forward from the previous one. Letting it persist silently attributed 141
+    # of 200 records to an assistant the operator had not selected for them.
+    stored_mode = str(row["decision_mode"]).strip() or "human_only"
     selected_mode_label = next(
         label for label, value in decision_mode_labels.items() if value == stored_mode
     )
@@ -1582,7 +1576,7 @@ def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
             "Decision mode",
             tuple(decision_mode_labels),
             index=tuple(decision_mode_labels).index(selected_mode_label),
-            help="Assisted decisions remain human-supervised but are not represented as human-only.",
+            help="Describes who judged this record. It resets to human-only for each record and is never inherited from the previous one.",
         )
         reviewer = st.text_input(
             "Reviewer",
