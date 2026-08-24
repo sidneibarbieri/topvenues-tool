@@ -613,6 +613,68 @@ def page_artifact() -> None:
     st.dataframe(findings, width="stretch", hide_index=True)
 
 
+# A venue whose abstracts were never harvested looks like a venue without
+# research on the topic. The coverage table lives on the Insights page, far
+# from where the risk is actually taken, so the gap is also stated here at the
+# moment an abstract query is run.
+ABSTRACT_COVERAGE_FLOOR = 0.95
+
+
+@st.cache_data(show_spinner=False)
+def _abstract_coverage_by_venue(db_path: str) -> dict[str, tuple[int, int]]:
+    """Per venue: records carrying an abstract, and records in total."""
+    coverage: dict[str, tuple[int, int]] = {}
+    with sqlite3.connect(db_path) as conn:
+        for venue, total, with_abstract in conn.execute(
+            "SELECT event, COUNT(*), "
+            "SUM(CASE WHEN abstract IS NOT NULL AND TRIM(abstract) <> '' THEN 1 ELSE 0 END) "
+            "FROM papers GROUP BY event"
+        ):
+            if total:
+                coverage[venue] = (int(with_abstract or 0), int(total))
+    return coverage
+
+
+def _warn_about_abstract_coverage(db_path: str, venue_choice: str) -> None:
+    """Say plainly which venues an abstract query cannot speak for."""
+    coverage = _abstract_coverage_by_venue(db_path)
+    if not coverage:
+        return
+
+    if venue_choice != "All venues":
+        entry = coverage.get(venue_choice)
+        if not entry:
+            return
+        with_abstract, total = entry
+        if with_abstract / total < ABSTRACT_COVERAGE_FLOOR:
+            st.warning(
+                f"**{venue_choice}** stores an abstract for {with_abstract:,} of "
+                f"{total:,} records ({with_abstract / total:.1%}). This query cannot "
+                f"reach the other {total - with_abstract:,}, so a small result set "
+                "here means missing text, not absent research."
+            )
+        return
+
+    weak = sorted(
+        (
+            (venue, hit, total)
+            for venue, (hit, total) in coverage.items()
+            if hit / total < ABSTRACT_COVERAGE_FLOOR
+        ),
+        key=lambda item: item[1] / item[2],
+    )
+    if not weak:
+        return
+    unreachable = sum(total - hit for _, hit, total in weak)
+    listed = ", ".join(f"{venue} {hit / total:.0%}" for venue, hit, total in weak[:4])
+    more = f", and {len(weak) - 4} more" if len(weak) > 4 else ""
+    st.warning(
+        f"Abstract coverage is uneven: {listed}{more}. This query cannot reach "
+        f"{unreachable:,} records that carry no abstract, so venue counts are not "
+        "comparable without accounting for that gap."
+    )
+
+
 def page_search() -> None:
     collector = _load_collector()
     stats = collector.db.get_statistics()
@@ -715,6 +777,9 @@ def page_search() -> None:
             "newest-first when no ranked query is set.",
             key="search_sort",
         )
+
+    if abstract_query:
+        _warn_about_abstract_coverage(str(collector.db.db_path), venue_choice)
 
     filters = SearchFilters()
     if title_query:
