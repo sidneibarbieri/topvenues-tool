@@ -375,8 +375,6 @@ def _reset_search_state() -> None:
         "search_abstract_scope": "Any",
         "search_bibtex": False,
         "search_awards": False,
-        "search_page_size": 50,
-        "search_sort": "Relevance",
     }
     for key, value in defaults.items():
         st.session_state[key] = value

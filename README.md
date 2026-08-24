@@ -13,7 +13,7 @@ The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submis
 
 | Property | Value |
 | --- | --- |
-| Tool release | `v1.2.0` |
+| Tool release | `v1.2.1` |
 | Snapshot source release | `v1.1.0` |
 | Scope | 20 declared security and security-relevant venues |
 | Records | 14,863 distinct canonical resources |
@@ -30,7 +30,7 @@ The successor merges only exact canonical resource locators (DOI or stable landi
 Requires Python 3.11 or newer, Git, and Bash.
 
 ```bash
-git clone --branch v1.2.0 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch v1.2.1 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 bash reproduce.sh --profile security-20-v2
 ```
@@ -44,7 +44,7 @@ PowerShell. Use the native PowerShell workflow rather than editing the Unix
 script or mixing Git Bash and PowerShell environments:
 
 ```powershell
-git clone --branch v1.2.0 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --branch v1.2.1 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 powershell -ExecutionPolicy Bypass -File .\reproduce.ps1 -Profile security-20-v2
 ```

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 — 2026-08-24
+
+- Keep display preferences outside the semantic search-filter reset, removing
+  a redundant Streamlit session-state assignment and its runtime warning.
+
 ## 1.2.0 — 2026-08-24
 
 - Make declared venue tiers first-class in web search, author analytics,
