@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.analytics import _authors_at_position, _split_authors, area_year_counts, top_authors
+from src.analytics import _split_authors, area_year_counts, authors_at_position, top_authors
 from src.models import Paper
 
 
@@ -52,9 +52,9 @@ def test_dblp_identity_suffix_is_preserved() -> None:
 
 def test_author_position_views_preserve_dblp_identity_suffixes() -> None:
     authors = "Alice 0001, Bob 0002, Carol 0003"
-    assert _authors_at_position(authors, "any") == ["Alice 0001", "Bob 0002", "Carol 0003"]
-    assert _authors_at_position(authors, "first") == ["Alice 0001"]
-    assert _authors_at_position(authors, "last") == ["Carol 0003"]
+    assert authors_at_position(authors, "any") == ["Alice 0001", "Bob 0002", "Carol 0003"]
+    assert authors_at_position(authors, "first") == ["Alice 0001"]
+    assert authors_at_position(authors, "last") == ["Carol 0003"]
 
 
 def test_reference_authors_supports_first_and_last_author_views(tmp_path: Path) -> None:
@@ -96,6 +96,35 @@ def test_reference_authors_can_restrict_to_security_big_four(tmp_path: Path) -> 
 
     authors = reference_authors(manager.db_path, allowed_tiers=frozenset({TOP4}))
     assert [entry["author"] for entry in authors] == ["Alice"]
+
+
+def test_reference_authors_defaults_to_raw_count_and_exposes_weighted_view(
+    tmp_path: Path,
+) -> None:
+    from src.analytics import TIER_WEIGHTED_METRIC, reference_authors
+    from src.database import DatabaseManager
+
+    manager = DatabaseManager(tmp_path / "papers.db")
+    manager.upsert_papers([
+        Paper(paper_id="1", title="One", year=2024, event="IEEE CNS", authors="Alice"),
+        Paper(paper_id="2", title="Two", year=2025, event="IEEE CNS", authors="Alice"),
+        Paper(paper_id="3", title="Three", year=2025, event="ACM CCS", authors="Bob"),
+    ])
+
+    assert reference_authors(manager.db_path)[0]["author"] == "Alice"
+    assert reference_authors(manager.db_path)[0]["recent_papers"] == 2
+    assert reference_authors(manager.db_path, ranking_metric=TIER_WEIGHTED_METRIC)[0][
+        "author"
+    ] == "Bob"
+
+
+def test_reference_authors_rejects_unknown_metric(tmp_path: Path) -> None:
+    from src.analytics import reference_authors
+    from src.database import DatabaseManager
+
+    manager = DatabaseManager(tmp_path / "papers.db")
+    with pytest.raises(ValueError, match="unknown author ranking metric"):
+        reference_authors(manager.db_path, ranking_metric="impact")
 
 
 class TestTopicTrend:

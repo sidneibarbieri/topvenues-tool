@@ -32,6 +32,12 @@ SOURCE_METADATA = {
         "origin": "deduplicated successor of the security-oriented Salão de Ferramentas release",
         "source_release_tag": "v1.1.0",
     },
+    "security-20-v3": {
+        "release_status": "post-publication-adjudicated-successor",
+        "paper_denominator": False,
+        "origin": "strict-window, identity-adjudicated successor of security-20-v2",
+        "source_release_tag": "v1.2.1",
+    },
 }
 
 
@@ -153,9 +159,18 @@ def build_manifest(profile_id: str) -> dict[str, object]:
             ],
         },
         "identity_policy": {
-            "merged_on": "exact canonical DOI or stable landing page",
+            "merged_on": (
+                "exact canonical DOI or stable landing page, plus Crossref-confirmed DOI aliases"
+                if profile_id == "security-20-v3"
+                else "exact canonical DOI or stable landing page"
+            ),
             "remaining_duplicate_resource_groups": duplicate_resource_groups,
             "unresolved_same_metadata_groups": unresolved_bibliographic_conflicts,
+            "adjudication_log": (
+                "data/adjudication/security-20-v3-identity.json"
+                if profile_id == "security-20-v3"
+                else None
+            ),
             "note": (
                 "Records with different canonical resources remain distinct even when "
                 "title, authors, year, and pages coincide."

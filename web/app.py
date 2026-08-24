@@ -14,6 +14,8 @@ ARTIFACT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ARTIFACT_ROOT))
 
 from src.abstract_fetcher import AbstractFetcher
+from src.analytics import authors_at_position
+from src.areas import area_for
 from src.awards import build_corpus_award_map
 from src.chart_interactions import selected_chart_value
 from src.collector import Collector
@@ -82,7 +84,7 @@ st.markdown(
             border-bottom: 1px solid var(--border);
         }
         .app-header h1 {
-            color: var(--ink); font-size: 1.75rem; font-weight: 700;
+            color: #18212f !important; font-size: 1.75rem; font-weight: 700;
             margin: 0 0 .35rem; letter-spacing: 0;
         }
         .app-header p { color: #4d5f71; font-size: .96rem; margin: 0; }
@@ -222,7 +224,8 @@ def _cached_topic_trend(
 
 @st.cache_data(show_spinner=False)
 def _cached_reference_authors(
-    db_path: str, topic: str | None, area: str | None, position: str, tier_scope: str, limit: int
+    db_path: str, topic: str | None, area: str | None, position: str,
+    tier_scope: str, ranking_metric: str, limit: int
 ) -> list[dict]:
     from src.analytics import reference_authors
 
@@ -230,6 +233,7 @@ def _cached_reference_authors(
         Path(db_path), topic=topic, area=area, position=position, limit=limit,
         awards_dir=Path(db_path).parent.parent / "awards",
         allowed_tiers=tiers_in_scope(tier_scope),
+        ranking_metric=ranking_metric,
     )
 
 
@@ -367,7 +371,9 @@ def _reset_search_state() -> None:
         "search_title": "",
         "search_abstract": "",
         "search_author": "",
+        "search_author_position": "Any position",
         "search_topic": "",
+        "search_area": "All areas",
         "search_tier_scope": "All declared venues",
         "search_venue": "All venues",
         "search_year": "All years",
@@ -387,6 +393,8 @@ def _open_search_from_insight(
     year: int | None = None,
     topic: str | None = None,
     author: str | None = None,
+    author_position: str | None = None,
+    area: str | None = None,
     paper_class: str | None = None,
     tier_scope: str | None = None,
 ) -> None:
@@ -396,6 +404,8 @@ def _open_search_from_insight(
     st.session_state["search_year"] = year or "All years"
     st.session_state["search_topic"] = topic or ""
     st.session_state["search_author"] = author or ""
+    st.session_state["search_author_position"] = author_position or "Any position"
+    st.session_state["search_area"] = area or "All areas"
     st.session_state["search_class"] = [paper_class] if paper_class else []
     st.session_state["search_tier_scope"] = tier_scope or "All declared venues"
     st.session_state["page"] = "Search"
@@ -519,7 +529,7 @@ def page_artifact() -> None:
         1. Run the reproduction script to validate the headline claims.
         2. Use Search to inspect the corpus and export CSV, JSON or BibTeX.
         3. Use Insights to verify scope, coverage and temporal distribution.
-        4. Use Pipeline only when refreshing the corpus from live sources.
+        4. Use Dataset lifecycle only when creating a new successor from live sources.
         """
     )
 
@@ -590,11 +600,22 @@ def page_search() -> None:
             author_query = st.text_input(
                 "Author contains", placeholder="e.g., Sekar", key="search_author"
             )
+            author_position = st.selectbox(
+                "Author position",
+                ["Any position", "First author", "Last author"],
+                key="search_author_position",
+                help="Applied only when Author contains is set.",
+            )
             tech_query = st.text_input(
                 "Topic / tech", placeholder="e.g., blockchain, 5G", key="search_topic"
             )
 
         with st.expander("Venue & year", expanded=True):
+            area_choice = st.selectbox(
+                "Research area",
+                ["All areas", "security", "ai", "networks", "mobile", "systems", "cross-area"],
+                key="search_area",
+            )
             tier_scope = st.selectbox(
                 "Venue tier scope",
                 tier_scope_options(),
@@ -690,6 +711,19 @@ def page_search() -> None:
         results = collector.search(filters, limit=None)
     if allowed_tiers is not None:
         results = [paper for paper in results if tier_for(paper.event) in allowed_tiers]
+    if area_choice != "All areas":
+        results = [paper for paper in results if area_for(paper.event) == area_choice]
+    if author_query and author_position != "Any position":
+        position_key = {"First author": "first", "Last author": "last"}[author_position]
+        normalized_query = author_query.casefold()
+        results = [
+            paper
+            for paper in results
+            if any(
+                normalized_query in author.casefold()
+                for author in authors_at_position(paper.authors, position_key)
+            )
+        ]
     if class_choices:
         wanted = {PaperClass(value) for value in class_choices}
         results = [p for p in results if p.paper_class in wanted]
@@ -715,7 +749,9 @@ def page_search() -> None:
     )
     _render_metrics(stats, filtered_count=len(results))
     active_venue = venue_choice if venue_choice != "All venues" else tier_scope
-    st.caption(f"Active venue scope: {active_venue}. Snapshot: security-20-v2.")
+    st.caption(
+        f"Active venue scope: {active_venue}. Snapshot: {collector.config.profile_id}."
+    )
 
     if not results:
         st.info("No papers match the current filters. Try widening the search.")
@@ -727,7 +763,9 @@ def page_search() -> None:
         title_query,
         abstract_query,
         author_query,
+        author_position,
         tech_query,
+        area_choice,
         venue_choice,
         year_choice,
         tier_scope,
@@ -1066,19 +1104,20 @@ def page_insights() -> None:
             st.info("No papers match this topic in the selected scope.")
 
     st.divider()
-    st.subheader("Authors visible in the selected corpus")
+    st.subheader("Researcher Radar")
     st.caption(
-        "Corpus-visibility heuristic: a Big Four paper (CCS, S&P, USENIX "
-        "Security, NDSS) weighs 5.0, other top-tier venues 3.0, survey "
-        "journals 2.0, strong venues 1.5, workshops 0.5. This is not a "
-        "citation, quality, or authority ranking. DBLP identity suffixes are "
-        "preserved to avoid merging homonyms."
+        "Discover researchers who recur in the selected corpus. Paper count is the "
+        "transparent default; the optional tier-weighted view gives Big Four papers "
+        "more weight. Neither view measures citations, quality, seniority, or authority. "
+        "DBLP identity suffixes are preserved to avoid merging homonyms."
     )
     st.caption(
         "Choose all, first, or last authorship position to answer different "
         "literature-review questions; none is a proxy for citation impact or seniority."
     )
-    col_topic, col_area, col_tier, col_position, col_n = st.columns([2, 1, 1.4, 1, 1])
+    col_topic, col_area, col_tier, col_position, col_metric, col_n = st.columns(
+        [2, 1, 1.35, 1, 1.25, 0.75]
+    )
     with col_topic:
         author_topic = st.text_input(
             "Topic (title/abstract contains)", placeholder="e.g., LLM, fuzzing",
@@ -1103,6 +1142,13 @@ def page_insights() -> None:
             key="authors_position",
             help="Rank all appearances, first-author appearances, or last-author appearances.",
         )
+    with col_metric:
+        author_metric = st.selectbox(
+            "Ranking metric",
+            ["Paper count", "Tier-weighted visibility"],
+            key="authors_metric",
+            help="Paper count answers the requested frequency ranking. The weighted view is a separate, declared heuristic.",
+        )
     with col_n:
         author_limit = st.number_input("Authors", 5, 50, 15, key="authors_limit")
 
@@ -1112,6 +1158,9 @@ def page_insights() -> None:
         None if author_area == "All areas" else author_area,
         {"Any author": "any", "First author": "first", "Last author": "last"}[author_position],
         author_tier_scope,
+        {"Paper count": "paper_count", "Tier-weighted visibility": "tier_weighted"}[
+            author_metric
+        ],
         int(author_limit),
     )
     if ranked_authors:
@@ -1119,27 +1168,33 @@ def page_insights() -> None:
             {
                 "#": position,
                 "Author": entry["author"],
-                "Score": entry["score"],
+                "Tier-weighted score": entry["score"],
                 "Papers": entry["papers"],
                 "Top-4": entry["top4"],
                 "Other top-tier": entry["top_tier"],
                 "Top-4 regional": entry["top4_regional"],
                 "Awards": entry["awards"],
+                f"Recent ({entry['recent_since']}–{entry['recent_through']})": entry[
+                    "recent_papers"
+                ],
                 "Active": f"{entry['first_year']}–{entry['last_year']}",
                 "Main venues": ", ".join(entry["venues"]),
                 "Tier scope": author_tier_scope,
                 "Topic": author_topic or "",
                 "Area": "" if author_area == "All areas" else author_area,
                 "Authorship": author_position,
+                "Ranking metric": author_metric,
             }
             for position, entry in enumerate(ranked_authors, start=1)
         ])
         st.caption(
             f"Active scope: {author_tier_scope} · {author_position.lower()} · "
-            f"{author_area} · topic: {author_topic or 'any'}"
+            f"{author_area} · {author_metric.lower()} · topic: {author_topic or 'any'}"
         )
         st.dataframe(
-            author_table.drop(columns=["Tier scope", "Topic", "Area", "Authorship"]),
+            author_table.drop(
+                columns=["Tier scope", "Topic", "Area", "Authorship", "Ranking metric"]
+            ),
             width="stretch",
             hide_index=True,
         )
@@ -1152,7 +1207,13 @@ def page_insights() -> None:
                 "Open author records",
                 key="open_author_records",
                 on_click=_open_search_from_insight,
-                kwargs={"author": selected_author, "tier_scope": author_tier_scope},
+                kwargs={
+                    "author": selected_author,
+                    "author_position": author_position,
+                    "topic": author_topic or None,
+                    "area": None if author_area == "All areas" else author_area,
+                    "tier_scope": author_tier_scope,
+                },
                 width="stretch",
             )
         with export_col:
@@ -1204,7 +1265,7 @@ def page_evidence() -> None:
         "Evidence and claim boundaries",
         "What this snapshot verifies, and what requires a separate empirical protocol.",
     )
-    st.subheader("Current release: security-20-v2")
+    st.subheader("Current release: security-20-v3")
     st.markdown(
         "This interface verifies the manifest, exact-resource identity policy, coverage, search, "
         "exports, and platform reproduction for the selected snapshot. It does not claim a manual "
@@ -1218,14 +1279,15 @@ def page_evidence() -> None:
         "available in the [frozen evaluation package](https://github.com/sidneibarbieri/topVenues/tree/07674480ff3172f4b195387438ab3af3c9c5655f/evaluation/baseline_validation)."
     )
     st.info(
-        "Those results are evidence for the companion snapshot only. Reusing them as v2 accuracy "
-        "would be invalid; a v2 audit needs a new sampled-label protocol."
+        "Those results are evidence for the companion snapshot only. Reusing them as v3 accuracy "
+        "would be invalid; a v3 audit needs a new sampled-label protocol."
     )
     st.subheader("Identity policy")
     st.markdown(
-        "v2 merges only records with an identical canonical DOI or stable landing page. It does not "
-        "infer identity from title similarity. Six same-metadata groups with distinct canonical "
-        "resources remain disclosed rather than silently collapsed."
+        "v3 inherits exact-resource deduplication, enforces the declared 2019–2026 window, and "
+        "merges two additional DOI aliases confirmed by Crossref. Four same-metadata pairs remain "
+        "distinct because publisher resources remain distinct. Every decision is disclosed in "
+        "data/adjudication/security-20-v3-identity.json."
     )
 
 
@@ -1325,7 +1387,7 @@ def main() -> None:
         "Search": page_search,
         "Insights": page_insights,
         "Evidence": page_evidence,
-        "Pipeline": page_pipeline,
+        "Dataset lifecycle": page_pipeline,
     }
     with st.sidebar:
         st.markdown(

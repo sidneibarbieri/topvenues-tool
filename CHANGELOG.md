@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.0 — 2026-08-24
+
+- Publish `security-20-v3`, preserving prior snapshots while enforcing the
+  declared 2019–2026 window and merging two DOI aliases confirmed by Crossref.
+- Record all six same-metadata identity decisions in a versioned adjudication
+  log; four pairs remain distinct because publisher resources remain distinct.
+- Add Researcher Radar rankings by raw paper count (default) and by the
+  separately labeled venue-tier heuristic, each with any/first/last-author views.
+- Reproduce with a cross-platform, hash-locked dependency set on Python
+  3.11–3.14.
+
 ## 1.2.1 — 2026-08-24
 
 - Keep display preferences outside the semantic search-filter reset, removing

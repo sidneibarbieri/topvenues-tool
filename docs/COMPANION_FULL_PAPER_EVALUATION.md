@@ -2,7 +2,7 @@
 
 The accepted full paper evaluated a different, frozen 9,925-record snapshot
 with SHA-256 `0f4dbaa97d0cf39abd2340adb3280643df090b5de9cd1a29bff39a0b53ef64cd`.
-It is not evidence for `security-20-v2`.
+It is not evidence for `security-20-v3`.
 
 The immutable package contains the venue-stratified 200-record sample (seed
 `20260721`), manual labels, source URLs and access dates, labeling instrument,

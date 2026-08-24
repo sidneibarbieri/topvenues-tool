@@ -6,11 +6,11 @@ set -euo pipefail
 cd "$(dirname "$0")"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$PWD/.cache/uv}"
 
-profile="${TOPVENUES_PROFILE:-security-20-v2}"
+profile="${TOPVENUES_PROFILE:-security-20-v3}"
 skip_install=false
 
 usage() {
-  printf 'Usage: %s [--profile security-20|security-20-v2] [--skip-install]\n' "$0"
+  printf 'Usage: %s [--profile security-20|security-20-v2|security-20-v3] [--skip-install]\n' "$0"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -37,7 +37,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$profile" in
-  security-20|security-20-v2) ;;
+  security-20|security-20-v2|security-20-v3) ;;
   *)
     printf 'Unknown profile: %s\n' "$profile" >&2
     exit 2
@@ -62,11 +62,11 @@ else
   done
 fi
 if [[ -z "$python_bin" ]] || ! command -v "$python_bin" >/dev/null 2>&1; then
-  fail "Python 3.11+ is required (set PYTHON=… to override)"
+  fail "Python 3.11–3.14 is required (set PYTHON=… to override)"
 fi
-"$python_bin" - <<'PY' || fail "Python 3.11 or newer is required"
+"$python_bin" - <<'PY' || fail "Python 3.11–3.14 is required"
 import sys
-raise SystemExit(0 if sys.version_info >= (3, 11) else 1)
+raise SystemExit(0 if (3, 11) <= sys.version_info < (3, 15) else 1)
 PY
 
 if [[ ! -d .venv ]]; then
@@ -82,19 +82,19 @@ if [[ ! -d .venv ]]; then
 fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
-python - <<'PY' || fail "active virtual environment must use Python 3.11 or newer"
+python - <<'PY' || fail "active virtual environment must use Python 3.11–3.14"
 import sys
-raise SystemExit(0 if sys.version_info >= (3, 11) else 1)
+raise SystemExit(0 if (3, 11) <= sys.version_info < (3, 15) else 1)
 PY
 ok "active environment: $(python --version)"
 
 if [[ "$skip_install" == false ]]; then
   if command -v uv >/dev/null 2>&1; then
-    uv pip install --quiet -r requirements.txt -r requirements-web.txt
+    uv pip install --quiet --require-hashes -r requirements-frozen.txt
   else
     PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1 \
       pip install --quiet --prefer-binary --timeout 60 \
-        -r requirements.txt -r requirements-web.txt
+        --require-hashes -r requirements-frozen.txt
   fi
   ok "dependencies installed"
 else

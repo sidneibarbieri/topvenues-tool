@@ -8,7 +8,6 @@ existing consolidator.
 from src.collector import Collector
 from src.dblp_dump_materializer import DblpDumpMaterializer
 
-
 NEW_VENUES = [
     "esorics", "codaspy", "raid", "cns", "wisec", "woot", "satml", "aisec", "trustcom",
     "sigcomm", "nsdi", "imc", "sigmetrics", "atc", "eurosys",
