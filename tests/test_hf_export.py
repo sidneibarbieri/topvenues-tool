@@ -76,6 +76,7 @@ def test_profile_export_records_snapshot_identity(db, tmp_path):
     )
     card = (out / "README.md").read_text(encoding="utf-8")
     assert "**Profile:** `security-20`" in card
+    assert "accepted paper's frozen `security-20` profile" in card
     assert "`abc`" in card
     assert "`test-release`" in card
 

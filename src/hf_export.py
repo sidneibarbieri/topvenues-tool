@@ -92,10 +92,10 @@ security = corpus.filter(lambda paper: paper["area"] == "security")
 
 [![Abstract-text search with populated previews](assets/topvenues-abstract-search.png)](assets/topvenues-abstract-search.pdf)
 
-The capture applies the local interface's **Abstract contains** filter to
-`intrusion detection` in `{profile_id}`. Every displayed row has an abstract
-preview. Open the [high-resolution PDF](assets/topvenues-abstract-search.pdf)
-for close inspection.
+This archived capture demonstrates the **Abstract contains** workflow on the
+accepted paper's frozen `security-20` profile; it is interface evidence, not a
+count claim for `{profile_id}`. Open the
+[high-resolution PDF](assets/topvenues-abstract-search.pdf) for close inspection.
 
 ## Scope and curation
 
@@ -113,7 +113,7 @@ key.
 
 | Column | Description |
 | --- | --- |
-| `paper_id` | Stable identifier (DBLP-derived) |
+| `paper_id` | Artifact record identifier; use `key`, `url`, and `ee` for bibliographic identity |
 | `key` | DBLP key |
 | `title` | Paper title |
 | `authors` | Author list as a single string |
@@ -135,7 +135,7 @@ key.
 
 Bibliographic metadata and BibTeX come from [DBLP](https://dblp.org)
 (released CC0). Abstracts were collected from open scholarly sources
-(Semantic Scholar, OpenAlex, CrossRef) and publisher pages; they remain the
+(Semantic Scholar, OpenAlex, Crossref) and publisher pages; they remain the
 copyright of their respective publishers and are included for research and
 indexing purposes. The repository's MIT license applies to the tool code; this
 dataset card does not grant rights in third-party abstract text.
@@ -178,13 +178,19 @@ def export_hf_dataset(
         manifest_path = base_dir / "data" / "profiles" / profile_id / "manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         snapshot = manifest["snapshot"]
+        identity_policy = manifest.get("identity_policy", {})
         tag_text = release_tag or "not yet tagged"
         release_identity = (
             f"- **Profile:** `{profile_id}`\n"
             f"- **Snapshot SHA-256 (gzip):** `{snapshot['gzip_sha256']}`\n"
             f"- **Source release tag:** `{tag_text}`\n"
-            f"- **Snapshot record count:** {snapshot['papers']:,}"
+            f"- **Snapshot record count:** {snapshot['papers']:,}\n"
+            f"- **Identity rule:** {identity_policy.get('merged_on', 'not declared')}\n"
+            f"- **Same-metadata groups retained:** "
+            f"{identity_policy.get('unresolved_same_metadata_groups', 'not declared')}"
         )
+        if adjudication_log := identity_policy.get("adjudication_log"):
+            release_identity += f"\n- **Adjudication log:** `{adjudication_log}`"
 
     with managed_sqlite_connection(db_path) as conn:
         df = pd.read_sql_query("SELECT * FROM papers", conn)
