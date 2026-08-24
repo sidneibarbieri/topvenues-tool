@@ -1556,8 +1556,23 @@ def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
         "Human only": "human_only",
         "Human-supervised, Codex-assisted": "human_supervised_codex_assisted",
     }
-    stored_mode = str(row["decision_mode"]).strip() or st.session_state.get(
-        "audit_decision_mode", "human_only"
+    prior_decisions = audit_frame.iloc[:position].loc[
+        lambda frame: frame["decision_mode"].astype(str).str.strip().ne("")
+    ]
+    prior_mode = (
+        str(prior_decisions.iloc[-1]["decision_mode"]).strip()
+        if not prior_decisions.empty
+        else "human_only"
+    )
+    prior_reviewer = (
+        str(prior_decisions.iloc[-1]["reviewer"]).strip()
+        if not prior_decisions.empty
+        else "Sidnei Barbieri"
+    )
+    stored_mode = (
+        str(row["decision_mode"]).strip()
+        or st.session_state.get("audit_decision_mode")
+        or prior_mode
     )
     selected_mode_label = next(
         label for label, value in decision_mode_labels.items() if value == stored_mode
@@ -1572,7 +1587,8 @@ def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
         reviewer = st.text_input(
             "Reviewer",
             value=str(row["reviewer"]).strip()
-            or st.session_state.get("audit_reviewer", "Sidnei Barbieri"),
+            or st.session_state.get("audit_reviewer")
+            or prior_reviewer,
         )
         label_complete = st.radio(
             "Is the abstract complete?",
@@ -1664,9 +1680,10 @@ def page_evidence() -> None:
     )
     st.subheader("Run a manual audit of this release")
     st.markdown(
-        "TopVenues generates a deterministic, venue-stratified sample. A human reviewer must "
-        "compare each extracted abstract with the linked source and label completeness, "
-        "contamination, and paper identity. Automated labels would not satisfy this protocol."
+        "TopVenues generates a deterministic, venue-stratified sample. Each extracted abstract "
+        "must be compared with the linked source and labelled for completeness, contamination, "
+        "and paper identity. Human-only and human-supervised assisted decisions are recorded "
+        "separately; unsupervised automated labels do not satisfy this protocol."
     )
     collector = _load_collector()
     audit_size = st.number_input(

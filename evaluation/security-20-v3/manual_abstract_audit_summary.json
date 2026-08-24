@@ -1,0 +1,28 @@
+{
+  "profile_id": "security-20-v3",
+  "protocol": "deterministic venue-stratified source audit",
+  "sample_size": 200,
+  "labelled": 200,
+  "usable": 169,
+  "usable_rate": 0.845,
+  "wilson_95_ci": [0.7884, 0.8886],
+  "criteria": {
+    "complete_yes": 171,
+    "uncontaminated_yes": 198,
+    "matches_paper_yes": 190
+  },
+  "decision_provenance": {
+    "human_only": 59,
+    "human_supervised_codex_assisted": 141,
+    "append_only_events": 273,
+    "provenance_corrections": 132
+  },
+  "non_usable_by_venue": {
+    "ACM AISec": 1,
+    "ESORICS": 7,
+    "NDSS": 2,
+    "RAID": 1,
+    "USENIX Security": 20
+  },
+  "interpretation": "A record is usable only when all three criteria are yes. This is a mixed-provenance, human-supervised source audit and must not be described as 200 exclusively human-only decisions."
+}

@@ -23,16 +23,20 @@ AUDIT_DECISION_MODES = ("human_only", "human_supervised_codex_assisted")
 class AuditDecision(BaseModel):
     """Append-only provenance for one saved audit decision."""
 
-    schema_version: str = "1.0"
+    schema_version: str = "1.1"
     decision_id: str
     timestamp_utc: datetime
     policy_version: str = "manual-abstract-audit-v3.1"
+    event_type: Literal["decision", "provenance_correction"] = "decision"
+    supersedes_decision_id: str | None = None
     profile_id: str
     sample_size: int
     sample_id: int
     paper_id: str
     source_url: str
-    source_mode: Literal["live_publisher_or_landing_page"]
+    source_mode: Literal[
+        "live_publisher_or_landing_page", "crossref_deposited_metadata"
+    ]
     decision_mode: Literal["human_only", "human_supervised_codex_assisted"]
     reviewer: str
     label_complete: str
@@ -172,17 +176,24 @@ def append_audit_decision(
     sample_size: int,
     progress_path: Path,
     decision_log_path: Path,
+    source_mode: Literal[
+        "live_publisher_or_landing_page", "crossref_deposited_metadata"
+    ] = "live_publisher_or_landing_page",
+    event_type: Literal["decision", "provenance_correction"] = "decision",
+    supersedes_decision_id: str | None = None,
 ) -> AuditDecision:
     """Append one replayable decision record without rewriting prior entries."""
     decision = AuditDecision(
         decision_id=str(uuid.uuid4()),
         timestamp_utc=datetime.now(UTC),
+        event_type=event_type,
+        supersedes_decision_id=supersedes_decision_id,
         profile_id=profile_id,
         sample_size=sample_size,
         sample_id=int(frame_row["sample_id"]),
         paper_id=str(frame_row["paper_id"]),
         source_url=str(frame_row["source_url"]),
-        source_mode="live_publisher_or_landing_page",
+        source_mode=source_mode,
         decision_mode=str(frame_row["decision_mode"]),
         reviewer=str(frame_row["reviewer"]),
         label_complete=str(frame_row["label_complete"]),

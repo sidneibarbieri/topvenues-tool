@@ -105,3 +105,39 @@ def test_decision_log_is_append_only(tmp_path: Path) -> None:
     rows = [json.loads(line) for line in decision_log_path.read_text().splitlines()]
     assert [row["decision_id"] for row in rows] == [first.decision_id, second.decision_id]
     assert all(row["decision_mode"] == "human_supervised_codex_assisted" for row in rows)
+    assert all(row["event_type"] == "decision" for row in rows)
+
+
+def test_decision_log_records_provenance_correction(tmp_path: Path) -> None:
+    database = tmp_path / "papers.db"
+    progress_path = tmp_path / "progress.csv"
+    decision_log_path = tmp_path / "decisions.jsonl"
+    _audit_database(database)
+    sample = build_audit_sample(database, sample_size=5)
+    sample.loc[0, ["label_complete", "label_uncontaminated", "label_matches_paper"]] = "yes"
+    sample.loc[0, "reviewer"] = "Sidnei Barbieri"
+    sample.loc[0, "decision_mode"] = "human_only"
+    original = append_audit_decision(
+        sample.loc[0],
+        profile_id="test-profile",
+        sample_size=len(sample),
+        progress_path=progress_path,
+        decision_log_path=decision_log_path,
+    )
+
+    sample.loc[0, "reviewer"] = "Human supervisor; Codex assistant"
+    sample.loc[0, "decision_mode"] = "human_supervised_codex_assisted"
+    correction = append_audit_decision(
+        sample.loc[0],
+        profile_id="test-profile",
+        sample_size=len(sample),
+        progress_path=progress_path,
+        decision_log_path=decision_log_path,
+        event_type="provenance_correction",
+        supersedes_decision_id=original.decision_id,
+    )
+
+    rows = [json.loads(line) for line in decision_log_path.read_text().splitlines()]
+    assert rows[-1]["event_type"] == "provenance_correction"
+    assert rows[-1]["supersedes_decision_id"] == original.decision_id
+    assert correction.decision_mode == "human_supervised_codex_assisted"
