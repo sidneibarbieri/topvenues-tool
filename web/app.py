@@ -1465,6 +1465,139 @@ def page_insights() -> None:
     st.dataframe(coverage_df.drop(columns="Coverage (%)"), width="stretch", hide_index=True)
 
 
+def _audit_choice(value: object) -> str:
+    normalized = str(value).strip().casefold()
+    if normalized in {"yes", "true", "1", "y"}:
+        return "Yes"
+    if normalized in {"no", "false", "0", "n"}:
+        return "No"
+    return "Unlabelled"
+
+
+def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
+    from src.manual_audit import load_audit_progress, save_audit_progress, summarize_audit
+
+    progress_path = (
+        ARTIFACT_ROOT
+        / "output"
+        / "manual_audit"
+        / f"{profile_id}-{len(sample)}-progress.csv"
+    )
+    audit_frame = load_audit_progress(sample, progress_path)
+    summary = summarize_audit(audit_frame)
+    completion = summary.labelled / summary.sampled if summary.sampled else 0.0
+    st.progress(completion, text=f"{summary.labelled}/{summary.sampled} records completed")
+    metric_columns = st.columns(3)
+    metric_columns[0].metric("Completed", summary.labelled)
+    metric_columns[1].metric("Remaining", summary.sampled - summary.labelled)
+    metric_columns[2].metric(
+        "Usable among completed",
+        f"{summary.usable_rate:.1%}" if summary.usable_rate is not None else "—",
+    )
+    st.caption(f"Progress is saved atomically to `{progress_path.relative_to(ARTIFACT_ROOT)}`.")
+
+    if "audit_position" not in st.session_state:
+        labelled_mask = audit_frame[
+            ["label_complete", "label_uncontaminated", "label_matches_paper"]
+        ].apply(lambda column: column.map(_audit_choice).ne("Unlabelled"))
+        incomplete = labelled_mask.all(axis=1).loc[lambda values: ~values].index.tolist()
+        st.session_state.audit_position = int(incomplete[0]) if incomplete else 0
+
+    position = min(max(int(st.session_state.audit_position), 0), len(audit_frame) - 1)
+    navigation = st.columns([1, 2, 1])
+    if navigation[0].button("← Previous", disabled=position == 0, width="stretch"):
+        st.session_state.audit_position = position - 1
+        st.rerun()
+    navigation[1].markdown(
+        f"<div style='text-align:center;padding:.45rem'><strong>Record "
+        f"{position + 1} of {len(audit_frame)}</strong></div>",
+        unsafe_allow_html=True,
+    )
+    if navigation[2].button(
+        "Next →", disabled=position == len(audit_frame) - 1, width="stretch"
+    ):
+        st.session_state.audit_position = position + 1
+        st.rerun()
+
+    row = audit_frame.iloc[position]
+    st.markdown(f"#### {html.escape(str(row['title']))}")
+    st.caption(
+        f"{row['venue']} · {row['year']} · paper_id {row['paper_id']} · "
+        f"abstract present: {'yes' if row['abstract_present'] else 'no'}"
+    )
+    if str(row["source_url"]).strip():
+        st.link_button("Open publisher/source record", str(row["source_url"]), width="stretch")
+    st.text_area(
+        "Extracted abstract",
+        value=str(row["abstract"]),
+        height=240,
+        disabled=True,
+        key=f"audit_abstract_{row['sample_id']}",
+    )
+    st.caption(
+        "Complete = not truncated. Uncontaminated = no navigation, captions, or unrelated text. "
+        "Matches paper = source title and abstract refer to this exact work."
+    )
+
+    choices = ("Unlabelled", "Yes", "No")
+    with st.form(f"audit_form_{row['sample_id']}"):
+        reviewer = st.text_input(
+            "Reviewer",
+            value=str(row["reviewer"]).strip()
+            or st.session_state.get("audit_reviewer", "Sidnei Barbieri"),
+        )
+        label_complete = st.radio(
+            "Is the abstract complete?",
+            choices,
+            index=choices.index(_audit_choice(row["label_complete"])),
+            horizontal=True,
+        )
+        label_uncontaminated = st.radio(
+            "Is the abstract uncontaminated?",
+            choices,
+            index=choices.index(_audit_choice(row["label_uncontaminated"])),
+            horizontal=True,
+        )
+        label_matches_paper = st.radio(
+            "Does the abstract match this exact paper?",
+            choices,
+            index=choices.index(_audit_choice(row["label_matches_paper"])),
+            horizontal=True,
+        )
+        notes = st.text_area("Notes (optional)", value=str(row["notes"]), height=90)
+        save_and_next = st.form_submit_button("Save decision and open next", width="stretch")
+
+    if save_and_next:
+        selected_labels = (label_complete, label_uncontaminated, label_matches_paper)
+        if not reviewer.strip():
+            st.error("Enter the human reviewer's name before saving.")
+        elif "Unlabelled" in selected_labels:
+            st.error("Answer all three questions before saving this record.")
+        else:
+            audit_frame.loc[position, "label_complete"] = label_complete.casefold()
+            audit_frame.loc[position, "label_uncontaminated"] = label_uncontaminated.casefold()
+            audit_frame.loc[position, "label_matches_paper"] = label_matches_paper.casefold()
+            audit_frame.loc[position, "reviewer"] = reviewer.strip()
+            audit_frame.loc[position, "notes"] = notes.strip()
+            save_audit_progress(audit_frame, progress_path)
+            st.session_state.audit_reviewer = reviewer.strip()
+            st.session_state.audit_position = min(position + 1, len(audit_frame) - 1)
+            st.rerun()
+
+    st.download_button(
+        "Download current audit progress (CSV)",
+        audit_frame.to_csv(index=False).encode("utf-8"),
+        file_name=progress_path.name,
+        mime="text/csv",
+        width="stretch",
+    )
+    if summary.labelled:
+        st.caption(
+            f"{summary.usable}/{summary.labelled} completed records currently satisfy all three "
+            f"criteria. Partial rows are excluded from the estimate."
+        )
+
+
 def page_evidence() -> None:
     """Keep released-profile claims separate from companion-study evidence."""
     _render_header(
@@ -1501,36 +1634,29 @@ def page_evidence() -> None:
         "Audit sample size", min_value=20, max_value=500, value=200, step=20
     )
     sample = _cached_audit_sample(str(collector.db.db_path), int(audit_size))
-    st.download_button(
-        "Download annotation sheet (CSV)",
-        sample.to_csv(index=False).encode("utf-8"),
-        file_name=f"{collector.config.profile_id}-manual-audit.csv",
-        mime="text/csv",
-        width="stretch",
-    )
-    uploaded_audit = st.file_uploader(
-        "Upload completed annotation sheet",
-        type=["csv"],
-        help="Accepted labels: yes/no, true/false, 1/0. Partially labelled rows are excluded.",
-    )
-    if uploaded_audit is not None:
-        from src.manual_audit import summarize_audit
+    _render_manual_audit(sample, collector.config.profile_id)
+    with st.expander("Import an externally completed audit sheet"):
+        uploaded_audit = st.file_uploader(
+            "Upload completed annotation sheet",
+            type=["csv"],
+            help="Accepted labels: yes/no, true/false, 1/0. Partially labelled rows are excluded.",
+        )
+        if uploaded_audit is not None:
+            from src.manual_audit import summarize_audit
 
-        audit_frame = pd.read_csv(uploaded_audit, keep_default_na=False)
-        summary = summarize_audit(audit_frame)
-        if summary.labelled == 0:
-            st.warning("The uploaded sheet contains no fully labelled rows.")
-        else:
-            st.metric(
-                "Usable abstract rate among labelled records",
-                f"{summary.usable_rate:.1%}",
-                help="A record is usable only when all three audit labels are positive.",
-            )
-            st.caption(
-                f"{summary.usable}/{summary.labelled} usable; 95% Wilson interval "
-                f"{summary.ci95_low:.1%}–{summary.ci95_high:.1%}. "
-                f"Completion: {summary.labelled}/{summary.sampled} sampled records."
-            )
+            uploaded_frame = pd.read_csv(uploaded_audit, keep_default_na=False)
+            uploaded_summary = summarize_audit(uploaded_frame)
+            if uploaded_summary.labelled == 0:
+                st.warning("The uploaded sheet contains no fully labelled rows.")
+            else:
+                st.metric(
+                    "Usable abstract rate among labelled records",
+                    f"{uploaded_summary.usable_rate:.1%}",
+                )
+                st.caption(
+                    f"{uploaded_summary.usable}/{uploaded_summary.labelled} usable; 95% Wilson "
+                    f"interval {uploaded_summary.ci95_low:.1%}–{uploaded_summary.ci95_high:.1%}."
+                )
     st.subheader("Identity policy")
     st.markdown(
         "This release applies exact-resource deduplication, enforces the declared 2019–2026 "

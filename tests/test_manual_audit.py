@@ -2,8 +2,14 @@ import sqlite3
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
-from src.manual_audit import build_audit_sample, summarize_audit
+from src.manual_audit import (
+    build_audit_sample,
+    load_audit_progress,
+    save_audit_progress,
+    summarize_audit,
+)
 
 
 def _audit_database(path: Path) -> None:
@@ -40,3 +46,30 @@ def test_summary_uses_only_fully_labelled_rows() -> None:
     assert summary.labelled == 2
     assert summary.usable == 1
     assert summary.usable_rate == 0.5
+
+
+def test_audit_progress_round_trip_is_atomic(tmp_path: Path) -> None:
+    database = tmp_path / "papers.db"
+    progress_path = tmp_path / "progress.csv"
+    _audit_database(database)
+    sample = build_audit_sample(database, sample_size=5)
+    sample.loc[0, "label_complete"] = "yes"
+    save_audit_progress(sample, progress_path)
+
+    loaded = load_audit_progress(sample, progress_path)
+
+    pd.testing.assert_frame_equal(loaded, sample)
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_audit_progress_rejects_a_different_sample(tmp_path: Path) -> None:
+    database = tmp_path / "papers.db"
+    progress_path = tmp_path / "progress.csv"
+    _audit_database(database)
+    sample = build_audit_sample(database, sample_size=5)
+    save_audit_progress(sample, progress_path)
+    different_sample = sample.copy()
+    different_sample.loc[0, "paper_id"] = "different"
+
+    with pytest.raises(ValueError, match="paper_id"):
+        load_audit_progress(different_sample, progress_path)

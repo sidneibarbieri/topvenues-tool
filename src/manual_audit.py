@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import sqlite3
+import tempfile
 from pathlib import Path
 
 import pandas as pd
 from pydantic import BaseModel
 
 AUDIT_LABELS = ("label_complete", "label_uncontaminated", "label_matches_paper")
+AUDIT_ID_COLUMNS = ("sample_id", "paper_id")
 
 
 class AuditSummary(BaseModel):
@@ -89,6 +92,42 @@ def _as_label(value: object) -> bool | None:
     if normalized in {"false", "no", "0", "n"}:
         return False
     return None
+
+
+def load_audit_progress(sample: pd.DataFrame, progress_path: Path) -> pd.DataFrame:
+    """Load labels only when they belong to the exact deterministic sample."""
+    if not progress_path.exists():
+        return sample.copy()
+    progress = pd.read_csv(progress_path, keep_default_na=False)
+    missing_columns = set(sample.columns) - set(progress.columns)
+    if missing_columns:
+        raise ValueError(f"audit progress is missing columns: {sorted(missing_columns)}")
+    if len(progress) != len(sample):
+        raise ValueError("audit progress does not match the selected sample size")
+    for column in AUDIT_ID_COLUMNS:
+        if progress[column].astype(str).tolist() != sample[column].astype(str).tolist():
+            raise ValueError(f"audit progress does not match the deterministic {column} sequence")
+    return progress.loc[:, sample.columns].copy()
+
+
+def save_audit_progress(frame: pd.DataFrame, progress_path: Path) -> None:
+    """Persist human labels atomically so an interrupted write cannot corrupt progress."""
+    missing_columns = set(AUDIT_LABELS + AUDIT_ID_COLUMNS) - set(frame.columns)
+    if missing_columns:
+        raise ValueError(f"audit progress is missing columns: {sorted(missing_columns)}")
+    progress_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        newline="",
+        dir=progress_path.parent,
+        prefix=f".{progress_path.name}.",
+        suffix=".tmp",
+        delete=False,
+    ) as temporary_file:
+        frame.to_csv(temporary_file, index=False)
+        temporary_path = Path(temporary_file.name)
+    os.replace(temporary_path, progress_path)
 
 
 def _wilson_interval(successes: int, total: int) -> tuple[float, float]:
