@@ -13,7 +13,7 @@ The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submis
 
 | Property | Value |
 | --- | --- |
-| Tool release | `v1.3.0` |
+| Tool release | `v1.4.0` |
 | Snapshot source release | `v1.2.1` |
 | Scope | 20 declared security and security-relevant venues |
 | Records | 14,859 corpus records |
@@ -30,7 +30,7 @@ The successor enforces the declared 2019–2026 window, inherits exact-resource 
 Requires Python 3.11–3.14, Git, and Bash.
 
 ```bash
-git clone --branch v1.3.0 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --depth 1 --branch v1.4.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 bash reproduce.sh --profile security-20-v3
 ```
@@ -44,7 +44,7 @@ PowerShell. Use the native PowerShell workflow rather than editing the Unix
 script or mixing Git Bash and PowerShell environments:
 
 ```powershell
-git clone --branch v1.3.0 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --depth 1 --branch v1.4.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 powershell -ExecutionPolicy Bypass -File .\reproduce.ps1 -Profile security-20-v3
 ```
@@ -70,7 +70,17 @@ python -m streamlit run web/app.py
 On Windows PowerShell, activate with `.\.venv\Scripts\Activate.ps1` before
 running the same `python -m streamlit run web/app.py` command.
 
-The interface exposes coverage inspection, substring and BM25-ranked search, Researcher Radar, topic trends, and exports. Search and author analytics offer an explicit Security Big Four (Tier 1) scope: ACM CCS, IEEE S&P, USENIX Security, and NDSS. Insights are traceable: selecting a venue, year, or topic-trend bar opens the corresponding records, while each author view can open that author's supporting papers. Researcher Radar defaults to raw paper count and also exposes a separately labeled venue-tier heuristic; neither measures citations, quality, seniority, or authority. See [docs/RESEARCH_WORKFLOWS.md](docs/RESEARCH_WORKFLOWS.md) before using a tier restriction in a review protocol. It runs against the local snapshot at `http://localhost:8501`.
+The interface exposes coverage inspection, substring and BM25-ranked search,
+topic trends, Researcher Radar, and exports. Search and author analytics offer
+an explicit Security Big Four (Tier 1) scope: ACM CCS, IEEE S&P, USENIX
+Security, and NDSS. Aggregates are traceable to supporting records. Researcher
+Radar adds exact-identity trajectories, direct coauthorship, recent publication-
+rate change, portable watchlists, and an explicitly unverified arXiv name-search
+handoff. These are corpus observations, not measurements of citations, quality,
+seniority, authority, or future impact. See
+[docs/RESEARCH_WORKFLOWS.md](docs/RESEARCH_WORKFLOWS.md) before using a tier
+restriction or monitoring signal. The local interface runs at
+`http://localhost:8501`.
 
 ## Inspect abstract evidence
 
@@ -103,7 +113,13 @@ python -m src.cli --profile security-20-v3 export --format bibtex --tech "fuzzin
   --tier-scope "Security Big Four (Tier 1)" -o fuzzing-tier1.bib
 
 # Build the Hugging Face Parquet export from the immutable profile
-python -m src.cli --profile security-20-v3 export-hf --release-tag v1.3.0
+python -m src.cli --profile security-20-v3 export-hf --release-tag v1.4.0
+
+# Create and later evaluate a portable research watch
+python scripts/evaluate_watchlist.py topvenues-watchlist.json --profile security-20-v3
+
+# Generate the fixed v3 manual-audit annotation sheet
+python scripts/manual_abstract_audit.py --profile security-20-v3 --sample-size 200
 ```
 
 Substring and ranked search answer different questions: substring search finds records that mention text, whereas ranked search orders title, abstract, and author matches by BM25. Multi-word ranked queries use token semantics.
@@ -116,7 +132,15 @@ Live `download`, `consolidate`, `extract`, and `bibtex` commands are maintenance
 
 The released profile disables live refresh controls in the web interface. The **Dataset lifecycle** page describes the boundary; the controlled successor-profile procedure is in [docs/PROFILE_REFRESH.md](docs/PROFILE_REFRESH.md). The SBSeg bench and seven-minute presentation walkthrough is in [docs/SBSEG_2026_DEMO_SCRIPT.md](docs/SBSEG_2026_DEMO_SCRIPT.md).
 
-The companion full paper's 200-record manual audit and live baseline comparison are documented in [docs/COMPANION_FULL_PAPER_EVALUATION.md](docs/COMPANION_FULL_PAPER_EVALUATION.md). They remain explicitly bound to that paper's frozen snapshot and are not reused as a v3 accuracy claim.
+The companion full paper's 200-record manual audit and live baseline comparison are documented in [docs/COMPANION_FULL_PAPER_EVALUATION.md](docs/COMPANION_FULL_PAPER_EVALUATION.md). They remain explicitly bound to that paper's frozen snapshot and are not reused as a v3 accuracy claim. A new deterministic v3 annotation protocol is available in [docs/MANUAL_ABSTRACT_AUDIT.md](docs/MANUAL_ABSTRACT_AUDIT.md); no v3 precision result is claimed until its human labels are complete.
+
+## Distribution boundary
+
+The default package bundles only `security-20-v3`. Historical manifests remain
+visible, while their unchanged binaries stay in the release tags where they
+were published. Fetch one explicitly with
+`python scripts/fetch_archived_profile.py --profile security-20`. This avoids
+forcing every current reviewer to download three redundant corpus snapshots.
 
 ## Hugging Face export
 

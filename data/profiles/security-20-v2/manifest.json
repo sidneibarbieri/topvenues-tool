@@ -5,6 +5,10 @@
   "paper_denominator": false,
   "origin": "deduplicated successor of the security-oriented Salão de Ferramentas release",
   "source_release_tag": "v1.1.0",
+  "distribution": {
+    "bundled": false,
+    "url": "https://raw.githubusercontent.com/sidneibarbieri/topvenues-tool/v1.1.0/data/profiles/security-20-v2/papers.db.gz"
+  },
   "configuration": {
     "path": "profiles/security-20-v2/config.yaml",
     "event_keys": [

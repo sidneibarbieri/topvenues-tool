@@ -12,6 +12,17 @@ To publish a successor, an operator works in a separate profile and records:
 5. automated test and search/export results; and
 6. the gzip and SQLite SHA-256 values in a new manifest.
 
+Before promotion, compare the previous and successor profiles:
+
+```bash
+python scripts/compare_profiles.py PREVIOUS SUCCESSOR --output profile-diff.json
+```
+
+The report records exact added, removed, and retained paper IDs plus headline
+coverage. Review removals, identity merges, venue/year changes, and a fresh
+manual-audit sample before freezing the successor. If the previous binary has
+been archived, retrieve it first with `scripts/fetch_archived_profile.py`.
+
 Only after those checks pass should the new snapshot receive a new semantic
 release tag and replace the default researcher-facing profile. Never overwrite
 an existing release snapshot or reinterpret its published counts.

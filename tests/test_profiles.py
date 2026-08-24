@@ -8,6 +8,7 @@ import src.sqlite_connection as sqlite_connection_module
 from src.profiles import (
     DEFAULT_PROFILE_ID,
     PROJECT_ROOT,
+    load_profile,
     select_profile_id,
     verified_profile_snapshot,
 )
@@ -29,11 +30,14 @@ def test_unknown_profile_fails_closed(monkeypatch) -> None:
         select_profile_id()
 
 
-def test_security_snapshot_matches_manifest() -> None:
-    with verified_profile_snapshot("security-20", PROJECT_ROOT) as verified:
-        assert verified.database_path.is_file()
-        assert verified.profile.manifest["snapshot"]["papers"] == 20305
-        assert verified.profile.manifest["snapshot"]["venues"] == 20
+def test_archived_security_snapshot_keeps_manifest_and_distribution_identity() -> None:
+    profile = load_profile("security-20", PROJECT_ROOT)
+    assert profile.manifest["snapshot"]["papers"] == 20305
+    assert profile.manifest["snapshot"]["venues"] == 20
+    assert profile.manifest["distribution"]["bundled"] is False
+    assert profile.manifest["distribution"]["url"].endswith(
+        "/v1.0.1/data/profiles/security-20/papers.db.gz"
+    )
 
 
 def test_current_snapshot_matches_strict_declared_window() -> None:
@@ -54,7 +58,7 @@ def test_verified_snapshot_closes_database_before_temp_cleanup(monkeypatch) -> N
         return connection
 
     monkeypatch.setattr(sqlite_connection_module.sqlite3, "connect", tracked_connect)
-    with verified_profile_snapshot("security-20", PROJECT_ROOT):
+    with verified_profile_snapshot("security-20-v3", PROJECT_ROOT):
         pass
 
     assert len(connections) == 1
