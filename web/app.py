@@ -10,6 +10,8 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from web import charts
+
 ARTIFACT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ARTIFACT_ROOT))
 
@@ -457,38 +459,28 @@ def _interactive_bar_chart(
     *,
     horizontal: bool = True,
     sort: str | list | None = "-x",
-    color: str = "#2f6f73",
+    category_title: str | None = None,
+    value_title: str | None = None,
+    value_format: str = ",",
+    color: str = charts.ACCENT,
 ) -> object | None:
-    """Render a restrained selectable chart and return its selected category."""
+    """Render a selectable bar chart and return the category the reader picked."""
     selection_name = f"{key}_selection"
     selection = alt.selection_point(selection_name, fields=[category], on="click", clear="dblclick")
-    category_encoding = alt.Y(f"{category}:N", sort=sort, title=None)
-    value_encoding = alt.X(f"{value}:Q", title=value)
-    if not horizontal:
-        category_encoding = alt.X(
-            f"{category}:O", sort=sort, title=category, axis=alt.Axis(labelAngle=0)
+    chart = charts.apply_theme(
+        charts.bar_chart(
+            data,
+            category,
+            value,
+            selection,
+            horizontal=horizontal,
+            sort=sort,
+            category_title=category_title,
+            value_title=value_title,
+            value_format=value_format,
+            height=height,
+            color=color,
         )
-        value_encoding = alt.Y(f"{value}:Q", title=value)
-    chart = (
-        alt.Chart(data)
-        .mark_bar(color=color, cornerRadiusEnd=3)
-        .encode(
-            x=value_encoding if horizontal else category_encoding,
-            y=category_encoding if horizontal else value_encoding,
-            tooltip=[alt.Tooltip(f"{category}:N"), alt.Tooltip(f"{value}:Q", format=",")],
-            opacity=alt.condition(selection, alt.value(1.0), alt.value(0.58)),
-        )
-        .add_params(selection)
-        .properties(height=height)
-        .configure_axis(
-            domainColor="#cbd5e1",
-            gridColor="#e7ebee",
-            labelColor="#475569",
-            titleColor="#334155",
-            labelFontSize=12,
-            titleFontSize=12,
-        )
-        .configure_view(strokeOpacity=0)
     )
     event = st.altair_chart(
         chart, key=key, on_select="rerun", selection_mode=selection_name, theme=None
@@ -497,32 +489,30 @@ def _interactive_bar_chart(
 
 
 def _interactive_line_chart(
-    data: pd.DataFrame, x_field: str, y_field: str, key: str, height: int
+    data: pd.DataFrame,
+    x_field: str,
+    y_field: str,
+    key: str,
+    height: int,
+    *,
+    x_title: str | None = None,
+    y_title: str | None = None,
+    value_format: str = ",",
 ) -> object | None:
-    """Render a chronological selectable line chart with precise values."""
+    """Render a selectable chronological chart and return the point picked."""
     selection_name = f"{key}_selection"
     selection = alt.selection_point(selection_name, fields=[x_field], on="click", clear="dblclick")
-    line = alt.Chart(data).mark_line(color="#334e68", strokeWidth=2.5)
-    points = alt.Chart(data).mark_point(filled=True, color="#334e68", size=75)
-    chart = (
-        (line + points)
-        .encode(
-            x=alt.X(f"{x_field}:O", sort="ascending", title=x_field, axis=alt.Axis(labelAngle=0)),
-            y=alt.Y(f"{y_field}:Q", title=y_field, scale=alt.Scale(zero=True)),
-            tooltip=[alt.Tooltip(f"{x_field}:O"), alt.Tooltip(f"{y_field}:Q", format=".2f")],
-            opacity=alt.condition(selection, alt.value(1.0), alt.value(0.62)),
+    chart = charts.apply_theme(
+        charts.line_chart(
+            data,
+            x_field,
+            y_field,
+            selection,
+            x_title=x_title,
+            y_title=y_title,
+            value_format=value_format,
+            height=height,
         )
-        .add_params(selection)
-        .properties(height=height)
-        .configure_axis(
-            domainColor="#cbd5e1",
-            gridColor="#e7ebee",
-            labelColor="#475569",
-            titleColor="#334155",
-            labelFontSize=12,
-            titleFontSize=12,
-        )
-        .configure_view(strokeOpacity=0)
     )
     event = st.altair_chart(
         chart, key=key, on_select="rerun", selection_mode=selection_name, theme=None
