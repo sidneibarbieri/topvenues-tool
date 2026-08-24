@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.0 — 2026-08-24
+
+- Make declared venue tiers first-class in web search, author analytics,
+  topic trends, CLI search, and exports.
+- Preserve chronological order in annual charts and add selectable,
+  consistently styled volume and share views.
+- Reset stale search state before insight drill-downs and expose the active
+  tier scope and tier evidence in result tables and author shortlists.
+- Mark partial publication years to prevent incomplete-year trend claims.
+- Install and health-check the web interface in the Linux/macOS and native
+  Windows reviewer workflows.
+- Test the artifact on Linux and Windows with Python 3.11 through 3.14 and
+  refuse in-place overwrite of an immutable successor snapshot.
+
 ## 1.1.0 — 2026-08-24
 
 - Publish `security-20-v2`, a successor snapshot that merges only records

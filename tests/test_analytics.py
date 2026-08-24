@@ -142,6 +142,18 @@ class TestTopicTrend:
             {"year": 2025, "papers": 1, "share_pct": 100.0},
         ]
 
+    def test_tier_filter_scopes_both_numerator_and_denominator(self, trend_db):
+        from src.analytics import topic_trend
+        from src.tiers import TOP_TIER
+
+        trend = topic_trend(trend_db, "LLM", allowed_tiers=frozenset({TOP_TIER}))
+
+        assert trend["total"] == 0
+        assert trend["by_year"] == [
+            {"year": 2024, "papers": 0, "share_pct": 0.0},
+            {"year": 2025, "papers": 0, "share_pct": 0.0},
+        ]
+
     def test_year_start_cuts_earlier_years(self, trend_db):
         from src.analytics import topic_trend
 

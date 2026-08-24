@@ -170,6 +170,7 @@ def topic_trend(
     topic: str,
     area: str | None = None,
     year_start: int | None = None,
+    allowed_tiers: frozenset[str] | None = None,
 ) -> dict:
     """Yearly volume and corpus share for a topic, plus its main venues.
 
@@ -195,6 +196,8 @@ def topic_trend(
         )
         for event, year, matched in rows:
             if area is not None and area_for(event) != area:
+                continue
+            if allowed_tiers is not None and tier_for(event) not in allowed_tiers:
                 continue
             year = int(year)
             if year_start is not None and year < year_start:

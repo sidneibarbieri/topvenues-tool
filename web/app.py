@@ -210,10 +210,14 @@ def _award_map() -> dict[str, list[str]]:
 
 
 @st.cache_data(show_spinner=False)
-def _cached_topic_trend(db_path: str, topic: str, area: str | None) -> dict:
+def _cached_topic_trend(
+    db_path: str, topic: str, area: str | None, tier_scope: str
+) -> dict:
     from src.analytics import topic_trend
 
-    return topic_trend(Path(db_path), topic, area=area)
+    return topic_trend(
+        Path(db_path), topic, area=area, allowed_tiers=tiers_in_scope(tier_scope)
+    )
 
 
 @st.cache_data(show_spinner=False)
@@ -240,8 +244,14 @@ def _safe_html(value: object) -> str:
     return html.escape(str(value), quote=True)
 
 
-def _venue_options(collector: Collector) -> list[str]:
-    venues = sorted({paper.event for paper in collector.papers if paper.event})
+def _venue_options(
+    collector: Collector, allowed_tiers: frozenset[str] | None = None
+) -> list[str]:
+    venues = sorted({
+        paper.event
+        for paper in collector.papers
+        if paper.event and (allowed_tiers is None or tier_for(paper.event) in allowed_tiers)
+    })
     return ["All venues", *venues]
 
 
@@ -250,6 +260,8 @@ def _abstract_length_predicate(papers, choice: str):
         return papers
     if choice == "Has abstract":
         return [paper for paper in papers if paper.abstract]
+    if choice == "Missing abstract":
+        return [paper for paper in papers if not paper.abstract]
     if choice == "Short (≤ 150 words)":
         return [paper for paper in papers if 0 < paper.abstract_words <= 150]
     if choice == "Medium (151–300 words)":
@@ -348,6 +360,30 @@ def _render_metrics(stats: dict, filtered_count: int | None = None) -> None:
     )
 
 
+def _reset_search_state() -> None:
+    """Restore every search widget to a coherent default state."""
+    defaults = {
+        "search_ranked": "",
+        "search_title": "",
+        "search_abstract": "",
+        "search_author": "",
+        "search_topic": "",
+        "search_tier_scope": "All declared venues",
+        "search_venue": "All venues",
+        "search_year": "All years",
+        "search_class": [],
+        "search_abstract_scope": "Any",
+        "search_bibtex": False,
+        "search_awards": False,
+        "search_page_size": 50,
+        "search_sort": "Relevance",
+    }
+    for key, value in defaults.items():
+        st.session_state[key] = value
+    st.session_state.pop("search_signature", None)
+    st.session_state["page_no"] = 1
+
+
 def _open_search_from_insight(
     venue: str | None = None,
     year: int | None = None,
@@ -357,6 +393,7 @@ def _open_search_from_insight(
     tier_scope: str | None = None,
 ) -> None:
     """Transfer one insight dimension into the search workflow."""
+    _reset_search_state()
     st.session_state["search_venue"] = venue or "All venues"
     st.session_state["search_year"] = year or "All years"
     st.session_state["search_topic"] = topic or ""
@@ -373,25 +410,81 @@ def _queue_search_from_chart(**filters: str | int | None) -> None:
 
 
 def _interactive_bar_chart(
-    data: pd.DataFrame, category: str, value: str, key: str, height: int
+    data: pd.DataFrame,
+    category: str,
+    value: str,
+    key: str,
+    height: int,
+    *,
+    horizontal: bool = True,
+    sort: str | list | None = "-x",
+    color: str = "#2f6f73",
 ) -> object | None:
     """Render a restrained selectable chart and return its selected category."""
     selection_name = f"{key}_selection"
     selection = alt.selection_point(selection_name, fields=[category], on="click", clear="dblclick")
+    category_encoding = alt.Y(f"{category}:N", sort=sort, title=None)
+    value_encoding = alt.X(f"{value}:Q", title=value)
+    if not horizontal:
+        category_encoding = alt.X(
+            f"{category}:O", sort=sort, title=category, axis=alt.Axis(labelAngle=0)
+        )
+        value_encoding = alt.Y(f"{value}:Q", title=value)
     chart = (
         alt.Chart(data)
-        .mark_bar(color="#2f6f73")
+        .mark_bar(color=color, cornerRadiusEnd=3)
         .encode(
-            x=alt.X(f"{value}:Q", title=value),
-            y=alt.Y(f"{category}:N", sort="-x", title=None),
+            x=value_encoding if horizontal else category_encoding,
+            y=category_encoding if horizontal else value_encoding,
             tooltip=[alt.Tooltip(f"{category}:N"), alt.Tooltip(f"{value}:Q", format=",")],
             opacity=alt.condition(selection, alt.value(1.0), alt.value(0.58)),
         )
         .add_params(selection)
         .properties(height=height)
+        .configure_axis(
+            domainColor="#cbd5e1",
+            gridColor="#e7ebee",
+            labelColor="#475569",
+            titleColor="#334155",
+            labelFontSize=12,
+            titleFontSize=12,
+        )
+        .configure_view(strokeOpacity=0)
     )
     event = st.altair_chart(chart, key=key, on_select="rerun", selection_mode=selection_name, theme=None)
     return selected_chart_value(event, selection_name, category)
+
+
+def _interactive_line_chart(
+    data: pd.DataFrame, x_field: str, y_field: str, key: str, height: int
+) -> object | None:
+    """Render a chronological selectable line chart with precise values."""
+    selection_name = f"{key}_selection"
+    selection = alt.selection_point(selection_name, fields=[x_field], on="click", clear="dblclick")
+    line = alt.Chart(data).mark_line(color="#334e68", strokeWidth=2.5)
+    points = alt.Chart(data).mark_point(filled=True, color="#334e68", size=75)
+    chart = (
+        (line + points)
+        .encode(
+            x=alt.X(f"{x_field}:O", sort="ascending", title=x_field, axis=alt.Axis(labelAngle=0)),
+            y=alt.Y(f"{y_field}:Q", title=y_field, scale=alt.Scale(zero=True)),
+            tooltip=[alt.Tooltip(f"{x_field}:O"), alt.Tooltip(f"{y_field}:Q", format=".2f")],
+            opacity=alt.condition(selection, alt.value(1.0), alt.value(0.62)),
+        )
+        .add_params(selection)
+        .properties(height=height)
+        .configure_axis(
+            domainColor="#cbd5e1",
+            gridColor="#e7ebee",
+            labelColor="#475569",
+            titleColor="#334155",
+            labelFontSize=12,
+            titleFontSize=12,
+        )
+        .configure_view(strokeOpacity=0)
+    )
+    event = st.altair_chart(chart, key=key, on_select="rerun", selection_mode=selection_name, theme=None)
+    return selected_chart_value(event, selection_name, x_field)
 
 
 # ── Pages ──────────────────────────────────────────────────────────────────
@@ -488,9 +581,14 @@ def page_search() -> None:
                 placeholder="e.g., memory corruption mitigations",
                 help="Relevance-ranked full-text search over title, abstract and "
                      "authors. Overrides the substring filters below.",
+                key="search_ranked",
             )
-            title_query = st.text_input("Title contains", placeholder="e.g., authentication")
-            abstract_query = st.text_input("Abstract contains", placeholder="e.g., LLM, SGX")
+            title_query = st.text_input(
+                "Title contains", placeholder="e.g., authentication", key="search_title"
+            )
+            abstract_query = st.text_input(
+                "Abstract contains", placeholder="e.g., LLM, SGX", key="search_abstract"
+            )
             author_query = st.text_input(
                 "Author contains", placeholder="e.g., Sekar", key="search_author"
             )
@@ -505,7 +603,11 @@ def page_search() -> None:
                 help="Security Big Four (Tier 1): ACM CCS, IEEE S&P, USENIX Security, and NDSS.",
                 key="search_tier_scope",
             )
-            venue_choice = st.selectbox("Venue", _venue_options(collector), key="search_venue")
+            allowed_tiers = tiers_in_scope(tier_scope)
+            venue_options = _venue_options(collector, allowed_tiers)
+            if st.session_state.get("search_venue") not in venue_options:
+                st.session_state["search_venue"] = "All venues"
+            venue_choice = st.selectbox("Venue", venue_options, key="search_venue")
             year_choice = st.selectbox(
                 "Year", ["All years", *sorted(stats["by_year"], reverse=True)], key="search_year"
             )
@@ -519,23 +621,28 @@ def page_search() -> None:
 
         with st.expander("Abstract & citation", expanded=False):
             abstract_length = st.selectbox(
-                "Abstract length",
-                ["Any", "Has abstract", "Short (≤ 150 words)",
+                "Abstract availability / length",
+                ["Any", "Has abstract", "Missing abstract", "Short (≤ 150 words)",
                  "Medium (151–300 words)", "Long (> 300 words)"],
+                key="search_abstract_scope",
             )
             only_with_bibtex = st.checkbox(
-                "Has BibTeX", help="Only include papers whose BibTeX entry has been fetched."
+                "Has BibTeX", help="Only include papers whose BibTeX entry has been fetched.",
+                key="search_bibtex",
             )
 
         with st.expander("Awards", expanded=False):
             awards_only = st.checkbox(
                 "Award winners only",
                 help="Only papers with a recorded Best or Distinguished Paper award.",
+                key="search_awards",
             )
+
+        st.button("Reset all filters", on_click=_reset_search_state, width="stretch")
 
         st.markdown("## Display")
         page_size = st.select_slider(
-            "Results per page", options=PAGE_SIZE_OPTIONS, value=50
+            "Results per page", options=PAGE_SIZE_OPTIONS, value=50, key="search_page_size"
         )
         sort_choice = st.selectbox(
             "Sort by",
@@ -543,6 +650,7 @@ def page_search() -> None:
              "Title (A–Z)", "Venue"],
             help="Relevance follows the ranked-search order and falls back to "
                  "newest-first when no ranked query is set.",
+            key="search_sort",
         )
 
     filters = SearchFilters()
@@ -608,6 +716,8 @@ def page_search() -> None:
         "Search a curated dataset from the configured security literature scope.",
     )
     _render_metrics(stats, filtered_count=len(results))
+    active_venue = venue_choice if venue_choice != "All venues" else tier_scope
+    st.caption(f"Active venue scope: {active_venue}. Snapshot: security-20-v2.")
 
     if not results:
         st.info("No papers match the current filters. Try widening the search.")
@@ -673,6 +783,7 @@ def page_search() -> None:
             "Authors": (paper.authors or "—")[:90]
                        + ("…" if paper.authors and len(paper.authors) > 90 else ""),
             "Venue": paper.event or "—",
+            "Tier": tier_for(paper.event),
             "Year": paper.year,
             "Award": _award_label(award_map.get(paper.paper_id)),
             "Class": paper.paper_class.value,
@@ -694,6 +805,7 @@ def page_search() -> None:
             "Title":    st.column_config.TextColumn("Title", width="medium"),
             "Authors":  st.column_config.TextColumn("Authors", width="small"),
             "Venue":    st.column_config.TextColumn("Venue", width="small"),
+            "Tier":     st.column_config.TextColumn("Tier", width="small"),
             "Year":     st.column_config.NumberColumn("Year", format="%d", width="small"),
             "Award":    st.column_config.TextColumn("Award", width="small"),
             "Class":    st.column_config.TextColumn("Class", width="small"),
@@ -710,6 +822,7 @@ def page_search() -> None:
             "authors": paper.authors,
             "first_author": paper.first_author,
             "venue": paper.event,
+            "tier": tier_for(paper.event),
             "year": paper.year,
             "class": paper.paper_class.value,
             "abstract_words": paper.abstract_words,
@@ -781,6 +894,7 @@ def page_search() -> None:
             '<div class="paper-meta">'
             f'<span><b>Authors:</b> {_safe_html(paper.authors)}</span>'
             f'<span><b>Venue:</b> {_safe_html(paper.event)}</span>'
+            f'<span><b>Tier:</b> {_safe_html(tier_for(paper.event))}</span>'
             f'<span><b>Year:</b> {_safe_html(paper.year)}</span>'
             f'<span><b>Words:</b> {paper.abstract_words:,}</span>'
             f'<span><b>DOI:</b> {doi_html}</span>'
@@ -829,8 +943,24 @@ def page_insights() -> None:
         year_df = pd.DataFrame(
             [{"Year": k, "Papers": v} for k, v in sorted(stats["by_year"].items())]
         )
-        selected_year = _interactive_bar_chart(year_df, "Year", "Papers", "year_chart", 460)
+        selected_year = _interactive_bar_chart(
+            year_df,
+            "Year",
+            "Papers",
+            "year_chart",
+            460,
+            horizontal=False,
+            sort="ascending",
+            color="#334e68",
+        )
         st.caption("Click a bar to open that year's records. Double-click clears the selection.")
+        partial_years = sorted(set(collector.config.partial_years) & set(stats["by_year"]))
+        if partial_years:
+            partial_year_labels = ", ".join(str(year) for year in partial_years)
+            st.caption(
+                f"Partial publication year(s) in this frozen release: {partial_year_labels}. "
+                "Compare completed years before inferring annual growth."
+            )
         if selected_year is not None:
             _queue_search_from_chart(year=int(selected_year))
 
@@ -843,7 +973,9 @@ def page_insights() -> None:
         [{"Class": k, "Papers": v} for k, v in
          sorted(class_counts.items(), key=lambda x: x[1], reverse=True)]
     )
-    selected_class = _interactive_bar_chart(class_df, "Class", "Papers", "class_chart", 320)
+    selected_class = _interactive_bar_chart(
+        class_df, "Class", "Papers", "class_chart", 320, color="#a35f25"
+    )
     st.caption("Click a bar to open records in that paper class.")
     if selected_class:
         _queue_search_from_chart(paper_class=str(selected_class))
@@ -857,7 +989,7 @@ def page_insights() -> None:
         "growth. Counts are a lower bound outside the abstract-enriched "
         "layers."
     )
-    col_trend_topic, col_trend_area = st.columns([2, 1])
+    col_trend_topic, col_trend_area, col_trend_tier = st.columns([2, 1, 1.4])
     with col_trend_topic:
         trend_topic = st.text_input(
             "Topic", placeholder="e.g., LLM, ransomware, fuzzing",
@@ -869,10 +1001,17 @@ def page_insights() -> None:
                      "systems", "cross-area"],
             key="trend_area",
         )
+    with col_trend_tier:
+        trend_tier_scope = st.selectbox(
+            "Venue tier scope",
+            tier_scope_options(),
+            key="trend_tier_scope",
+        )
     if trend_topic:
         trend = _cached_topic_trend(
             str(collector.db.db_path), trend_topic,
             None if trend_area == "All areas" else trend_area,
+            trend_tier_scope,
         )
         if trend["total"]:
             trend_df = pd.DataFrame(trend["by_year"]).set_index("year")
@@ -881,17 +1020,50 @@ def page_insights() -> None:
                 st.caption(f"Papers per year — {trend['total']:,} total")
                 selected_trend_year = _interactive_bar_chart(
                     trend_df.reset_index().rename(columns={"year": "Year", "papers": "Papers"}),
-                    "Year", "Papers", "trend_chart", 280,
+                    "Year",
+                    "Papers",
+                    "trend_chart",
+                    280,
+                    horizontal=False,
+                    sort="ascending",
+                    color="#2f6f73",
                 )
             with col_share:
                 st.caption("Share of the year's corpus (%)")
-                st.line_chart(trend_df["share_pct"], height=280)
+                selected_share_year = _interactive_line_chart(
+                    trend_df.reset_index().rename(
+                        columns={"year": "Year", "share_pct": "Share (%)"}
+                    ),
+                    "Year",
+                    "Share (%)",
+                    "trend_share_chart",
+                    280,
+                )
             venues = " · ".join(
                 f"{event} ({count:,})" for event, count in trend["top_venues"]
             )
             st.markdown(f"**Main venues:** {venues}")
-            if selected_trend_year is not None:
-                _queue_search_from_chart(year=int(selected_trend_year), topic=trend_topic)
+            partial_trend_years = sorted(
+                set(collector.config.partial_years)
+                & {row["year"] for row in trend["by_year"]}
+            )
+            if partial_trend_years:
+                partial_year_labels = ", ".join(str(year) for year in partial_trend_years)
+                st.caption(
+                    f"Interpret {partial_year_labels} as partial-year observations, not as "
+                    "completed annual trends."
+                )
+            selected_topic_year = (
+                selected_trend_year
+                if selected_trend_year is not None
+                else selected_share_year
+            )
+            if selected_topic_year is not None:
+                _queue_search_from_chart(
+                    year=int(selected_topic_year),
+                    topic=trend_topic,
+                    tier_scope=trend_tier_scope,
+                )
         else:
             st.info("No papers match this topic in the selected scope.")
 
@@ -945,34 +1117,54 @@ def page_insights() -> None:
         int(author_limit),
     )
     if ranked_authors:
+        author_table = pd.DataFrame([
+            {
+                "#": position,
+                "Author": entry["author"],
+                "Score": entry["score"],
+                "Papers": entry["papers"],
+                "Top-4": entry["top4"],
+                "Other top-tier": entry["top_tier"],
+                "Top-4 regional": entry["top4_regional"],
+                "Awards": entry["awards"],
+                "Active": f"{entry['first_year']}–{entry['last_year']}",
+                "Main venues": ", ".join(entry["venues"]),
+                "Tier scope": author_tier_scope,
+                "Topic": author_topic or "",
+                "Area": "" if author_area == "All areas" else author_area,
+                "Authorship": author_position,
+            }
+            for position, entry in enumerate(ranked_authors, start=1)
+        ])
+        st.caption(
+            f"Active scope: {author_tier_scope} · {author_position.lower()} · "
+            f"{author_area} · topic: {author_topic or 'any'}"
+        )
         st.dataframe(
-            pd.DataFrame([
-                {
-                    "#": position,
-                    "Author": entry["author"],
-                    "Score": entry["score"],
-                    "Papers": entry["papers"],
-                    "Top-4": entry["top4"],
-                    "Other top-tier": entry["top_tier"],
-                    "Top-4 regional": entry["top4_regional"],
-                    "Awards": entry["awards"],
-                    "Active": f"{entry['first_year']}–{entry['last_year']}",
-                    "Main venues": ", ".join(entry["venues"]),
-                }
-                for position, entry in enumerate(ranked_authors, start=1)
-            ]),
+            author_table.drop(columns=["Tier scope", "Topic", "Area", "Authorship"]),
             width="stretch",
             hide_index=True,
         )
         selected_author = st.selectbox(
             "Inspect an author's corpus records", [entry["author"] for entry in ranked_authors]
         )
-        st.button(
-            "Open author records",
-            key="open_author_records",
-            on_click=_open_search_from_insight,
-            kwargs={"author": selected_author, "tier_scope": author_tier_scope},
-        )
+        open_col, export_col = st.columns([1, 1])
+        with open_col:
+            st.button(
+                "Open author records",
+                key="open_author_records",
+                on_click=_open_search_from_insight,
+                kwargs={"author": selected_author, "tier_scope": author_tier_scope},
+                width="stretch",
+            )
+        with export_col:
+            st.download_button(
+                "Download author shortlist (CSV)",
+                author_table.to_csv(index=False).encode("utf-8"),
+                file_name="topvenues-author-shortlist.csv",
+                mime="text/csv",
+                width="stretch",
+            )
     else:
         st.info("No authors match the current topic/area scope.")
 
@@ -995,7 +1187,12 @@ def page_insights() -> None:
     coverage_df = pd.DataFrame(rows)
     coverage_df["Coverage (%)"] = coverage_df["Coverage"].str.rstrip("%").astype(float)
     selected_coverage_venue = _interactive_bar_chart(
-        coverage_df, "Venue", "Coverage (%)", "coverage_chart", 460
+        coverage_df,
+        "Venue",
+        "Coverage (%)",
+        "coverage_chart",
+        460,
+        color="#537a4a",
     )
     st.caption("Click a coverage bar to inspect the venue's records and missing abstracts.")
     if selected_coverage_venue:
@@ -1047,7 +1244,12 @@ def page_pipeline() -> None:
             "a live API run cannot alter the corpus shown in this release. Create, validate, and "
             "publish a separate successor profile for any refresh."
         )
-        st.code("python scripts/build_deduplicated_profile.py", language="bash")
+        st.markdown(
+            "Refreshes are created as a new named profile through the "
+            "[profile refresh procedure](https://github.com/sidneibarbieri/"
+            "topvenues-tool/blob/main/docs/PROFILE_REFRESH.md). The current snapshot is never "
+            "modified in place."
+        )
         return
 
     tab_dl, tab_cons, tab_extr = st.tabs(["Download", "Consolidate", "Extract abstracts"])
