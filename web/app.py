@@ -247,6 +247,22 @@ def _cached_reference_authors(
 
 
 @st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False)
+def _cached_authorship_shifts(
+    db_path: str, topic: str | None, area: str | None, tier_scope: str, limit: int
+) -> list[dict]:
+    from src.research_intelligence import authorship_shifts
+
+    shifts = authorship_shifts(
+        Path(db_path),
+        topic=topic,
+        area=area,
+        allowed_tiers=tiers_in_scope(tier_scope),
+        limit=limit,
+    )
+    return [shift.model_dump() for shift in shifts]
+
+
 def _cached_emerging_researchers(
     db_path: str, topic: str | None, area: str | None, tier_scope: str, limit: int
 ) -> list[dict]:
@@ -1469,6 +1485,40 @@ def page_insights() -> None:
                 mime="application/json",
                 width="stretch",
             )
+
+        st.markdown("#### Newly leading a group")
+        st.caption(
+            "Authors who used to publish in the first byline position and now publish in the "
+            "last one. In this field the last position usually marks whoever directs the work, "
+            "so this is where new groups become visible: the people most open to collaboration "
+            "and most likely to define a new agenda. It reads byline position only, and cannot "
+            "see appointments, seniority, or a group's own authorship conventions."
+        )
+        shifts = _cached_authorship_shifts(
+            str(collector.db.db_path),
+            author_topic or None,
+            None if author_area == "All areas" else author_area,
+            author_tier_scope,
+            int(author_limit),
+        )
+        if shifts:
+            st.dataframe(
+                pd.DataFrame(
+                    [
+                        {
+                            "Author": shift["author"],
+                            f"First author ({shift['early_window']})": shift["early_first"],
+                            f"Last author ({shift['recent_window']})": shift["recent_last"],
+                            "Leads at": ", ".join(shift["venues"]),
+                        }
+                        for shift in shifts
+                    ]
+                ),
+                width="stretch",
+                hide_index=True,
+            )
+        else:
+            st.caption("No authorship shift meets the declared thresholds in this scope.")
 
         st.markdown("#### Emerging activity")
         st.caption(
