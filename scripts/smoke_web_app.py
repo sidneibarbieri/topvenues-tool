@@ -1,86 +1,106 @@
 """Prove the interface renders, not merely that a port answers.
 
-Streamlit serves `/_stcore/health` from the server process, which starts
-before and independently of the application script. A health probe therefore
-returns 200 for an application that cannot import, and the script only runs
-once a client connects, so its traceback never reaches the server log either.
-A reviewer running the reproduction would see a green check on a broken app.
+Streamlit serves `/_stcore/health` from the server process, which starts before
+and independently of the application script. A health probe therefore returns
+200 for an application that cannot even import, and because the script only
+runs once a client connects, its traceback never reaches the server log either.
+A reviewer would see a green check on an interface that renders nothing.
 
-`AppTest` executes the script the way a session does and surfaces whatever it
-raised, so a failure here means the interface is actually broken.
+`AppTest` executes the script the way a browser session does. It also executes
+only the page the navigation selects, so every page is visited here: an
+exception confined to one of them is invisible from any single render.
 """
 
 from __future__ import annotations
 
 import logging
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
-# AppTest runs the script without a browser session, so Streamlit logs a
-# "missing ScriptRunContext" warning it documents as safe to ignore in bare
-# mode. Silencing that one logger keeps the reproduction output free of a
-# warning a reviewer cannot act on. Errors are unaffected: anything the script
-# raises still arrives through `AppTest.exception` below.
-logging.getLogger("streamlit.runtime.scriptrunner_utils.script_run_context").setLevel(logging.ERROR)
-
 ROOT = Path(__file__).resolve().parents[1]
-APP = ROOT / "web" / "app.py"
 
 # The application imports `web` and `src` as packages, which resolve from the
 # repository root rather than from this script's directory.
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+APPLICATION_SCRIPT = ROOT / "web" / "app.py"
+NAVIGATION_KEY = "page"
 SCRIPT_TIMEOUT_SECONDS = 120
 
-# Streamlit only executes the page the navigation radio selects, so loading the
-# application once exercises exactly one of these. A reviewer can open every
-# one, so every one has to render.
-NAVIGATION_KEY = "page"
-
-# Rendering "something" is not enough: an anchor per page catches a silently
-# empty render, which raises nothing.
-REQUIRED_HEADING_BY_PAGE = {
-    "Overview": "Reproducible corpus overview",
-}
+# Silences the "missing ScriptRunContext" warning Streamlit documents as safe to
+# ignore in bare mode, which AppTest always triggers. Only that logger is
+# affected; anything the script raises still arrives through AppTest.exception.
+logging.getLogger("streamlit.runtime.scriptrunner_utils.script_run_context").setLevel(logging.ERROR)
 
 
-def _rendered_text(app: AppTest) -> str:
-    parts = [element.value for element in app.title] + [element.value for element in app.header]
-    parts += [element.value for element in app.subheader]
-    parts += [str(element.value) for element in app.markdown]
-    return "\n".join(str(part) for part in parts)
+@dataclass(frozen=True)
+class PageContract:
+    """A navigation entry and the text that proves it rendered its own content.
+
+    Without an anchor a page that silently renders nothing still passes, because
+    rendering nothing raises nothing.
+    """
+
+    name: str
+    anchor: str
 
 
-def _fail_on_exception(app: AppTest, page: str) -> None:
-    if app.exception:
-        raised = "\n".join(str(item.value) for item in app.exception)
-        raise SystemExit(f"the {page} page raised while rendering:\n{raised}")
+PAGE_CONTRACTS = (
+    PageContract("Overview", "Start from a research question"),
+    PageContract("Search", "Paper details"),
+    PageContract("Insights", "Papers by venue"),
+    PageContract("Evidence", "Manual abstract audit"),
+    PageContract("Dataset lifecycle", "Run the data collection pipeline"),
+)
+
+
+def _rendered_text(session: AppTest) -> str:
+    """Every text element a reader would see on the current page."""
+    elements = [*session.title, *session.header, *session.subheader, *session.markdown]
+    return "\n".join(str(element.value) for element in elements)
+
+
+def _fail(message: str) -> None:
+    raise SystemExit(message)
+
+
+def _verify_rendered(session: AppTest, contract: PageContract) -> None:
+    if session.exception:
+        raised = "\n".join(str(item.value) for item in session.exception)
+        _fail(f"the {contract.name} page raised while rendering:\n{raised}")
+    if contract.anchor not in _rendered_text(session):
+        _fail(f"the {contract.name} page rendered without {contract.anchor!r}")
+
+
+def _verify_contracts_cover(navigation_options: list[str]) -> None:
+    """A page added without an anchor would otherwise go unverified."""
+    declared = [contract.name for contract in PAGE_CONTRACTS]
+    if declared != list(navigation_options):
+        _fail(f"navigation offers {list(navigation_options)}, contracts declare {declared}")
 
 
 def main() -> int:
-    if not APP.exists():
-        raise SystemExit(f"application not found at {APP}")
+    if not APPLICATION_SCRIPT.exists():
+        _fail(f"application not found at {APPLICATION_SCRIPT}")
 
-    app = AppTest.from_file(str(APP), default_timeout=SCRIPT_TIMEOUT_SECONDS)
-    app.run()
-    _fail_on_exception(app, "opening")
+    session = AppTest.from_file(str(APPLICATION_SCRIPT), default_timeout=SCRIPT_TIMEOUT_SECONDS)
+    session.run()
+    if session.exception:
+        raised = "\n".join(str(item.value) for item in session.exception)
+        _fail(f"the application raised while opening:\n{raised}")
 
-    navigation = app.radio(key=NAVIGATION_KEY)
-    for page in navigation.options:
-        app.radio(key=NAVIGATION_KEY).set_value(page).run()
-        _fail_on_exception(app, page)
+    _verify_contracts_cover(session.radio(key=NAVIGATION_KEY).options)
 
-        anchor = REQUIRED_HEADING_BY_PAGE.get(page)
-        rendered = _rendered_text(app)
-        if anchor and anchor not in rendered:
-            raise SystemExit(f"the {page} page rendered without {anchor!r}")
-        if not rendered.strip():
-            raise SystemExit(f"the {page} page rendered nothing")
-        print(f"  {page}: rendered")
+    for contract in PAGE_CONTRACTS:
+        session.radio(key=NAVIGATION_KEY).set_value(contract.name).run()
+        _verify_rendered(session, contract)
+        print(f"  {contract.name}: rendered")
 
-    print(f"Every page rendered without exceptions ({len(navigation.options)} pages).")
+    print(f"Every page rendered its own content ({len(PAGE_CONTRACTS)} pages).")
     return 0
 
 
