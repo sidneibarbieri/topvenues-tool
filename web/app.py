@@ -1796,7 +1796,10 @@ def page_evidence() -> None:
     metric_columns[1].metric("Usable abstracts", audit_summary["usable"])
     metric_columns[2].metric("Usable rate", f"{audit_summary['usable_rate']:.1%}")
     interval_low, interval_high = audit_summary["wilson_95_ci"]
-    metric_columns[3].metric("95% Wilson interval", f"{interval_low:.1%}–{interval_high:.1%}")
+    metric_columns[3].metric(
+        "95% Wilson interval",
+        f"{interval_low * 100:.1f}–{interval_high:.1%}",
+    )
     st.markdown(
         "All 200 final decisions were recorded as **human-only** by Sidnei Barbieri. A record was "
         "counted as usable only when its abstract was complete, uncontaminated, and matched the "

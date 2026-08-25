@@ -82,11 +82,27 @@ seniority, authority, or future impact. See
 restriction or monitoring signal. The local interface runs at
 `http://localhost:8501`.
 
-## Inspect abstract evidence
+## Interface walkthrough
 
 [![Abstract-text search with populated previews](docs/assets/topvenues-abstract-search.png)](docs/assets/topvenues-abstract-search.pdf)
 
-This capture applies the interface's **Abstract contains** filter to `intrusion detection` in the frozen current profile. Every displayed row has an abstract preview. The linked [high-resolution PDF](docs/assets/topvenues-abstract-search.pdf) preserves the capture for close inspection.
+This capture runs BM25 search for `LLM security` within the Security top-4 and
+returns 78 inspectable records. The linked
+[high-resolution PDF](docs/assets/topvenues-abstract-search.pdf) preserves the
+capture for close inspection. Additional current-release captures show the
+[corpus overview](docs/assets/screenshots/overview.png),
+[topic trend](docs/assets/screenshots/insights-llm-top4.png),
+[researcher trajectory and collaboration evidence](docs/assets/screenshots/researcher-radar-llm-top4.png),
+and [manual audit evidence](docs/assets/screenshots/evidence.png).
+
+## Seven-minute demonstration
+
+[![TopVenues seven-minute demonstration](docs/assets/demos/posters/topvenues-sf-demo-v1.5.0.jpg)](docs/assets/demos/topvenues-sf-demo-v1.5.0.mp4)
+
+The end-to-end demonstration has natural US-English narration and embedded
+English and Brazilian Portuguese subtitles; Brazilian Portuguese is the
+default subtitle stream. Sidecar WebVTT/SRT files, the timed narration source,
+and the shot plan are documented in [docs/demo/](docs/demo/README.md).
 
 ## Command-line workflows
 
