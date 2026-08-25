@@ -156,11 +156,17 @@ The companion full paper's 200-record audit and live baseline comparison are doc
 
 ## Distribution boundary
 
-The default package bundles only `security-20-v4`. Historical manifests remain
-visible, while their unchanged binaries stay in the release tags where they
-were published. Fetch one explicitly with
-`python scripts/fetch_archived_profile.py --profile security-20`. This avoids
-forcing every current reviewer to download three redundant corpus snapshots.
+The package bundles the snapshots for `security-20`, `security-20-v3` and
+`security-20-v4`. `security-20` is among them because the published
+tools-track paper prints `bash reproduce.sh --profile security-20` as its
+reviewer's command, and that command runs against a bare clone with no fetch
+step.
+
+`security-20-v2` keeps its manifest visible while its unchanged binary stays in
+the release tag where it was published. Fetch it explicitly with
+`python scripts/fetch_archived_profile.py --profile security-20-v2`, so a
+reviewer downloads a superseded corpus only when they actually want to compare
+against it.
 
 ## Hugging Face export
 
