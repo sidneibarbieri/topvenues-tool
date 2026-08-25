@@ -28,6 +28,12 @@ AUTHOR_RANKING_METRICS = (
     TOP4_CONCENTRATION_METRIC,
 )
 
+# Concentration is a share of an author's whole corpus record, so the tier scope
+# must never reach the denominator. Restricting the population to top-4 venues
+# would make every author 100% by construction, and restricting it to any scope
+# that excludes top-4 would make every author 0%. For this metric the scope
+# decides who is eligible to appear; every paper still counts toward the ratio.
+#
 # Concentration is a ratio, so a single top-4 paper would otherwise score 100%.
 # In this corpus that puts 6,426 one-paper authors at the top of the ranking,
 # so the metric only considers authors with a body of work.
@@ -143,6 +149,8 @@ def reference_authors(
         matched, _ = match_awards_to_corpus(load_award_records(awards_dir), db_path)
         awarded_ids = {match.paper_id for match in matched}
 
+    counts_every_tier = ranking_metric == TOP4_CONCENTRATION_METRIC
+
     stats: dict[str, dict] = {}
     connection = sqlite3.connect(db_path)
     try:
@@ -152,7 +160,8 @@ def reference_authors(
             if area is not None and area_for(event) != area:
                 continue
             tier = tier_for(event)
-            if allowed_tiers is not None and tier not in allowed_tiers:
+            in_scope = allowed_tiers is None or tier in allowed_tiers
+            if not in_scope and not counts_every_tier:
                 continue
             weight = weight_for(tier)
             for author in authors_at_position(authors, position):
@@ -170,7 +179,9 @@ def reference_authors(
                     "first_year": year,
                     "last_year": year,
                     "_venues": collections.Counter(),
+                    "_in_scope": False,
                 })
+                entry["_in_scope"] = entry["_in_scope"] or in_scope
                 entry["score"] += weight
                 entry["papers"] += 1
                 if tier == TOP4:
@@ -194,12 +205,15 @@ def reference_authors(
     candidates = list(stats.values())
     if ranking_metric == TOP4_CONCENTRATION_METRIC:
         candidates = [
-            entry for entry in candidates if entry["papers"] >= CONCENTRATION_MINIMUM_PAPERS
+            entry
+            for entry in candidates
+            if entry["_in_scope"] and entry["papers"] >= CONCENTRATION_MINIMUM_PAPERS
         ]
     ranked = sorted(
         candidates, key=lambda entry: _author_sort_key(entry, ranking_metric)
     )[:limit]
     for entry in ranked:
+        entry.pop("_in_scope")
         entry["venues"] = [venue for venue, _ in entry.pop("_venues").most_common(3)]
         entry["score"] = round(entry["score"], 1)
         entry["top4_share"] = round(top4_concentration(entry), 3)

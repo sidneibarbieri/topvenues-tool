@@ -1,75 +1,90 @@
-"""Start Streamlit briefly and verify that its health endpoint responds."""
+"""Prove the interface renders, not merely that a port answers.
+
+Streamlit serves `/_stcore/health` from the server process, which starts
+before and independently of the application script. A health probe therefore
+returns 200 for an application that cannot import, and the script only runs
+once a client connects, so its traceback never reaches the server log either.
+A reviewer running the reproduction would see a green check on a broken app.
+
+`AppTest` executes the script the way a session does and surfaces whatever it
+raised, so a failure here means the interface is actually broken.
+"""
 
 from __future__ import annotations
 
-import socket
-import subprocess
+import logging
 import sys
-import tempfile
-import time
 from pathlib import Path
-from urllib.error import URLError
-from urllib.request import urlopen
+
+from streamlit.testing.v1 import AppTest
+
+# AppTest runs the script without a browser session, so Streamlit logs a
+# "missing ScriptRunContext" warning it documents as safe to ignore in bare
+# mode. Silencing that one logger keeps the reproduction output free of a
+# warning a reviewer cannot act on. Errors are unaffected: anything the script
+# raises still arrives through `AppTest.exception` below.
+logging.getLogger("streamlit.runtime.scriptrunner_utils.script_run_context").setLevel(
+    logging.ERROR
+)
 
 ROOT = Path(__file__).resolve().parents[1]
+APP = ROOT / "web" / "app.py"
+
+# The application imports `web` and `src` as packages, which resolve from the
+# repository root rather than from this script's directory.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+SCRIPT_TIMEOUT_SECONDS = 120
+
+# Streamlit only executes the page the navigation radio selects, so loading the
+# application once exercises exactly one of these. A reviewer can open every
+# one, so every one has to render.
+NAVIGATION_KEY = "page"
+
+# Rendering "something" is not enough: an anchor per page catches a silently
+# empty render, which raises nothing.
+REQUIRED_HEADING_BY_PAGE = {
+    "Overview": "Reproducible corpus overview",
+}
 
 
-def _available_port() -> int:
-    with socket.socket() as server_socket:
-        server_socket.bind(("127.0.0.1", 0))
-        return int(server_socket.getsockname()[1])
+def _rendered_text(app: AppTest) -> str:
+    parts = [element.value for element in app.title] + [element.value for element in app.header]
+    parts += [element.value for element in app.subheader]
+    parts += [str(element.value) for element in app.markdown]
+    return "\n".join(str(part) for part in parts)
 
 
-def _wait_until_healthy(process: subprocess.Popen[str], port: int) -> bool:
-    deadline = time.monotonic() + 30
-    health_url = f"http://127.0.0.1:{port}/_stcore/health"
-    while time.monotonic() < deadline:
-        if process.poll() is not None:
-            return False
-        try:
-            with urlopen(health_url, timeout=1) as response:  # noqa: S310
-                return response.status == 200
-        except (URLError, TimeoutError):
-            time.sleep(0.25)
-    return False
+def _fail_on_exception(app: AppTest, page: str) -> None:
+    if app.exception:
+        raised = "\n".join(str(item.value) for item in app.exception)
+        raise SystemExit(f"the {page} page raised while rendering:\n{raised}")
 
 
 def main() -> int:
-    port = _available_port()
-    with tempfile.TemporaryDirectory(prefix="topvenues-streamlit-") as temp_dir:
-        log_path = Path(temp_dir) / "streamlit.log"
-        with log_path.open("w", encoding="utf-8") as log_file:
-            process = subprocess.Popen(
-                [
-                    sys.executable,
-                    "-m",
-                    "streamlit",
-                    "run",
-                    "web/app.py",
-                    "--server.headless=true",
-                    f"--server.port={port}",
-                    "--server.fileWatcherType=none",
-                    "--browser.gatherUsageStats=false",
-                ],
-                cwd=ROOT,
-                stdout=log_file,
-                stderr=subprocess.STDOUT,
-                text=True,
-            )
-            healthy = _wait_until_healthy(process, port)
-            process.terminate()
-            try:
-                process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=10)
-        if not healthy:
-            raise RuntimeError(
-                "Streamlit did not become healthy.\n" + log_path.read_text(encoding="utf-8")
-            )
-    print(f"Streamlit health check passed on port {port}.")
+    if not APP.exists():
+        raise SystemExit(f"application not found at {APP}")
+
+    app = AppTest.from_file(str(APP), default_timeout=SCRIPT_TIMEOUT_SECONDS)
+    app.run()
+    _fail_on_exception(app, "opening")
+
+    navigation = app.radio(key=NAVIGATION_KEY)
+    for page in navigation.options:
+        app.radio(key=NAVIGATION_KEY).set_value(page).run()
+        _fail_on_exception(app, page)
+
+        anchor = REQUIRED_HEADING_BY_PAGE.get(page)
+        rendered = _rendered_text(app)
+        if anchor and anchor not in rendered:
+            raise SystemExit(f"the {page} page rendered without {anchor!r}")
+        if not rendered.strip():
+            raise SystemExit(f"the {page} page rendered nothing")
+        print(f"  {page}: rendered")
+
+    print(f"Every page rendered without exceptions ({len(navigation.options)} pages).")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

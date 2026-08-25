@@ -28,7 +28,7 @@ missing USENIX records recovered 8 of 8, between 409 and 1,924 characters.
 Collecting them is a release action, not a maintenance one. It produces a
 new snapshot with a new SHA-256, which:
 
-- supersedes the identity that `v1.5.0` and `v1.5.1` publish;
+- supersedes the snapshot identity every release in this line publishes;
 - unbinds the 200-record manual audit, which is evidence for the snapshot it
   was performed on;
 - invalidates the recorded demonstration, which states the current counts.

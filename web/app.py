@@ -1300,7 +1300,9 @@ def page_insights() -> None:
                 "question: what share of an author's work appears in ACM CCS, IEEE S&P, "
                 "USENIX Security or NDSS. It considers only authors with at least "
                 f"{CONCENTRATION_MINIMUM_PAPERS} papers, because a ratio over one paper "
-                "is noise."
+                "is noise. The share always spans the author's whole record in this "
+                "corpus, so the venue scope above selects which authors are listed "
+                "without changing the number."
             ),
         )
     with col_n:
@@ -1496,10 +1498,9 @@ def page_insights() -> None:
         st.markdown("#### Newly leading a group")
         st.caption(
             "Authors who used to publish in the first byline position and now publish in the "
-            "last one. In this field the last position usually marks whoever directs the work, "
-            "so this is where new groups become visible: the people most open to collaboration "
-            "and most likely to define a new agenda. It reads byline position only, and cannot "
-            "see appointments, seniority, or a group's own authorship conventions."
+            "last one, within the windows shown. Use it to shortlist names to look into, not "
+            "as a finding: it reads byline position only, and cannot see appointments, "
+            "seniority, group size, or a group's own authorship conventions."
         )
         shifts = _cached_authorship_shifts(
             str(collector.db.db_path),

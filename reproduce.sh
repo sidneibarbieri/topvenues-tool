@@ -136,8 +136,8 @@ test_count=$(echo "$test_output" | awk '/passed/ {print $1}' | head -1)
 ok "all $test_count tests pass"
 
 step "Starting the research interface"
-python scripts/smoke_web_app.py || fail "web interface did not become healthy"
-ok "Streamlit interface reached its health endpoint"
+python scripts/smoke_web_app.py || fail "the web interface did not render"
+ok "Streamlit interface rendered without raising"
 
 step "Benchmarking search on a verified disposable copy"
 python scripts/benchmark_search.py --profile "$profile" --trials 11 || \
