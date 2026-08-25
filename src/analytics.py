@@ -28,15 +28,16 @@ AUTHOR_RANKING_METRICS = (
     TOP4_CONCENTRATION_METRIC,
 )
 
-# Concentration is a share of an author's whole corpus record, so the tier scope
-# must never reach the denominator. Restricting the population to top-4 venues
-# would make every author 100% by construction, and restricting it to any scope
-# that excludes top-4 would make every author 0%. For this metric the scope
-# decides who is eligible to appear; every paper still counts toward the ratio.
+# Concentration is a share of an author's whole corpus record, so neither the
+# tier scope nor a thin record may distort it.
 #
-# Concentration is a ratio, so a single top-4 paper would otherwise score 100%.
-# In this corpus that puts 6,426 one-paper authors at the top of the ranking,
-# so the metric only considers authors with a body of work.
+# The scope must not reach the denominator: counting inside a top-4-only scope
+# makes every author 100% by construction, and counting inside any scope that
+# excludes top-4 makes every author 0%. The scope decides who is eligible to
+# appear; every paper still counts toward the ratio.
+#
+# A ratio over one paper is noise, and in this corpus 6,426 one-paper authors
+# would otherwise score 100% and fill the ranking, so a body of work is required.
 CONCENTRATION_MINIMUM_PAPERS = 10
 
 
