@@ -283,11 +283,20 @@ def authorship_shifts(
 
 
 def arxiv_author_search_url(author: str) -> str:
-    """Build an external search URL without claiming cross-source identity resolution."""
+    """Build an external search URL without claiming cross-source identity resolution.
+
+    arXiv's web form takes the field in ``searchtype``; the ``au:"name"`` prefix
+    belongs to its API. Sent to the form as free text under ``searchtype=all``,
+    that prefix is searched literally and every author returned no results.
+    """
     external_name = re.sub(r"\s+\d{4}$", "", author).strip()
-    query = f'au:"{external_name}"'
     return "https://arxiv.org/search/?" + urlencode(
-        {"query": query, "searchtype": "all", "abstracts": "show", "order": "-announced_date_first"}
+        {
+            "query": external_name,
+            "searchtype": "author",
+            "abstracts": "show",
+            "order": "-announced_date_first",
+        }
     )
 
 

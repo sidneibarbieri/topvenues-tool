@@ -3,7 +3,7 @@
 A modern, async paper collection system with web interface.
 """
 
-__version__ = "1.5.8"
+__version__ = "1.5.9"
 
 from .collector import Collector
 from .models import (
