@@ -1,0 +1,181 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:03.825
+Uma revisão de literatura pode falhar antes mesmo da triagem.
+
+00:00:03.825 --> 00:00:13.006
+Se a população de artigos elegíveis vier de portais mutáveis, buscas não documentadas ou exportações privadas, outro pesquisador não consegue reconstruir o mesmo denominador.
+
+00:00:13.006 --> 00:00:24.100
+O TopVenues transforma essa primeira etapa em um artefato executável: um corpus declarado de cibersegurança, um snapshot local fixo e ferramentas para rastrear cada agregado até os registros individuais.
+
+00:00:30.000 --> 00:00:37.477
+Esta versão de agosto de 2026 contém 14.859 registros de vinte venues declaradas, cobrindo 2019 a 2026.
+
+00:00:37.477 --> 00:00:44.514
+Noventa e quatro vírgula um por cento possuem abstracts pesquisáveis, e todos os registros possuem BibTeX.
+
+00:00:44.514 --> 00:00:46.274
+O snapshot é imutável.
+
+00:00:46.274 --> 00:00:55.950
+Após a instalação, manifesto, banco, testes, busca, exportação e integridade da interface podem ser verificados offline com um único comando de reprodução.
+
+00:01:00.000 --> 00:01:04.650
+Comece em Search com uma pergunta de pesquisa, não com um ranking.
+
+00:01:04.650 --> 00:01:08.913
+Aqui eu busco por segurança de LLM usando ranqueamento textual BM25.
+
+00:01:08.913 --> 00:01:12.012
+O resultado não é uma lista de recomendações.
+
+00:01:12.012 --> 00:01:20.150
+É um conjunto de candidatos inspecionável: título, autores, venue, ano, classe, trecho do abstract, link da fonte e citação permanecem visíveis.
+
+00:01:20.150 --> 00:01:24.800
+Filtros por substring também estão disponíveis quando a menção textual exata importa.
+
+00:01:30.000 --> 00:01:39.900
+Para mapear referências, posso restringir a mesma pergunta ao top-4 de segurança: ACM CCS, IEEE Security and Privacy, USENIX Security e NDSS.
+
+00:01:39.900 --> 00:01:42.600
+Isso retorna 78 registros neste snapshot.
+
+00:01:42.600 --> 00:01:48.900
+Uma revisão sistemática normalmente deve começar com todas as venues, salvo justificativa do protocolo.
+
+00:01:48.900 --> 00:01:56.550
+Em qualquer caso, o subconjunto exato pode ser exportado como CSV, JSON ou BibTeX pronto para citação.
+
+00:02:00.000 --> 00:02:03.762
+Insights apresenta distribuições, mas os gráficos não são decorativos.
+
+00:02:03.762 --> 00:02:09.197
+Cada barra de venue, ano, classe e cobertura funciona como controle de navegação.
+
+00:02:09.197 --> 00:02:15.049
+Ao clicar, o valor é transferido para Search e os registros correspondentes são abertos.
+
+00:02:15.049 --> 00:02:25.500
+Esse detalhamento é essencial: o pesquisador pode questionar um agregado, inspecionar outliers e exportar a evidência, em vez de confiar em um número sem proveniência.
+
+00:02:30.000 --> 00:02:35.744
+A visão de tópicos separa volume bruto da participação no corpus de cada ano.
+
+00:02:35.744 --> 00:02:42.310
+Para LLM no top-4, encontra 282 artigos, liderados por CCS, USENIX, NDSS e Security and Privacy.
+
+00:02:42.310 --> 00:02:47.644
+A curva de participação evita confundir crescimento do corpus com crescimento do tópico.
+
+00:02:47.644 --> 00:02:55.850
+E 2026 é marcado como parcial, permitindo monitoramento sem fingir que um ano incompleto é comparável a um ano fechado.
+
+00:03:00.000 --> 00:03:02.480
+Researcher Radar responde a três perguntas diferentes.
+
+00:03:02.480 --> 00:03:06.023
+A frequência em qualquer posição mostra nomes recorrentes nas colaborações.
+
+00:03:06.023 --> 00:03:10.274
+A frequência como primeiro autor destaca quem mais aparece liderando a lista.
+
+00:03:10.274 --> 00:03:20.194
+A frequência como último autor pode ser útil em áreas onde essa posição costuma refletir liderança de grupo, mas a ferramenta não assume que essa convenção seja universal.
+
+00:03:20.194 --> 00:03:24.800
+Contagem de artigos é o padrão; ponderação por tier é uma heurística explícita.
+
+00:03:30.000 --> 00:03:39.836
+Selecionar um nome abre a evidência por trás da linha: trajetória anual, posições de primeiro e último autor, coautores diretos, anos ativos e principais venues.
+
+00:03:39.836 --> 00:03:44.951
+Os sufixos de identidade do DBLP são preservados para reduzir fusões de homônimos.
+
+00:03:44.951 --> 00:03:50.459
+Essas visões revelam quem ler e acompanhar dentro de um tópico e escopo declarados.
+
+00:03:50.459 --> 00:03:54.000
+Elas não medem citações, senioridade, autoridade ou qualidade científica.
+
+00:04:00.000 --> 00:04:07.504
+Para vigilância contínua, baixe uma watchlist portátil com tópico, autores, escopo de tier e IDs já observados.
+
+00:04:07.504 --> 00:04:11.477
+Um snapshot futuro pode calcular adições e remoções deterministicamente.
+
+00:04:11.477 --> 00:04:18.539
+A tabela de atividade emergente compara taxas recentes e anteriores como sinal descritivo, não como previsão.
+
+00:04:18.539 --> 00:04:28.250
+O encaminhamento ao arXiv busca possíveis preprints pelo nome do autor; cada resultado permanece candidato não verificado até a identidade ser conferida.
+
+00:04:30.000 --> 00:04:33.226
+Evidence torna explícito o limite das alegações.
+
+00:04:33.226 --> 00:04:39.679
+Sidnei Barbieri revisou manualmente uma amostra determinística e estratificada por venue de duzentos registros.
+
+00:04:39.679 --> 00:04:47.975
+Cento e sessenta e nove abstracts atenderam aos três critérios: completos, sem contaminação e correspondentes ao artigo amostrado.
+
+00:04:47.975 --> 00:04:55.350
+Isso representa taxa utilizável de 84,5%, com intervalo de Wilson de 95% entre 78,8% e 88,9%.
+
+00:05:00.000 --> 00:05:10.634
+A auditoria foi feita no snapshot anterior e transferida somente após uma verificação exata confirmar os mesmos 14.859 IDs e textos de abstract idênticos.
+
+00:05:10.634 --> 00:05:15.065
+A versão quatro altera dez títulos, nenhum deles na amostra.
+
+00:05:15.065 --> 00:05:21.268
+A cobertura ainda é desigual: por exemplo, ESORICS e WOOT têm muitos abstracts ausentes.
+
+00:05:21.268 --> 00:05:28.800
+Texto ausente é declarado e excluído de conclusões dependentes de abstract; nunca é tratado como evidência negativa.
+
+00:05:30.000 --> 00:05:32.914
+Dataset lifecycle separa exploração de manutenção.
+
+00:05:32.914 --> 00:05:37.769
+Um perfil publicado não pode ser atualizado no mesmo lugar.
+
+00:05:37.769 --> 00:05:50.881
+Nova coleta em APIs deve criar um perfil sucessor, registrar proveniência, comparar IDs adicionados e removidos, repetir os controles de qualidade e receber uma nova versão semântica.
+
+00:05:50.881 --> 00:05:53.308
+Linux e macOS usam reproduce.sh.
+
+00:05:53.308 --> 00:05:58.650
+O Windows nativo usa reproduce.ps1 e fecha deterministicamente cada conexão SQLite.
+
+00:06:00.000 --> 00:06:02.306
+Um fluxo produtivo é, portanto, simples.
+
+00:06:02.306 --> 00:06:06.149
+Comece amplo ao construir o denominador de uma revisão sistemática.
+
+00:06:06.149 --> 00:06:09.607
+Restrinja ao top-4 ao mapear conversas canônicas de segurança.
+
+00:06:09.607 --> 00:06:14.219
+Inspecione os registros por trás de cada trend ou sinal de autoria.
+
+00:06:14.219 --> 00:06:17.293
+Exporte os candidatos com a identidade do snapshot.
+
+00:06:17.293 --> 00:06:19.983
+Salve uma watchlist para a próxima versão.
+
+00:06:19.983 --> 00:06:26.900
+E documente cada restrição como escolha de protocolo, pois o TopVenues apoia o julgamento científico; não o substitui.
+
+00:06:30.000 --> 00:06:42.328
+O TopVenues oferece três coisas que portais de busca comuns não fornecem em conjunto: um denominador reproduzível, uma bancada de pesquisa inspecionável e um encaminhamento para monitoramento futuro.
+
+00:06:42.328 --> 00:06:52.015
+Código, corpus imutável, evidência de auditoria, documentação e demonstração de sete minutos são publicados na versão 1.5.0 no GitHub e Hugging Face.
+
+00:06:52.015 --> 00:06:59.500
+Reproduza o snapshot, questione as alegações e construa a revisão sobre evidências que possam ser levadas adiante.

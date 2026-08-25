@@ -1,10 +1,10 @@
 # SBSeg-SF 2026 presentation and bench script
 
 The programme schedules TopVenues in the Thursday, 3 September bench session
-(16:00-16:45) and as item 9 of Friday's Block 2 (11:00-12:30). The call assigns
-seven minutes to the Friday slide presentation; it does not require a seven-
-minute video. Use this as a rehearsed live walkthrough or as the basis for a
-recording.
+(16:00-16:45) and as item 9 of Friday's Block 2 (11:00-12:30). The Friday
+presentation lasts seven minutes. The released demonstration follows that exact
+duration and is available in [`docs/demo/`](demo/README.md); use the same path
+for the live bench walkthrough.
 
 ## Objective
 
@@ -17,6 +17,10 @@ The audience must see a fixed corpus identity, a real query, a transparent
 author-visibility view, a chart-to-record transition, and an export.
 
 ## Seven-minute shot list
+
+The production timing, US-English narration, Brazilian Portuguese translation,
+and exact screen actions are frozen in [`demo/cues.json`](demo/cues.json) and
+[`demo/SHOT_PLAN.md`](demo/SHOT_PLAN.md). The concise live sequence remains:
 
 | Time | Visible action | Takeaway |
 | --- | --- | --- |

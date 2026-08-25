@@ -1,0 +1,100 @@
+[
+  {
+    "start": "00:00:00.000",
+    "end": "00:00:30.000",
+    "screen": "Overview and problem statement",
+    "en": "A literature review can fail before screening begins. If the population of eligible papers comes from changing portals, undocumented searches, or private exports, another researcher cannot reconstruct the same denominator. TopVenues turns that first step into an executable artifact: a declared cybersecurity corpus, a fixed local snapshot, and tools for inspecting every aggregate back down to individual records.",
+    "pt": "Uma revisão de literatura pode falhar antes mesmo da triagem. Se a população de artigos elegíveis vier de portais mutáveis, buscas não documentadas ou exportações privadas, outro pesquisador não consegue reconstruir o mesmo denominador. O TopVenues transforma essa primeira etapa em um artefato executável: um corpus declarado de cibersegurança, um snapshot local fixo e ferramentas para rastrear cada agregado até os registros individuais."
+  },
+  {
+    "start": "00:00:30.000",
+    "end": "00:01:00.000",
+    "screen": "Overview metrics and verification path",
+    "en": "This August 2026 release contains fourteen thousand eight hundred fifty-nine records from twenty declared venues, covering 2019 through 2026. Ninety-four point one percent have searchable abstracts, and every record has BibTeX. The snapshot is immutable. After installation, its manifest, database, tests, search, export, and web health check can all be verified offline with one reproduction command.",
+    "pt": "Esta versão de agosto de 2026 contém 14.859 registros de vinte venues declaradas, cobrindo 2019 a 2026. Noventa e quatro vírgula um por cento possuem abstracts pesquisáveis, e todos os registros possuem BibTeX. O snapshot é imutável. Após a instalação, manifesto, banco, testes, busca, exportação e integridade da interface podem ser verificados offline com um único comando de reprodução."
+  },
+  {
+    "start": "00:01:00.000",
+    "end": "00:01:30.000",
+    "screen": "Search for LLM security",
+    "en": "Start in Search with a research question, not with a ranking. Here I search for L L M security using full-text BM25 ranking. The result is not a recommendation list. It is an inspectable candidate set: title, authors, venue, year, class, abstract preview, source link, and citation record remain visible. Substring filters are also available when exact textual mention matters.",
+    "pt": "Comece em Search com uma pergunta de pesquisa, não com um ranking. Aqui eu busco por segurança de LLM usando ranqueamento textual BM25. O resultado não é uma lista de recomendações. É um conjunto de candidatos inspecionável: título, autores, venue, ano, classe, trecho do abstract, link da fonte e citação permanecem visíveis. Filtros por substring também estão disponíveis quando a menção textual exata importa."
+  },
+  {
+    "start": "00:01:30.000",
+    "end": "00:02:00.000",
+    "screen": "Security top-4 scope and export",
+    "en": "For reference mapping, I can restrict the same question to the security top four: ACM CCS, IEEE Security and Privacy, USENIX Security, and NDSS. That returns seventy-eight records in this snapshot. A systematic review should normally begin with all venues unless its protocol justifies a restriction. Either way, the exact subset can be exported as CSV, JSON, or ready-to-cite BibTeX.",
+    "pt": "Para mapear referências, posso restringir a mesma pergunta ao top-4 de segurança: ACM CCS, IEEE Security and Privacy, USENIX Security e NDSS. Isso retorna 78 registros neste snapshot. Uma revisão sistemática normalmente deve começar com todas as venues, salvo justificativa do protocolo. Em qualquer caso, o subconjunto exato pode ser exportado como CSV, JSON ou BibTeX pronto para citação."
+  },
+  {
+    "start": "00:02:00.000",
+    "end": "00:02:30.000",
+    "screen": "Interactive venue and year charts",
+    "en": "Insights provides distributions, but the charts are not decorative. Every venue, year, class, and coverage bar is a navigation control. Clicking a bar transfers its value into Search and opens the supporting records. That drill-down is important: a researcher can challenge an aggregate immediately, inspect outliers, and export the evidence instead of trusting a dashboard number without provenance.",
+    "pt": "Insights apresenta distribuições, mas os gráficos não são decorativos. Cada barra de venue, ano, classe e cobertura funciona como controle de navegação. Ao clicar, o valor é transferido para Search e os registros correspondentes são abertos. Esse detalhamento é essencial: o pesquisador pode questionar um agregado, inspecionar outliers e exportar a evidência, em vez de confiar em um número sem proveniência."
+  },
+  {
+    "start": "00:02:30.000",
+    "end": "00:03:00.000",
+    "screen": "LLM topic volume and normalized share",
+    "en": "The topic view separates raw volume from share of each year's corpus. For L L M in the top four, it finds two hundred eighty-two papers, led by CCS, USENIX, NDSS, and Security and Privacy. The share curve prevents corpus growth from masquerading as topic growth. And 2026 is visibly marked as partial, so this chart supports monitoring without pretending an incomplete year is comparable to a completed one.",
+    "pt": "A visão de tópicos separa volume bruto da participação no corpus de cada ano. Para LLM no top-4, encontra 282 artigos, liderados por CCS, USENIX, NDSS e Security and Privacy. A curva de participação evita confundir crescimento do corpus com crescimento do tópico. E 2026 é marcado como parcial, permitindo monitoramento sem fingir que um ano incompleto é comparável a um ano fechado."
+  },
+  {
+    "start": "00:03:00.000",
+    "end": "00:03:30.000",
+    "screen": "Researcher Radar authorship views",
+    "en": "Researcher Radar answers three different questions. Any-author frequency shows recurring names across collaborations. First-author frequency emphasizes who most often leads the author list. Last-author frequency can be useful in fields where that position often reflects group leadership, but the tool never assumes that convention is universal. Paper count is the transparent default; optional tier weighting is clearly labeled as a heuristic.",
+    "pt": "Researcher Radar responde a três perguntas diferentes. A frequência em qualquer posição mostra nomes recorrentes nas colaborações. A frequência como primeiro autor destaca quem mais aparece liderando a lista. A frequência como último autor pode ser útil em áreas onde essa posição costuma refletir liderança de grupo, mas a ferramenta não assume que essa convenção seja universal. Contagem de artigos é o padrão; ponderação por tier é uma heurística explícita."
+  },
+  {
+    "start": "00:03:30.000",
+    "end": "00:04:00.000",
+    "screen": "Author trajectory and coauthorship evidence",
+    "en": "Selecting a name opens the evidence behind the row: annual publication trajectory, first- and last-author positions, direct coauthors, active years, and main venues. DBLP identity suffixes are preserved to reduce accidental homonym merges. These views reveal whom to read and monitor within a declared topic and scope. They do not measure citations, seniority, authority, or scientific quality.",
+    "pt": "Selecionar um nome abre a evidência por trás da linha: trajetória anual, posições de primeiro e último autor, coautores diretos, anos ativos e principais venues. Os sufixos de identidade do DBLP são preservados para reduzir fusões de homônimos. Essas visões revelam quem ler e acompanhar dentro de um tópico e escopo declarados. Elas não medem citações, senioridade, autoridade ou qualidade científica."
+  },
+  {
+    "start": "00:04:00.000",
+    "end": "00:04:30.000",
+    "screen": "Watchlist, emerging activity, and arXiv handoff",
+    "en": "For ongoing surveillance, download a portable watchlist containing the topic, authors, tier scope, and paper IDs already observed. A later snapshot can compute deterministic additions and removals. The emerging-activity table compares recent and earlier publication rates as a descriptive signal, not a forecast. The arXiv handoff searches an author's name for possible preprints; every match remains an unverified candidate until identity is checked.",
+    "pt": "Para vigilância contínua, baixe uma watchlist portátil com tópico, autores, escopo de tier e IDs já observados. Um snapshot futuro pode calcular adições e remoções deterministicamente. A tabela de atividade emergente compara taxas recentes e anteriores como sinal descritivo, não como previsão. O encaminhamento ao arXiv busca possíveis preprints pelo nome do autor; cada resultado permanece candidato não verificado até a identidade ser conferida."
+  },
+  {
+    "start": "00:04:30.000",
+    "end": "00:05:00.000",
+    "screen": "Manual audit evidence",
+    "en": "Evidence makes the claim boundary explicit. Sidnei Barbieri manually reviewed a deterministic, venue-stratified sample of two hundred records. One hundred sixty-nine abstracts satisfied all three criteria: complete, uncontaminated, and matched to the sampled paper. That is an eighty-four point five percent usable rate, with a ninety-five percent Wilson interval from seventy-eight point eight to eighty-eight point nine percent.",
+    "pt": "Evidence torna explícito o limite das alegações. Sidnei Barbieri revisou manualmente uma amostra determinística e estratificada por venue de duzentos registros. Cento e sessenta e nove abstracts atenderam aos três critérios: completos, sem contaminação e correspondentes ao artigo amostrado. Isso representa taxa utilizável de 84,5%, com intervalo de Wilson de 95% entre 78,8% e 88,9%."
+  },
+  {
+    "start": "00:05:00.000",
+    "end": "00:05:30.000",
+    "screen": "Audit transfer and missing-data limits",
+    "en": "The audit was performed on the previous snapshot and transferred only after an exact check showed the same fourteen thousand eight hundred fifty-nine paper IDs and identical abstract text. Version four changes ten titles, none in the sample. Coverage is still uneven: for example, ESORICS and WOOT have substantial missing abstracts. Missing text is disclosed and excluded from abstract-dependent conclusions; it is never treated as negative evidence.",
+    "pt": "A auditoria foi feita no snapshot anterior e transferida somente após uma verificação exata confirmar os mesmos 14.859 IDs e textos de abstract idênticos. A versão quatro altera dez títulos, nenhum deles na amostra. A cobertura ainda é desigual: por exemplo, ESORICS e WOOT têm muitos abstracts ausentes. Texto ausente é declarado e excluído de conclusões dependentes de abstract; nunca é tratado como evidência negativa."
+  },
+  {
+    "start": "00:05:30.000",
+    "end": "00:06:00.000",
+    "screen": "Immutable lifecycle and reproduction",
+    "en": "Dataset lifecycle separates exploration from maintenance. A released profile cannot be refreshed in place. New collection from live APIs must create a successor profile, record provenance, compare added and removed IDs, rerun quality gates, and receive a new semantic release. On Linux and macOS, reproduce dot sh exercises the reviewer path. Native Windows uses reproduce dot P S one and closes every SQLite handle deterministically.",
+    "pt": "Dataset lifecycle separa exploração de manutenção. Um perfil publicado não pode ser atualizado no mesmo lugar. Nova coleta em APIs deve criar um perfil sucessor, registrar proveniência, comparar IDs adicionados e removidos, repetir os controles de qualidade e receber uma nova versão semântica. Linux e macOS usam reproduce.sh. O Windows nativo usa reproduce.ps1 e fecha deterministicamente cada conexão SQLite."
+  },
+  {
+    "start": "00:06:00.000",
+    "end": "00:06:30.000",
+    "screen": "Research workflow synthesis",
+    "en": "A productive workflow is therefore simple. Begin broad when constructing a systematic-review denominator. Narrow to the top four when mapping canonical security conversations. Inspect the records behind every trend or author signal. Export the candidate set with its snapshot identity. Save a watchlist for the next release. And document each restriction as a protocol choice, because TopVenues supports scientific judgment; it does not replace it.",
+    "pt": "Um fluxo produtivo é, portanto, simples. Comece amplo ao construir o denominador de uma revisão sistemática. Restrinja ao top-4 ao mapear conversas canônicas de segurança. Inspecione os registros por trás de cada trend ou sinal de autoria. Exporte os candidatos com a identidade do snapshot. Salve uma watchlist para a próxima versão. E documente cada restrição como escolha de protocolo, pois o TopVenues apoia o julgamento científico; não o substitui."
+  },
+  {
+    "start": "00:06:30.000",
+    "end": "00:07:00.000",
+    "screen": "Closing overview and release links",
+    "en": "TopVenues gives researchers three things that ordinary search portals do not provide together: a reproducible denominator, an inspectable research workbench, and a forward-looking monitoring handoff. The code, immutable corpus, audit evidence, documentation, and seven-minute demonstration are published with release one point five point zero on GitHub and Hugging Face. Reproduce the snapshot, challenge the claims, and build the review from evidence you can carry forward.",
+    "pt": "O TopVenues oferece três coisas que portais de busca comuns não fornecem em conjunto: um denominador reproduzível, uma bancada de pesquisa inspecionável e um encaminhamento para monitoramento futuro. Código, corpus imutável, evidência de auditoria, documentação e demonstração de sete minutos são publicados na versão 1.5.0 no GitHub e Hugging Face. Reproduza o snapshot, questione as alegações e construa a revisão sobre evidências que possam ser levadas adiante."
+  }
+]
