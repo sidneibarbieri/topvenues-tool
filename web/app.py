@@ -5,14 +5,15 @@ import html
 import json
 import sqlite3
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import altair as alt
 import pandas as pd
 import streamlit as st
 
-from web import charts
-
+# `streamlit run web/app.py` puts web/ on sys.path rather than the repository
+# root, so every first-party import below depends on this running first.
 ARTIFACT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ARTIFACT_ROOT))
 
@@ -27,6 +28,7 @@ from src.models import PaperClass, SearchFilters
 from src.release_identity import identity_from_manifest
 from src.reproduction_commands import SUPPORTED, command_for_profile, summary_line
 from src.tiers import tier_for, tier_scope_options, tiers_in_scope
+from web import charts
 
 PAGE_SIZE_OPTIONS = (25, 50, 100, 200)
 ABSTRACT_PREVIEW_CHARS = 280
@@ -48,9 +50,7 @@ st.markdown(
             --navy:   #243247;
             --slate:  #3d4b5f;
             --teal:   #2f6f73;
-            --amber:  #b36b2c;
             --green:  #4f7d4a;
-            --rose:   #a84646;
             --muted:  #d8e2e3;
             --border: #d8dde3;
             --bg:     #f8f8f5;
@@ -94,20 +94,6 @@ st.markdown(
         }
         .app-header p { color: #4d5f71; font-size: .96rem; margin: 0; }
 
-        .metric-row { display: flex; gap: .9rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
-        .metric {
-            flex: 1; min-width: 160px;
-            background: var(--card); border: 1px solid var(--border);
-            border-left: 4px solid var(--teal);
-            border-radius: 6px; padding: .95rem 1.1rem;
-        }
-    .metric.amber { border-left-color: var(--amber); }
-    .metric.green { border-left-color: var(--green); }
-    .metric.rose  { border-left-color: var(--rose); }
-    .metric .lbl { color: #6b7c8d; font-size: .72rem; text-transform: uppercase;
-                   letter-spacing: .8px; margin-bottom: .35rem; }
-        .metric .val { color: var(--ink); font-size: 1.7rem; font-weight: 700; line-height: 1; }
-    .metric .sub { color: #8b97a3; font-size: .72rem; margin-top: .25rem; }
 
     .tag {
             display: inline-block; border-radius: 3px;
@@ -350,69 +336,93 @@ def _render_header(title: str, subtitle: str) -> None:
     )
 
 
-def _artifact_claims(stats: dict) -> tuple[tuple[str, str, str], ...]:
-    """Build the headline cards from live corpus counts, so they cannot drift."""
+@dataclass(frozen=True)
+class HeadlineCard:
+    """One figure in a page's headline row.
+
+    Every page builds these from live corpus counts, so a card cannot state a
+    number the corpus no longer holds.
+    """
+
+    name: str
+    value: str
+    note: str
+
+
+def _percentage(part: int, whole: int) -> str:
+    return f"{part / whole:.1%}" if whole else "n/a"
+
+
+def _artifact_claims(stats: dict) -> tuple[HeadlineCard, ...]:
+    """The headline row for the corpus as a whole."""
     total = stats["total_papers"]
     with_abstracts = stats["with_abstracts"]
     with_bibtex = stats.get("with_bibtex", 0)
     venues = len(stats.get("by_event", ()))
+    years = sorted(year for year in stats.get("by_year", {}) if year)
     return (
-        ("Corpus", f"{total:,}", f"cybersecurity papers across {venues} venues"),
-        (
+        HeadlineCard("Corpus", f"{total:,}", f"cybersecurity papers across {venues} venues"),
+        HeadlineCard(
             "Abstracts",
-            f"{with_abstracts / total:.1%}" if total else "n/a",
+            _percentage(with_abstracts, total),
             f"{with_abstracts:,} searchable abstracts",
         ),
-        (
-            "BibTeX",
-            f"{with_bibtex / total:.1%}" if total else "n/a",
-            "records ready for citation export",
+        HeadlineCard(
+            "BibTeX", _percentage(with_bibtex, total), "records ready for citation export"
         ),
-        ("Verification", "Offline", "integrity checks for the selected snapshot"),
+        HeadlineCard(
+            "Coverage",
+            f"{years[0]}\u2013{years[-1]}" if years else "n/a",
+            "publication years in this snapshot",
+        ),
     )
 
 
-def _render_claims(stats: dict) -> None:
-    # The HTML must stay flat: Streamlit runs markdown before inserting raw
-    # HTML, so any line indented four or more spaces becomes a code block.
-    cards = "".join(
+def _render_card_row(cards: tuple[HeadlineCard, ...]) -> None:
+    """Render a headline row. Every page uses this, so the rows stay identical.
+
+    The HTML must stay flat: Streamlit runs markdown before inserting raw HTML,
+    so any line indented four or more spaces becomes a code block.
+    """
+    markup = "".join(
         '<div class="claim">'
-        f'<div class="name">{_safe_html(name)}</div>'
-        f'<div class="value">{_safe_html(value)}</div>'
-        f'<div class="note">{_safe_html(note)}</div>'
+        f'<div class="name">{_safe_html(card.name)}</div>'
+        f'<div class="value">{_safe_html(card.value)}</div>'
+        f'<div class="note">{_safe_html(card.note)}</div>'
         "</div>"
-        for name, value, note in _artifact_claims(stats)
+        for card in cards
     )
-    st.markdown(f'<div class="claim-grid">{cards}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="claim-grid">{markup}</div>', unsafe_allow_html=True)
 
 
-def _render_metrics(stats: dict, filtered_count: int | None = None) -> None:
+def _corpus_cards(stats: dict, filtered_count: int | None = None) -> tuple[HeadlineCard, ...]:
+    """The headline row for a page that filters the corpus.
+
+    `filtered_count` adds a card naming how much of the corpus the current
+    filters leave; it is omitted on pages that do not filter.
+    """
     total = stats["total_papers"]
-    with_abs = stats["with_abstracts"]
-    with_bib = stats.get("with_bibtex", 0)
-    abs_pct = (with_abs / total * 100) if total else 0
-    bib_pct = (with_bib / total * 100) if total else 0
+    with_abstracts = stats["with_abstracts"]
+    with_bibtex = stats.get("with_bibtex", 0)
     venues = len(stats["by_event"])
-    extra = (
-        f'<div class="metric green"><div class="lbl">Currently shown</div>'
-        f'<div class="val">{filtered_count:,}</div></div>'
-        if filtered_count is not None
-        else ""
+    cards = (
+        HeadlineCard("Papers indexed", f"{total:,}", f"across {venues} venues"),
+        HeadlineCard(
+            "With abstract", f"{with_abstracts:,}", f"{_percentage(with_abstracts, total)} coverage"
+        ),
+        HeadlineCard(
+            "With BibTeX", f"{with_bibtex:,}", f"{_percentage(with_bibtex, total)} coverage"
+        ),
     )
-    st.markdown(
-        '<div class="metric-row">'
-        f'<div class="metric"><div class="lbl">Papers indexed</div>'
-        f'<div class="val">{total:,}</div>'
-        f'<div class="sub">across {venues} venues</div></div>'
-        f'<div class="metric amber"><div class="lbl">With abstract</div>'
-        f'<div class="val">{with_abs:,}</div>'
-        f'<div class="sub">{abs_pct:.2f}% coverage</div></div>'
-        f'<div class="metric rose"><div class="lbl">With BibTeX</div>'
-        f'<div class="val">{with_bib:,}</div>'
-        f'<div class="sub">{bib_pct:.2f}% coverage</div></div>'
-        f"{extra}"
-        "</div>",
-        unsafe_allow_html=True,
+    if filtered_count is None:
+        return cards
+    return (
+        *cards,
+        HeadlineCard(
+            "Currently shown",
+            f"{filtered_count:,}",
+            f"{_percentage(filtered_count, total)} of the corpus",
+        ),
     )
 
 
@@ -558,7 +568,7 @@ def page_artifact() -> None:
         "Reproducible corpus overview",
         "Reproduce the corpus, inspect coverage, and export ready-to-cite references from a local snapshot.",
     )
-    _render_claims(_load_collector().db.get_statistics())
+    _render_card_row(_artifact_claims(_load_collector().db.get_statistics()))
 
     st.subheader("Start from a research question")
     tier1_col, broad_col, monitor_col = st.columns(3)
@@ -882,7 +892,7 @@ def page_search() -> None:
         "Security Paper Explorer",
         "Search a curated dataset from the configured security literature scope.",
     )
-    _render_metrics(stats, filtered_count=len(results))
+    _render_card_row(_corpus_cards(stats, filtered_count=len(results)))
     active_venue = venue_choice if venue_choice != "All venues" else tier_scope
     release = _release_identity(collector.config.profile_id or "")
     st.caption(f"Active venue scope: {active_venue}. Corpus: {release['reader']}.")
@@ -1096,7 +1106,7 @@ def page_insights() -> None:
         "Dataset insights",
         "Distribution of papers across venues, years, paper classes and abstract coverage.",
     )
-    _render_metrics(stats)
+    _render_card_row(_corpus_cards(stats))
 
     st.subheader("Papers by venue")
     venue_df = pd.DataFrame(

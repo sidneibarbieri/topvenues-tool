@@ -49,3 +49,50 @@ def test_the_palette_is_declared_in_one_place():
 def test_unselected_bars_read_as_clearly_dimmed():
     """A subtle difference makes the click-to-filter affordance invisible."""
     assert charts.UNSELECTED_OPACITY <= 0.5
+
+
+def test_every_headline_card_is_computed_from_the_corpus():
+    """A hardcoded card cannot drift with the data, so it silently goes stale.
+
+    The fourth card used to read a literal "Offline", which also broke the row's
+    reading: three measured values beside one status word.
+    """
+    from web.app import _artifact_claims
+
+    stats = {
+        "total_papers": 100,
+        "with_abstracts": 90,
+        "with_bibtex": 100,
+        "by_event": {"ACM CCS": 60, "NDSS": 40},
+        "by_year": {2019: 50, 2026: 50},
+    }
+    assert [card.value for card in _artifact_claims(stats)] == [
+        "100",
+        "90.0%",
+        "100.0%",
+        "2019–2026",
+    ]
+
+
+def test_both_headline_rows_use_the_same_card_type():
+    """Two card components drifted apart in palette, precision and markup.
+
+    The Search row tinted its cards amber and rose, which read as warning and
+    error on a 94% and a 100% figure, and printed two decimals where the
+    Overview row printed one.
+    """
+    from web.app import HeadlineCard, _artifact_claims, _corpus_cards
+
+    stats = {
+        "total_papers": 200,
+        "with_abstracts": 188,
+        "with_bibtex": 200,
+        "by_event": {"ACM CCS": 200},
+        "by_year": {2020: 200},
+    }
+    rows = (_artifact_claims(stats), _corpus_cards(stats, filtered_count=50))
+
+    for row in rows:
+        assert all(isinstance(card, HeadlineCard) for card in row)
+    assert _corpus_cards(stats)[1].note == "94.0% coverage"
+    assert _corpus_cards(stats, filtered_count=50)[3].note == "25.0% of the corpus"

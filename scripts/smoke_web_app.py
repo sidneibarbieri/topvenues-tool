@@ -21,13 +21,13 @@ from pathlib import Path
 from streamlit.testing.v1 import AppTest
 
 ROOT = Path(__file__).resolve().parents[1]
-
-# The application imports `web` and `src` as packages, which resolve from the
-# repository root rather than from this script's directory.
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
 APPLICATION_SCRIPT = ROOT / "web" / "app.py"
+
+# Nothing is added to sys.path here on purpose. `streamlit run web/app.py` puts
+# web/ on the path and not the repository root, so an application that needs the
+# root added for it is already broken for that command; putting it back here
+# would hide exactly that failure.
+
 NAVIGATION_KEY = "page"
 SCRIPT_TIMEOUT_SECONDS = 120
 
