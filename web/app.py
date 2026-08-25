@@ -25,6 +25,7 @@ from src.collector import Collector
 from src.database import require_corpus
 from src.models import PaperClass, SearchFilters
 from src.release_identity import identity_from_manifest
+from src.reproduction_commands import SUPPORTED, command_for_profile, summary_line
 from src.tiers import tier_for, tier_scope_options, tiers_in_scope
 
 PAGE_SIZE_OPTIONS = (25, 50, 100, 200)
@@ -588,7 +589,13 @@ def page_artifact() -> None:
         """
     )
 
-    st.code("bash reproduce.sh", language="bash")
+    active_profile = _load_collector().config.profile_id
+    for tab, reproduction in zip(st.tabs([item.platform for item in SUPPORTED]), SUPPORTED, strict=True):
+        with tab:
+            st.code(
+                command_for_profile(reproduction, active_profile),
+                language=reproduction.shell,
+            )
 
     st.subheader("Reproducibility evidence")
     evidence = pd.DataFrame(
@@ -619,7 +626,7 @@ def page_artifact() -> None:
             {
                 "Check": "Snapshot identity",
                 "Result": "The manifest records counts and SHA-256 for the compressed SQLite release.",
-                "Use": "bash reproduce.sh",
+                "Use": summary_line(),
             },
             {
                 "Check": "Search and export",
