@@ -1,45 +1,66 @@
 # Manual abstract audit
 
-The `security-20-v3` coverage count is exhaustive, but abstract quality requires
-human comparison with publisher or repository evidence. Results from another
-snapshot cannot be transferred to v3.
+Abstract coverage is exhaustive to count mechanically, but text quality requires
+comparison with publisher or repository evidence. TopVenues therefore uses a
+deterministic, venue-stratified 200-record sample and three explicit criteria.
 
-Generate the fixed venue-stratified sample:
+## Completed result
+
+Sidnei Barbieri manually reviewed all 200 sampled records. A record counts as
+usable only when all three labels are `yes`:
+
+| Criterion | Yes |
+| --- | ---: |
+| Complete rather than truncated | 171 |
+| Free of navigation, copyright, references, or unrelated text | 198 |
+| Belongs to the sampled paper | 190 |
+| All three criteria | 169 (84.5%) |
+
+The 95% Wilson interval for the usable rate is 78.8%–88.9%. The result is a
+quality estimate for abstract-enriched records, not a precision or recall claim
+for bibliographic retrieval.
+
+Primary evidence is preserved in:
+
+- `evaluation/security-20-v3/manual_abstract_audit.csv`;
+- `evaluation/security-20-v3/manual_abstract_audit_decisions.jsonl`;
+- `evaluation/security-20-v3/manual_abstract_audit_summary.json`.
+
+All 200 final decisions are `human_only` and name the reviewer. The append-only
+JSONL contains 473 events because provenance corrections and backfills retain
+superseded history. Resolve it by the latest event for each `sample_id`; do not
+count events as additional sampled records.
+
+## Applicability to v4
+
+The annotations were made against `security-20-v3`. They transfer to
+`security-20-v4` because the profiles contain the same 14,859 paper IDs and
+identical abstract text. The ten v4 changes are title repairs, and none belongs
+to the audit sample. The comparison and decision are machine-readable in
+`evaluation/security-20-v4/audit_transfer.json` and explained in
+`evaluation/security-20-v4/AUDIT_TRANSFER.md`.
+
+## Repeat or extend the protocol
+
+Generate the fixed sample:
 
 ```bash
 python scripts/manual_abstract_audit.py \
-  --profile security-20-v3 \
+  --profile security-20-v4 \
   --sample-size 200 \
-  --output security-20-v3-manual-audit.csv
+  --output security-20-v4-manual-audit.csv
 ```
 
-For every row, open `source_url`, compare the displayed source with `abstract`,
-and enter `yes` or `no` in all three fields:
-
-- `label_complete`: the abstract is complete rather than truncated;
-- `label_uncontaminated`: navigation, copyright, references, or unrelated text
-  are absent;
-- `label_matches_paper`: the abstract belongs to the sampled title.
-
-The frozen `security-20-v3` snapshot normalized all whitespace before release,
-so it does not preserve publisher paragraph boundaries. Do not infer missing
-content from formatting alone. Mark `label_complete=no` only when comparison
-with the linked source shows omitted or truncated prose; otherwise note
-`paragraph boundaries flattened` when that distinction is relevant. Successor
-profiles preserve paragraph boundaries explicitly exposed by upstream sources.
-
-Record the reviewer identity or code and a short note for every negative label.
-Do not infer labels from string length or another automated heuristic: that would
-not be a manual validation.
+For each row, open `source_url`, compare the displayed source with `abstract`,
+and answer all three label questions. Record the reviewer and a concise note for
+every negative label. Do not infer labels from length or an automated heuristic.
 
 Summarize a completed sheet:
 
 ```bash
 python scripts/manual_abstract_audit.py \
-  --summarize security-20-v3-manual-audit.csv
+  --summarize security-20-v4-manual-audit.csv
 ```
 
-The summarizer reports the usable fraction and a 95% Wilson interval. Partially
-labelled rows are reported as incomplete and excluded; they are never silently
-treated as positive or negative. Commit labels only after the protocol has been
-completed and independently checked.
+Partially labelled rows are reported as incomplete and excluded; they are never
+silently imputed.
