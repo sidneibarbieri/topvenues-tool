@@ -47,3 +47,21 @@ def test_similar_titles_without_shared_resource_are_not_merged() -> None:
 
     assert report.merged_records == 0
     assert len(papers) == 2
+
+
+def test_merge_prefers_complete_abstract_over_longer_truncated_text() -> None:
+    complete = (
+        "We evaluate the proposed security method using controlled experiments and report "
+        "evidence that supports the complete conclusion."
+    )
+    truncated = (
+        "We evaluate the proposed security method using controlled experiments, multiple "
+        "datasets, extensive baselines, practitioner feedback, and detailed evidence that "
+        "continues into a missing final portion..."
+    )
+    papers, _ = deduplicate_papers([
+        _paper("legacy", "https://doi.org/10.1145/example", abstract=truncated),
+        _paper("conf/ccs/Example25", "10.1145/example", abstract=complete),
+    ])
+
+    assert papers[0].abstract == complete

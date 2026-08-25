@@ -2,6 +2,7 @@
 
 import asyncio
 import html
+import json
 import sqlite3
 import sys
 from pathlib import Path
@@ -9,6 +10,8 @@ from pathlib import Path
 import altair as alt
 import pandas as pd
 import streamlit as st
+
+from web import charts
 
 ARTIFACT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ARTIFACT_ROOT))
@@ -21,6 +24,7 @@ from src.chart_interactions import selected_chart_value
 from src.collector import Collector
 from src.database import require_corpus
 from src.models import PaperClass, SearchFilters
+from src.release_identity import identity_from_manifest
 from src.tiers import tier_for, tier_scope_options, tiers_in_scope
 
 PAGE_SIZE_OPTIONS = (25, 50, 100, 200)
@@ -448,6 +452,16 @@ def _queue_search_from_chart(**filters: str | int | None) -> None:
     st.rerun()
 
 
+
+@st.cache_data(show_spinner=False)
+def _release_identity(profile_id: str) -> dict:
+    """Reader- and auditor-facing names for the active release."""
+    manifest_path = ARTIFACT_ROOT / "data" / "profiles" / profile_id / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    identity = identity_from_manifest(profile_id, manifest)
+    return {"reader": identity.reader_label, "auditor": identity.auditor_label}
+
+
 def _interactive_bar_chart(
     data: pd.DataFrame,
     category: str,
@@ -457,38 +471,30 @@ def _interactive_bar_chart(
     *,
     horizontal: bool = True,
     sort: str | list | None = "-x",
-    color: str = "#2f6f73",
+    category_title: str | None = None,
+    value_title: str | None = None,
+    value_format: str = ",",
+    color: str = charts.ACCENT,
+    value_scale: alt.Scale | None = None,
 ) -> object | None:
-    """Render a restrained selectable chart and return its selected category."""
+    """Render a selectable bar chart and return the category the reader picked."""
     selection_name = f"{key}_selection"
     selection = alt.selection_point(selection_name, fields=[category], on="click", clear="dblclick")
-    category_encoding = alt.Y(f"{category}:N", sort=sort, title=None)
-    value_encoding = alt.X(f"{value}:Q", title=value)
-    if not horizontal:
-        category_encoding = alt.X(
-            f"{category}:O", sort=sort, title=category, axis=alt.Axis(labelAngle=0)
+    chart = charts.apply_theme(
+        charts.bar_chart(
+            data,
+            category,
+            value,
+            selection,
+            horizontal=horizontal,
+            sort=sort,
+            category_title=category_title,
+            value_title=value_title,
+            value_format=value_format,
+            height=height,
+            color=color,
+            value_scale=value_scale,
         )
-        value_encoding = alt.Y(f"{value}:Q", title=value)
-    chart = (
-        alt.Chart(data)
-        .mark_bar(color=color, cornerRadiusEnd=3)
-        .encode(
-            x=value_encoding if horizontal else category_encoding,
-            y=category_encoding if horizontal else value_encoding,
-            tooltip=[alt.Tooltip(f"{category}:N"), alt.Tooltip(f"{value}:Q", format=",")],
-            opacity=alt.condition(selection, alt.value(1.0), alt.value(0.58)),
-        )
-        .add_params(selection)
-        .properties(height=height)
-        .configure_axis(
-            domainColor="#cbd5e1",
-            gridColor="#e7ebee",
-            labelColor="#475569",
-            titleColor="#334155",
-            labelFontSize=12,
-            titleFontSize=12,
-        )
-        .configure_view(strokeOpacity=0)
     )
     event = st.altair_chart(
         chart, key=key, on_select="rerun", selection_mode=selection_name, theme=None
@@ -497,32 +503,30 @@ def _interactive_bar_chart(
 
 
 def _interactive_line_chart(
-    data: pd.DataFrame, x_field: str, y_field: str, key: str, height: int
+    data: pd.DataFrame,
+    x_field: str,
+    y_field: str,
+    key: str,
+    height: int,
+    *,
+    x_title: str | None = None,
+    y_title: str | None = None,
+    value_format: str = ",",
 ) -> object | None:
-    """Render a chronological selectable line chart with precise values."""
+    """Render a selectable chronological chart and return the point picked."""
     selection_name = f"{key}_selection"
     selection = alt.selection_point(selection_name, fields=[x_field], on="click", clear="dblclick")
-    line = alt.Chart(data).mark_line(color="#334e68", strokeWidth=2.5)
-    points = alt.Chart(data).mark_point(filled=True, color="#334e68", size=75)
-    chart = (
-        (line + points)
-        .encode(
-            x=alt.X(f"{x_field}:O", sort="ascending", title=x_field, axis=alt.Axis(labelAngle=0)),
-            y=alt.Y(f"{y_field}:Q", title=y_field, scale=alt.Scale(zero=True)),
-            tooltip=[alt.Tooltip(f"{x_field}:O"), alt.Tooltip(f"{y_field}:Q", format=".2f")],
-            opacity=alt.condition(selection, alt.value(1.0), alt.value(0.62)),
+    chart = charts.apply_theme(
+        charts.line_chart(
+            data,
+            x_field,
+            y_field,
+            selection,
+            x_title=x_title,
+            y_title=y_title,
+            value_format=value_format,
+            height=height,
         )
-        .add_params(selection)
-        .properties(height=height)
-        .configure_axis(
-            domainColor="#cbd5e1",
-            gridColor="#e7ebee",
-            labelColor="#475569",
-            titleColor="#334155",
-            labelFontSize=12,
-            titleFontSize=12,
-        )
-        .configure_view(strokeOpacity=0)
     )
     event = st.altair_chart(
         chart, key=key, on_select="rerun", selection_mode=selection_name, theme=None
@@ -545,7 +549,7 @@ def page_artifact() -> None:
     with tier1_col:
         st.markdown("**Reference mapping**  ")
         st.caption(
-            "Use Security Big Four (Tier 1) to identify canonical venue papers and recurring authors."
+            "Use Security top-4 to identify canonical venue papers and recurring authors."
         )
     with broad_col:
         st.markdown("**Review protocol**  ")
@@ -611,6 +615,68 @@ def page_artifact() -> None:
     st.dataframe(findings, width="stretch", hide_index=True)
 
 
+# A venue whose abstracts were never harvested looks like a venue without
+# research on the topic. The coverage table lives on the Insights page, far
+# from where the risk is actually taken, so the gap is also stated here at the
+# moment an abstract query is run.
+ABSTRACT_COVERAGE_FLOOR = 0.95
+
+
+@st.cache_data(show_spinner=False)
+def _abstract_coverage_by_venue(db_path: str) -> dict[str, tuple[int, int]]:
+    """Per venue: records carrying an abstract, and records in total."""
+    coverage: dict[str, tuple[int, int]] = {}
+    with sqlite3.connect(db_path) as conn:
+        for venue, total, with_abstract in conn.execute(
+            "SELECT event, COUNT(*), "
+            "SUM(CASE WHEN abstract IS NOT NULL AND TRIM(abstract) <> '' THEN 1 ELSE 0 END) "
+            "FROM papers GROUP BY event"
+        ):
+            if total:
+                coverage[venue] = (int(with_abstract or 0), int(total))
+    return coverage
+
+
+def _warn_about_abstract_coverage(db_path: str, venue_choice: str) -> None:
+    """Say plainly which venues an abstract query cannot speak for."""
+    coverage = _abstract_coverage_by_venue(db_path)
+    if not coverage:
+        return
+
+    if venue_choice != "All venues":
+        entry = coverage.get(venue_choice)
+        if not entry:
+            return
+        with_abstract, total = entry
+        if with_abstract / total < ABSTRACT_COVERAGE_FLOOR:
+            st.warning(
+                f"**{venue_choice}** stores an abstract for {with_abstract:,} of "
+                f"{total:,} records ({with_abstract / total:.1%}). This query cannot "
+                f"reach the other {total - with_abstract:,}, so a small result set "
+                "here means missing text, not absent research."
+            )
+        return
+
+    weak = sorted(
+        (
+            (venue, hit, total)
+            for venue, (hit, total) in coverage.items()
+            if hit / total < ABSTRACT_COVERAGE_FLOOR
+        ),
+        key=lambda item: item[1] / item[2],
+    )
+    if not weak:
+        return
+    unreachable = sum(total - hit for _, hit, total in weak)
+    listed = ", ".join(f"{venue} {hit / total:.0%}" for venue, hit, total in weak[:4])
+    more = f", and {len(weak) - 4} more" if len(weak) > 4 else ""
+    st.warning(
+        f"Abstract coverage is uneven: {listed}{more}. This query cannot reach "
+        f"{unreachable:,} records that carry no abstract, so venue counts are not "
+        "comparable without accounting for that gap."
+    )
+
+
 def page_search() -> None:
     collector = _load_collector()
     stats = collector.db.get_statistics()
@@ -654,7 +720,7 @@ def page_search() -> None:
             tier_scope = st.selectbox(
                 "Venue tier scope",
                 tier_scope_options(),
-                help="Security Big Four (Tier 1): ACM CCS, IEEE S&P, USENIX Security, and NDSS.",
+                help="Security top-4: ACM CCS, IEEE S&P, USENIX Security, and NDSS.",
                 key="search_tier_scope",
             )
             allowed_tiers = tiers_in_scope(tier_scope)
@@ -713,6 +779,9 @@ def page_search() -> None:
             "newest-first when no ranked query is set.",
             key="search_sort",
         )
+
+    if abstract_query:
+        _warn_about_abstract_coverage(str(collector.db.db_path), venue_choice)
 
     filters = SearchFilters()
     if title_query:
@@ -793,7 +862,8 @@ def page_search() -> None:
     )
     _render_metrics(stats, filtered_count=len(results))
     active_venue = venue_choice if venue_choice != "All venues" else tier_scope
-    st.caption(f"Active venue scope: {active_venue}. Snapshot: {collector.config.profile_id}.")
+    release = _release_identity(collector.config.profile_id or "")
+    st.caption(f"Active venue scope: {active_venue}. Corpus: {release['reader']}.")
 
     if not results:
         st.info("No papers match the current filters. Try widening the search.")
@@ -1006,21 +1076,20 @@ def page_insights() -> None:
     )
     _render_metrics(stats)
 
+    st.subheader("Papers by venue")
+    venue_df = pd.DataFrame(
+        [
+            {"Venue": k, "Papers": v}
+            for k, v in sorted(stats["by_event"].items(), key=lambda x: x[1], reverse=True)
+        ]
+    )
+    selected_venue = _interactive_bar_chart(venue_df, "Venue", "Papers", "venue_chart", 520)
+    st.caption("Click a bar to open that venue's records. Double-click clears the selection.")
+    if selected_venue:
+        _queue_search_from_chart(venue=str(selected_venue))
+
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("Papers by venue")
-        venue_df = pd.DataFrame(
-            [
-                {"Venue": k, "Papers": v}
-                for k, v in sorted(stats["by_event"].items(), key=lambda x: x[1], reverse=True)
-            ]
-        )
-        selected_venue = _interactive_bar_chart(venue_df, "Venue", "Papers", "venue_chart", 460)
-        st.caption("Click a bar to open that venue's records. Double-click clears the selection.")
-        if selected_venue:
-            _queue_search_from_chart(venue=str(selected_venue))
-
-    with col2:
         st.subheader("Papers by year")
         year_df = pd.DataFrame(
             [{"Year": k, "Papers": v} for k, v in sorted(stats["by_year"].items())]
@@ -1033,7 +1102,6 @@ def page_insights() -> None:
             460,
             horizontal=False,
             sort="ascending",
-            color="#334e68",
         )
         st.caption("Click a bar to open that year's records. Double-click clears the selection.")
         partial_years = sorted(set(collector.config.partial_years) & set(stats["by_year"]))
@@ -1046,23 +1114,33 @@ def page_insights() -> None:
         if selected_year is not None:
             _queue_search_from_chart(year=int(selected_year))
 
-    st.divider()
-    st.subheader("Papers by class")
-    class_counts = {}
-    for paper in collector.papers:
-        class_counts[paper.paper_class.value] = class_counts.get(paper.paper_class.value, 0) + 1
-    class_df = pd.DataFrame(
-        [
-            {"Class": k, "Papers": v}
-            for k, v in sorted(class_counts.items(), key=lambda x: x[1], reverse=True)
-        ]
-    )
-    selected_class = _interactive_bar_chart(
-        class_df, "Class", "Papers", "class_chart", 320, color="#a35f25"
-    )
-    st.caption("Click a bar to open records in that paper class.")
-    if selected_class:
-        _queue_search_from_chart(paper_class=str(selected_class))
+    with col2:
+        st.subheader("Papers by class")
+        class_counts = {}
+        for paper in collector.papers:
+            class_counts[paper.paper_class.value] = (
+                class_counts.get(paper.paper_class.value, 0) + 1
+            )
+        class_df = pd.DataFrame(
+            [
+                {"Class": k, "Papers": v}
+                for k, v in sorted(class_counts.items(), key=lambda x: x[1], reverse=True)
+            ]
+        )
+        selected_class = _interactive_bar_chart(
+            class_df,
+            "Class",
+            "Papers",
+            "class_chart",
+            320,
+            value_scale=alt.Scale(type="log", domainMin=1),
+        )
+        st.caption(
+            "Logarithmic scale keeps rare classes visible; printed labels show exact counts. "
+            "Click a bar to open records in that class."
+        )
+        if selected_class:
+            _queue_search_from_chart(paper_class=str(selected_class))
 
     st.divider()
     st.subheader("Topic trend")
@@ -1112,7 +1190,6 @@ def page_insights() -> None:
                     280,
                     horizontal=False,
                     sort="ascending",
-                    color="#2f6f73",
                 )
             with col_share:
                 st.caption("Share of the year's corpus (%)")
@@ -1152,7 +1229,7 @@ def page_insights() -> None:
     st.subheader("Researcher Radar")
     st.caption(
         "Discover researchers who recur in the selected corpus. Paper count is the "
-        "transparent default; the optional tier-weighted view gives Big Four papers "
+        "transparent default; the optional tier-weighted view gives top-4 papers "
         "more weight. Neither view measures citations, quality, seniority, or authority. "
         "DBLP identity suffixes are preserved to avoid merging homonyms."
     )
@@ -1180,7 +1257,7 @@ def page_insights() -> None:
             "Venue tier scope",
             tier_scope_options(),
             key="authors_tier_scope",
-            help="Use Security Big Four (Tier 1) to identify recurring authors in CCS, S&P, USENIX Security, and NDSS only.",
+            help="Use Security top-4 to identify recurring authors in CCS, S&P, USENIX Security, and NDSS only.",
         )
     with col_position:
         author_position = st.selectbox(
@@ -1323,7 +1400,7 @@ def page_insights() -> None:
                             "Measure:N",
                             scale=alt.Scale(
                                 domain=["Papers", "First author", "Last author"],
-                                range=["#2f6f73", "#b36b2c", "#334e68"],
+                                range=list(charts.SERIES),
                             ),
                             title=None,
                         ),
@@ -1456,12 +1533,234 @@ def page_insights() -> None:
         "Coverage (%)",
         "coverage_chart",
         460,
-        color="#537a4a",
+        color=charts.COVERAGE,
     )
     st.caption("Click a coverage bar to inspect the venue's records and missing abstracts.")
     if selected_coverage_venue:
         _queue_search_from_chart(venue=str(selected_coverage_venue))
     st.dataframe(coverage_df.drop(columns="Coverage (%)"), width="stretch", hide_index=True)
+
+
+def _audit_choice(value: object) -> str:
+    normalized = str(value).strip().casefold()
+    if normalized in {"yes", "true", "1", "y"}:
+        return "Yes"
+    if normalized in {"no", "false", "0", "n"}:
+        return "No"
+    return "Unlabelled"
+
+
+def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
+    from src.manual_audit import (
+        append_audit_decision,
+        load_audit_progress,
+        save_audit_progress,
+        summarize_audit,
+    )
+
+    progress_path = (
+        ARTIFACT_ROOT
+        / "output"
+        / "manual_audit"
+        / f"{profile_id}-{len(sample)}-progress.csv"
+    )
+    decision_log_path = progress_path.with_name(
+        f"{profile_id}-{len(sample)}-decisions.jsonl"
+    )
+    audit_frame = load_audit_progress(sample, progress_path)
+    summary = summarize_audit(audit_frame)
+    completion = summary.labelled / summary.sampled if summary.sampled else 0.0
+    st.progress(completion, text=f"{summary.labelled}/{summary.sampled} records completed")
+    metric_columns = st.columns(3)
+    metric_columns[0].metric("Completed", summary.labelled)
+    metric_columns[1].metric("Remaining", summary.sampled - summary.labelled)
+    metric_columns[2].metric(
+        "Usable among completed",
+        f"{summary.usable_rate:.1%}" if summary.usable_rate is not None else "—",
+    )
+    st.caption(
+        f"Progress is saved atomically to `{progress_path.relative_to(ARTIFACT_ROOT)}`; "
+        f"decision provenance is append-only in "
+        f"`{decision_log_path.relative_to(ARTIFACT_ROOT)}`."
+    )
+
+    if "audit_position" not in st.session_state:
+        labelled_mask = audit_frame[
+            ["label_complete", "label_uncontaminated", "label_matches_paper"]
+        ].apply(lambda column: column.map(_audit_choice).ne("Unlabelled"))
+        incomplete = labelled_mask.all(axis=1).loc[lambda values: ~values].index.tolist()
+        st.session_state.audit_position = int(incomplete[0]) if incomplete else 0
+
+    position = min(max(int(st.session_state.audit_position), 0), len(audit_frame) - 1)
+    navigation = st.columns([1, 2, 1])
+    if navigation[0].button("← Previous", disabled=position == 0, width="stretch"):
+        st.session_state.audit_position = position - 1
+        st.rerun()
+    navigation[1].markdown(
+        f"<div style='text-align:center;padding:.45rem'><strong>Record "
+        f"{position + 1} of {len(audit_frame)}</strong></div>",
+        unsafe_allow_html=True,
+    )
+    if navigation[2].button(
+        "Next →", disabled=position == len(audit_frame) - 1, width="stretch"
+    ):
+        st.session_state.audit_position = position + 1
+        st.rerun()
+
+    row = audit_frame.iloc[position]
+    st.markdown(f"#### {html.escape(str(row['title']))}")
+    st.caption(
+        f"{row['venue']} · {row['year']} · paper_id {row['paper_id']} · "
+        f"abstract present: {'yes' if row['abstract_present'] else 'no'}"
+    )
+    if str(row["source_url"]).strip():
+        st.link_button("Open publisher/source record", str(row["source_url"]), width="stretch")
+    st.text_area(
+        "Extracted abstract",
+        value=str(row["abstract"]),
+        height=240,
+        disabled=True,
+        key=f"audit_abstract_{row['sample_id']}",
+    )
+    st.caption(
+        "Complete = not truncated. Uncontaminated = no navigation, captions, or unrelated text. "
+        "Matches paper = source title and abstract refer to this exact work."
+    )
+
+    choices = ("Unlabelled", "Yes", "No")
+    decision_mode_labels = {
+        "Human only": "human_only",
+        "Human-supervised, Codex-assisted": "human_supervised_codex_assisted",
+    }
+    prior_decisions = audit_frame.iloc[:position].loc[
+        lambda frame: frame["decision_mode"].astype(str).str.strip().ne("")
+    ]
+    prior_reviewer = (
+        str(prior_decisions.iloc[-1]["reviewer"]).strip()
+        if not prior_decisions.empty
+        else "Sidnei Barbieri"
+    )
+    # Provenance is a claim about who judged THIS record, so it is never carried
+    # forward from the previous one. Letting it persist silently attributed 141
+    # of 200 records to an assistant the operator had not selected for them.
+    stored_mode = str(row["decision_mode"]).strip() or "human_only"
+    selected_mode_label = next(
+        label for label, value in decision_mode_labels.items() if value == stored_mode
+    )
+    with st.form(f"audit_form_{row['sample_id']}"):
+        decision_mode_label = st.selectbox(
+            "Decision mode",
+            tuple(decision_mode_labels),
+            index=tuple(decision_mode_labels).index(selected_mode_label),
+            help="Describes who judged this record. It resets to human-only for each record and is never inherited from the previous one.",
+        )
+        reviewer = st.text_input(
+            "Reviewer",
+            value=str(row["reviewer"]).strip()
+            or st.session_state.get("audit_reviewer")
+            or prior_reviewer,
+        )
+        label_complete = st.radio(
+            "Is the abstract complete?",
+            choices,
+            index=choices.index(_audit_choice(row["label_complete"])),
+            horizontal=True,
+        )
+        label_uncontaminated = st.radio(
+            "Is the abstract uncontaminated?",
+            choices,
+            index=choices.index(_audit_choice(row["label_uncontaminated"])),
+            horizontal=True,
+        )
+        label_matches_paper = st.radio(
+            "Does the abstract match this exact paper?",
+            choices,
+            index=choices.index(_audit_choice(row["label_matches_paper"])),
+            horizontal=True,
+        )
+        notes = st.text_area("Notes (optional)", value=str(row["notes"]), height=90)
+        save_and_next = st.form_submit_button("Save decision and open next", width="stretch")
+
+    if save_and_next:
+        selected_labels = (label_complete, label_uncontaminated, label_matches_paper)
+        if not reviewer.strip():
+            st.error("Enter the human reviewer's name before saving.")
+        elif "Unlabelled" in selected_labels:
+            st.error("Answer all three questions before saving this record.")
+        else:
+            audit_frame.loc[position, "label_complete"] = label_complete.casefold()
+            audit_frame.loc[position, "label_uncontaminated"] = label_uncontaminated.casefold()
+            audit_frame.loc[position, "label_matches_paper"] = label_matches_paper.casefold()
+            audit_frame.loc[position, "reviewer"] = reviewer.strip()
+            audit_frame.loc[position, "decision_mode"] = decision_mode_labels[
+                decision_mode_label
+            ]
+            audit_frame.loc[position, "notes"] = notes.strip()
+            save_audit_progress(audit_frame, progress_path)
+            append_audit_decision(
+                audit_frame.loc[position],
+                profile_id=profile_id,
+                sample_size=len(audit_frame),
+                progress_path=progress_path.relative_to(ARTIFACT_ROOT),
+                decision_log_path=decision_log_path,
+            )
+            st.session_state.audit_reviewer = reviewer.strip()
+            st.session_state.audit_decision_mode = decision_mode_labels[decision_mode_label]
+            st.session_state.audit_position = min(position + 1, len(audit_frame) - 1)
+            st.rerun()
+
+    st.download_button(
+        "Download current audit progress (CSV)",
+        audit_frame.to_csv(index=False).encode("utf-8"),
+        file_name=progress_path.name,
+        mime="text/csv",
+        width="stretch",
+    )
+    if summary.labelled:
+        st.caption(
+            f"{summary.usable}/{summary.labelled} completed records currently satisfy all three "
+            f"criteria. Partial rows are excluded from the estimate."
+        )
+
+
+def _render_audit_workbench() -> None:
+    """Render the optional annotation and import controls."""
+    st.markdown(
+        "TopVenues generates a deterministic, venue-stratified sample. Each extracted abstract "
+        "must be compared with the linked source and labelled for completeness, contamination, "
+        "and paper identity. Human-only and human-supervised assisted decisions are recorded "
+        "separately; unsupervised automated labels do not satisfy this protocol."
+    )
+    collector = _load_collector()
+    audit_size = st.number_input(
+        "Audit sample size", min_value=20, max_value=500, value=200, step=20
+    )
+    sample = _cached_audit_sample(str(collector.db.db_path), int(audit_size))
+    _render_manual_audit(sample, collector.config.profile_id)
+    with st.expander("Import an externally completed audit sheet"):
+        uploaded_audit = st.file_uploader(
+            "Upload completed annotation sheet",
+            type=["csv"],
+            help="Accepted labels: yes/no, true/false, 1/0. Partially labelled rows are excluded.",
+        )
+        if uploaded_audit is None:
+            return
+
+        from src.manual_audit import summarize_audit
+
+        uploaded_frame = pd.read_csv(uploaded_audit, keep_default_na=False)
+        uploaded_summary = summarize_audit(uploaded_frame)
+        if uploaded_summary.labelled == 0:
+            st.warning("The uploaded sheet contains no fully labelled rows.")
+            return
+        st.metric(
+            "Usable abstract rate among labelled records",
+            f"{uploaded_summary.usable_rate:.1%}",
+        )
+        st.caption(
+            f"{uploaded_summary.usable}/{uploaded_summary.labelled} usable; 95% Wilson "
+            f"interval {uploaded_summary.ci95_low:.1%}–{uploaded_summary.ci95_high:.1%}."
+        )
 
 
 def page_evidence() -> None:
@@ -1470,12 +1769,67 @@ def page_evidence() -> None:
         "Evidence and claim boundaries",
         "What this snapshot verifies, and what requires a separate empirical protocol.",
     )
-    st.subheader("Current release: security-20-v3")
+    release = _release_identity(_load_collector().config.profile_id or "")
+    st.subheader(f"Current release: {release['reader']}")
+    st.caption(f"Snapshot identifier for citation and audit: `{release['auditor']}`")
     st.markdown(
         "This interface verifies the manifest, exact-resource identity policy, coverage, search, "
-        "exports, and platform reproduction for the selected snapshot. It does not claim a manual "
-        "accuracy audit or cross-index comparison for this successor profile."
+        "exports, and platform reproduction for the selected snapshot. Abstract quality was "
+        "evaluated separately with a deterministic, venue-stratified manual audit."
     )
+
+    audit_summary_path = (
+        ARTIFACT_ROOT
+        / "evaluation"
+        / "security-20-v3"
+        / "manual_abstract_audit_summary.json"
+    )
+    audit_transfer_path = (
+        ARTIFACT_ROOT / "evaluation" / "security-20-v4" / "audit_transfer.json"
+    )
+    audit_summary = json.loads(audit_summary_path.read_text(encoding="utf-8"))
+    audit_transfer = json.loads(audit_transfer_path.read_text(encoding="utf-8"))
+
+    st.subheader("Manual abstract audit")
+    metric_columns = st.columns(4)
+    metric_columns[0].metric("Human-reviewed records", audit_summary["labelled"])
+    metric_columns[1].metric("Usable abstracts", audit_summary["usable"])
+    metric_columns[2].metric("Usable rate", f"{audit_summary['usable_rate']:.1%}")
+    interval_low, interval_high = audit_summary["wilson_95_ci"]
+    metric_columns[3].metric(
+        "95% Wilson interval",
+        f"{interval_low * 100:.1f}–{interval_high:.1%}",
+    )
+    st.markdown(
+        "All 200 final decisions were recorded as **human-only** by Sidnei Barbieri. A record was "
+        "counted as usable only when its abstract was complete, uncontaminated, and matched the "
+        "sampled paper. The append-only decision log retains superseded provenance events."
+    )
+    if audit_transfer["transfer_valid"]:
+        st.info(
+            "The audit was executed on the v3 snapshot and remains valid for this release: v3 and "
+            "v4 have the same 14,859 paper IDs and identical abstract text. The ten v4 changes are "
+            "title repairs, and none belongs to the audit sample."
+        )
+    with st.expander("Inspect audit criteria and provenance"):
+        criteria = audit_summary["criteria"]
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {"Criterion": "Complete", "Yes": criteria["complete_yes"]},
+                    {"Criterion": "Uncontaminated", "Yes": criteria["uncontaminated_yes"]},
+                    {"Criterion": "Matches sampled paper", "Yes": criteria["matches_paper_yes"]},
+                ]
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+        st.caption(
+            "Primary evidence: evaluation/security-20-v3/manual_abstract_audit.csv and "
+            "manual_abstract_audit_decisions.jsonl. Transfer verification: "
+            "evaluation/security-20-v4/audit_transfer.json."
+        )
+
     st.subheader("Companion full-paper evaluation")
     st.markdown(
         "The published full-paper protocol is bound to a different frozen 9,925-record snapshot "
@@ -1483,57 +1837,19 @@ def page_evidence() -> None:
         "manual publisher-source audit. Its data, instrument, labels, and offline summarizer are "
         "available in the [frozen evaluation package](https://github.com/sidneibarbieri/topVenues/tree/07674480ff3172f4b195387438ab3af3c9c5655f/evaluation/baseline_validation)."
     )
-    st.info(
-        "Those results are evidence for the companion snapshot only. Reusing them as v3 accuracy "
-        "would be invalid; a v3 audit needs a new sampled-label protocol."
+    st.warning(
+        "The companion paper's baseline-comparison results remain bound to its 9,925-record "
+        "snapshot. They are not transferred to this release."
     )
-    st.subheader("Run a v3 manual audit")
-    st.markdown(
-        "TopVenues generates a deterministic, venue-stratified sample. A human reviewer must "
-        "compare each extracted abstract with the linked source and label completeness, "
-        "contamination, and paper identity. Automated labels would not satisfy this protocol."
-    )
-    collector = _load_collector()
-    audit_size = st.number_input(
-        "Audit sample size", min_value=20, max_value=500, value=200, step=20
-    )
-    sample = _cached_audit_sample(str(collector.db.db_path), int(audit_size))
-    st.download_button(
-        "Download annotation sheet (CSV)",
-        sample.to_csv(index=False).encode("utf-8"),
-        file_name=f"{collector.config.profile_id}-manual-audit.csv",
-        mime="text/csv",
-        width="stretch",
-    )
-    uploaded_audit = st.file_uploader(
-        "Upload completed annotation sheet",
-        type=["csv"],
-        help="Accepted labels: yes/no, true/false, 1/0. Partially labelled rows are excluded.",
-    )
-    if uploaded_audit is not None:
-        from src.manual_audit import summarize_audit
-
-        audit_frame = pd.read_csv(uploaded_audit, keep_default_na=False)
-        summary = summarize_audit(audit_frame)
-        if summary.labelled == 0:
-            st.warning("The uploaded sheet contains no fully labelled rows.")
-        else:
-            st.metric(
-                "Usable abstract rate among labelled records",
-                f"{summary.usable_rate:.1%}",
-                help="A record is usable only when all three audit labels are positive.",
-            )
-            st.caption(
-                f"{summary.usable}/{summary.labelled} usable; 95% Wilson interval "
-                f"{summary.ci95_low:.1%}–{summary.ci95_high:.1%}. "
-                f"Completion: {summary.labelled}/{summary.sampled} sampled records."
-            )
+    with st.expander("Repeat or extend the manual audit"):
+        _render_audit_workbench()
     st.subheader("Identity policy")
     st.markdown(
-        "v3 inherits exact-resource deduplication, enforces the declared 2019–2026 window, and "
-        "merges two additional DOI aliases confirmed by Crossref. Four same-metadata pairs remain "
-        "distinct because publisher resources remain distinct. Every decision is disclosed in "
-        "data/adjudication/security-20-v3-identity.json."
+        "This release applies exact-resource deduplication, enforces the declared 2019–2026 "
+        "window, and merges DOI aliases confirmed by Crossref. Same-metadata pairs stay distinct "
+        "where the publisher resources are distinct. Ten titles truncated at inline markup were "
+        "repaired against their DBLP records. Every decision is disclosed in the adjudication and "
+        "repair logs shipped with the release."
     )
 
 

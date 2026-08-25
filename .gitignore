@@ -49,6 +49,8 @@ data/legacy/
 pytest-cache-files-*/
 .playwright-cli/
 output/playwright/
+output/manual_audit/
+output/demo/
 
 # ── LaTeX generated files ────────────────────────────────────
 *.aux

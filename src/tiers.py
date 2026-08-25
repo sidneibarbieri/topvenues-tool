@@ -1,7 +1,7 @@
 """Map each venue to a relevance tier, for tier-aware literature work.
 
 Deterministic: a venue has exactly one tier, keyed on the canonical event name in
-``papers.event``. The "Big Four" security venues are the reference top tier; their
+``papers.event``. The security top-4 venues are the reference top tier; their
 regional editions and the top venues of adjacent areas sit just below. Extend
 ``TIER_BY_EVENT`` when a venue is added; an unmapped venue reports ``unknown`` so
 coverage gaps stay visible.
@@ -10,8 +10,8 @@ coverage gaps stay visible.
 from __future__ import annotations
 
 # Tier labels, ordered strongest first.
-TOP4 = "top-4"                 # the Big Four security venues
-TOP4_REGIONAL = "top-4-regional"  # regional editions of a Big Four venue
+TOP4 = "top-4"                 # the four top-ranked security venues
+TOP4_REGIONAL = "top-4-regional"  # regional editions of a top-4 venue
 TOP_TIER = "top-tier"          # A* venue, top of its (non-security) area or strong security
 STRONG = "strong"              # solid A/B venue
 WORKSHOP = "workshop"
@@ -19,19 +19,19 @@ JOURNAL = "journal"
 UNKNOWN = "unknown"
 
 ALL_TIERS_SCOPE = "All declared venues"
-SECURITY_TIER_1_SCOPE = "Security Big Four (Tier 1)"
+SECURITY_TIER_1_SCOPE = "Security top-4"
 REGIONAL_TIER_1_SCOPE = "Tier 1 plus regional editions"
 OTHER_TOP_TIER_SCOPE = "Other top-tier venues"
 STRONG_SCOPE = "Strong venues"
 SURVEY_SCOPE = "Survey journals"
 
 TIER_BY_EVENT: dict[str, str] = {
-    # The Big Four (security top tier).
+    # The security top-4.
     "ACM CCS": TOP4,
     "IEEE S&P": TOP4,
     "USENIX Security": TOP4,
     "NDSS": TOP4,
-    # Regional editions of a Big Four venue.
+    # Regional editions of a top-4 venue.
     "ACM ASIA CCS": TOP4_REGIONAL,
     "IEEE EURO S&P": TOP4_REGIONAL,
     # Top tier of an area (security and adjacent fields).
@@ -75,7 +75,7 @@ TIER_BY_EVENT: dict[str, str] = {
 }
 
 # Author-ranking weight per tier. The scale encodes the review heuristic that
-# a Big Four paper is worth several strong-venue papers: a name that recurs in
+# a top-4 paper is worth several strong-venue papers: a name that recurs in
 # the top tier is far more representative of a topic than one that recurs in
 # tier two. Survey journals sit between the two because they anchor review work.
 WEIGHT_BY_TIER: dict[str, float] = {

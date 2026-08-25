@@ -1,6 +1,10 @@
 """Tests for the abstract quality gate and title normalization."""
 
-from src.abstract_quality import looks_like_abstract
+from src.abstract_quality import (
+    looks_like_abstract,
+    normalize_abstract_text,
+    select_best_abstract,
+)
 from src.open_abstract_sources import _normalize_title, source_for
 
 
@@ -27,6 +31,35 @@ class TestLooksLikeAbstract:
         text = ("Over the past two decades, time series motif discovery has "
                 "become a critical task in data mining across many domains.")
         assert looks_like_abstract(text)
+
+
+class TestAbstractNormalization:
+    def test_preserves_source_paragraph_boundaries(self):
+        source = "<jats:p>First paragraph with useful prose.</jats:p><jats:p>Second paragraph.</jats:p>"
+
+        assert normalize_abstract_text(source) == (
+            "First paragraph with useful prose.\n\nSecond paragraph."
+        )
+
+    def test_collapses_hard_wrapped_lines_inside_a_paragraph(self):
+        source = "First line of one paragraph.\nSecond line of the same paragraph."
+
+        assert normalize_abstract_text(source) == (
+            "First line of one paragraph. Second line of the same paragraph."
+        )
+
+    def test_complete_candidate_beats_a_longer_truncated_candidate(self):
+        complete = (
+            "We present a reproducible security analysis with controlled experiments, "
+            "transparent measurements, and evidence that supports the reported conclusion."
+        )
+        truncated = (
+            "We present a substantially longer security analysis with controlled experiments, "
+            "transparent measurements, extensive ablations, multiple datasets, additional "
+            "baselines, practitioner interviews, and detailed evidence that suddenly ends..."
+        )
+
+        assert select_best_abstract([truncated, complete]) == complete
 
 
 class TestSourceRouting:

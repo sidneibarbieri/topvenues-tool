@@ -115,7 +115,7 @@ def test_export_can_restrict_to_security_big_four(tmp_path):
             "--tech",
             "intrusion",
             "--tier-scope",
-            "Security Big Four (Tier 1)",
+            "Security top-4",
         ],
     )
 

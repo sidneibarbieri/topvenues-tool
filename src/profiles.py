@@ -25,9 +25,14 @@ import yaml
 from .models import Configuration
 from .sqlite_connection import managed_sqlite_connection
 
-DEFAULT_PROFILE_ID = "security-20-v3"
+DEFAULT_PROFILE_ID = "security-20-v4"
 PROFILE_ENV_VAR = "TOPVENUES_PROFILE"
-PROFILE_IDS = ("security-20", "security-20-v2", DEFAULT_PROFILE_ID)
+PROFILE_IDS = (
+    "security-20",
+    "security-20-v2",
+    "security-20-v3",
+    DEFAULT_PROFILE_ID,
+)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 

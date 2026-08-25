@@ -292,7 +292,7 @@ def _entry_to_hit(elem: ET.Element) -> dict:
     ee_values: list[str] = []
 
     for child in elem:
-        text = (child.text or "").strip()
+        text = _element_text(child)
         if not text:
             continue
         if child.tag == "author" or child.tag == "editor":
@@ -331,6 +331,35 @@ def _preferred_ee(ee_values: list[str]) -> str:
         if "doi.org/" in value:
             return value
     return ee_values[0]
+
+
+def _element_text(element) -> str:
+    """Full text of an element, including the text after any child tag.
+
+    DBLP marks up titles with ``<sup>`` and ``<sub>`` for names such as
+    ``D<sup>3</sup>FL``. ``element.text`` stops at the first child, so reading it
+    directly truncated those titles to their first character. ``itertext``
+    walks the whole subtree; superscripts are inlined with no surrounding space,
+    which is how DBLP renders them (``D3FL``).
+    """
+    if element is None:
+        return ""
+    if len(element) == 0:
+        return (element.text or "").strip()
+    parts: list[str] = [element.text or ""]
+    for child in element:
+        inner = "".join(child.itertext())
+        if child.tag in {"sup", "sub", "inf"}:
+            # Attach the superscript to the token it modifies, but keep the
+            # tail's own spacing: DBLP already separates "SPHINCS+ Signature"
+            # from "D3FL:" correctly, and stripping the tail merged real words.
+            parts[-1] = parts[-1].rstrip()
+            parts.append(inner.strip())
+            parts.append(child.tail or "")
+        else:
+            parts.append(inner)
+            parts.append(child.tail or "")
+    return re.sub(r"\s+", " ", "".join(parts)).strip()
 
 
 def _api_type_for_tag(tag: str) -> str:

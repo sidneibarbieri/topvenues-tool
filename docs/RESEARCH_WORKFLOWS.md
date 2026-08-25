@@ -2,7 +2,7 @@
 
 ## 1. Map a topic's reference venues
 
-Select **Security Big Four (Tier 1)** in Search or Insights. In TopVenues this
+Select **Security top-4** in Search or Insights. In TopVenues this
 means only ACM CCS, IEEE S&P, USENIX Security, and NDSS. Search the topic,
 inspect the records, and export the defensible subset.
 
@@ -33,7 +33,7 @@ a later immutable profile:
 
 ```bash
 python scripts/evaluate_watchlist.py topvenues-watchlist.json \
-  --profile security-20-v3
+  --profile security-20-v4
 ```
 
 The delta is deterministic. To retrieve possible new preprints, run
@@ -53,8 +53,8 @@ relevance or inclusion.
 
 | Research-facing scope | Included venue tier(s) |
 | --- | --- |
-| Security Big Four (Tier 1) | ACM CCS, IEEE S&P, USENIX Security, NDSS |
-| Tier 1 plus regional editions | Big Four plus ACM ASIA CCS and IEEE EURO S&P |
+| Security top-4 | ACM CCS, IEEE S&P, USENIX Security, NDSS |
+| Tier 1 plus regional editions | Top-4 plus ACM ASIA CCS and IEEE EURO S&P |
 | Other top-tier venues | Explicit `top-tier` mapping in `src/tiers.py` |
 | Strong venues | Explicit `strong` mapping in `src/tiers.py` |
 | Survey journals | ACM Computing Surveys, IEEE Communications Surveys & Tutorials, Foundations and Trends in Privacy and Security |
