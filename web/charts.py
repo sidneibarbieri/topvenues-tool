@@ -87,6 +87,9 @@ def bar_chart(
     `label_field` names a column to print instead of the raw value, for when a
     bar is worth more than one number, such as a count beside its share.
 
+    `height` applies to vertical charts. A horizontal chart derives its height
+    from how many bars it has, so bars keep one rhythm across the application.
+
     Both marks share one base encoding. Encoding the layers separately makes
     Altair resolve two axes for the same channel, and the second one paints
     over the category names.
@@ -148,10 +151,12 @@ def bar_chart(
     # The value label sits outside the longest bar, so the plot needs room on
     # that side or the largest number is clipped at the frame.
     padding = {"right": 96 if label_field else 44} if horizontal else {"top": 18}
-    # Height follows the bar count so every chart keeps the same bar thickness.
-    # The caller's height is a floor, not an override.
+    # A horizontal chart's height is the bar count, not the caller's number. A
+    # floor taller than the bars stretches the gaps between them instead: six
+    # bars in a 320px frame drew on a 43px rhythm beside a 32px one elsewhere,
+    # and left 63px of empty frame that reads as a chart failing to draw.
     if horizontal:
-        height = max(height, len(data) * (BAR_THICKNESS + BAR_GAP))
+        height = len(data) * (BAR_THICKNESS + BAR_GAP)
     return (bars + labels).properties(height=height, padding=padding)
 
 

@@ -117,3 +117,22 @@ def test_a_line_prints_its_values_like_every_bar_does():
     text_layers = [layer for layer in chart.to_dict()["layer"] if layer["mark"]["type"] == "text"]
     assert text_layers, "the line chart prints no values"
     assert text_layers[0]["encoding"]["text"]["format"] == ".1f"
+
+
+def test_a_horizontal_chart_is_as_tall_as_its_bars():
+    """A height floor stretches the gaps, not the bars.
+
+    Six bars in a 320px frame drew on a 43px rhythm while a 20-bar chart drew
+    on 32px, and left 63px of empty frame below the last bar.
+    """
+    import altair as alt
+    import pandas as pd
+
+    from web import charts
+
+    data = pd.DataFrame([{"Class": name, "Papers": 10} for name in "abcdef"])
+    chart = charts.bar_chart(
+        data, "Class", "Papers", alt.selection_point("s", fields=["Class"]), height=320
+    )
+
+    assert chart.to_dict()["height"] == len(data) * (charts.BAR_THICKNESS + charts.BAR_GAP)
