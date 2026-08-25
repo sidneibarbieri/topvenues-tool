@@ -21,7 +21,17 @@ _AUTHOR_SPLIT = re.compile(r"\s*,\s*|\s+and\s+")
 AUTHOR_POSITIONS = ("any", "first", "last")
 PAPER_COUNT_METRIC = "paper_count"
 TIER_WEIGHTED_METRIC = "tier_weighted"
-AUTHOR_RANKING_METRICS = (PAPER_COUNT_METRIC, TIER_WEIGHTED_METRIC)
+TOP4_CONCENTRATION_METRIC = "top4_concentration"
+AUTHOR_RANKING_METRICS = (
+    PAPER_COUNT_METRIC,
+    TIER_WEIGHTED_METRIC,
+    TOP4_CONCENTRATION_METRIC,
+)
+
+# Concentration is a ratio, so a single top-4 paper would otherwise score 100%.
+# In this corpus that puts 6,426 one-paper authors at the top of the ranking,
+# so the metric only considers authors with a body of work.
+CONCENTRATION_MINIMUM_PAPERS = 10
 
 
 def _split_authors(raw: str | None) -> list[str]:
@@ -48,9 +58,17 @@ def authors_at_position(raw: str | None, position: str) -> list[str]:
     return [authors[0] if position == "first" else authors[-1]]
 
 
+def top4_concentration(entry: dict) -> float:
+    """Share of an author's corpus papers that appeared in a top-4 venue."""
+    papers = entry["papers"]
+    return entry["top4"] / papers if papers else 0.0
+
+
 def _author_sort_key(entry: dict, ranking_metric: str) -> tuple:
     if ranking_metric == PAPER_COUNT_METRIC:
         return (-entry["papers"], -entry["top4"], -entry["score"], entry["author"])
+    if ranking_metric == TOP4_CONCENTRATION_METRIC:
+        return (-top4_concentration(entry), -entry["top4"], -entry["papers"], entry["author"])
     return (-entry["score"], -entry["top4"], -entry["papers"], entry["author"])
 
 
@@ -173,12 +191,18 @@ def reference_authors(
     finally:
         connection.close()
 
+    candidates = list(stats.values())
+    if ranking_metric == TOP4_CONCENTRATION_METRIC:
+        candidates = [
+            entry for entry in candidates if entry["papers"] >= CONCENTRATION_MINIMUM_PAPERS
+        ]
     ranked = sorted(
-        stats.values(), key=lambda entry: _author_sort_key(entry, ranking_metric)
+        candidates, key=lambda entry: _author_sort_key(entry, ranking_metric)
     )[:limit]
     for entry in ranked:
         entry["venues"] = [venue for venue, _ in entry.pop("_venues").most_common(3)]
         entry["score"] = round(entry["score"], 1)
+        entry["top4_share"] = round(top4_concentration(entry), 3)
     return ranked
 
 

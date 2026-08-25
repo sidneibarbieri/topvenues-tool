@@ -31,6 +31,12 @@ FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, 
 SELECTED_OPACITY = 1.0
 UNSELECTED_OPACITY = 0.32
 
+# One bar thickness across the application. Letting height drive thickness made
+# a 20-bar chart draw 19px bars beside an 8-bar chart drawing 41px ones, and the
+# two read as different design systems when placed side by side.
+BAR_THICKNESS = 22
+BAR_GAP = 10
+
 LABEL_SIZE = 12
 TITLE_SIZE = 12
 VALUE_LABEL_SIZE = 11
@@ -103,7 +109,7 @@ def bar_chart(
             ),
         )
 
-    bars = base.mark_bar(color=color, cornerRadiusEnd=2).encode(
+    bars = base.mark_bar(color=color, cornerRadiusEnd=2, size=BAR_THICKNESS).encode(
         tooltip=[
             alt.Tooltip(f"{category}:N", title=category_title or category),
             alt.Tooltip(f"{value}:Q", title=value_title or value, format=value_format),
@@ -126,6 +132,10 @@ def bar_chart(
     # The value label sits outside the longest bar, so the plot needs room on
     # that side or the largest number is clipped at the frame.
     padding = {"right": 44} if horizontal else {"top": 18}
+    # Height follows the bar count so every chart keeps the same bar thickness.
+    # The caller's height is a floor, not an override.
+    if horizontal:
+        height = max(height, len(data) * (BAR_THICKNESS + BAR_GAP))
     return (bars + labels).properties(height=height, padding=padding)
 
 

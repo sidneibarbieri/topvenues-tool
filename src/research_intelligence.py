@@ -47,6 +47,19 @@ class Collaboration(BaseModel):
     venues: list[str] = Field(default_factory=list)
 
 
+class AuthorshipShift(BaseModel):
+    """An author whose usual position in the byline moved from first to last."""
+
+    author: str
+    early_first: int
+    early_last: int
+    recent_first: int
+    recent_last: int
+    early_window: str
+    recent_window: str
+    venues: list[str] = Field(default_factory=list)
+
+
 class ResearchWatchlist(BaseModel):
     """Portable, local watch definition with no account or telemetry."""
 
@@ -201,6 +214,72 @@ def collaboration_network(db_path: Path, author: str, *, limit: int = 20) -> lis
         for collaborator, entry in stats.items()
     ]
     return sorted(result, key=lambda item: (-item.joint_papers, item.collaborator))[:limit]
+
+
+
+def authorship_shifts(
+    db_path: Path,
+    *,
+    topic: str | None = None,
+    area: str | None = None,
+    allowed_tiers: frozenset[str] | None = None,
+    recent_years: int = 4,
+    minimum_early_first: int = 2,
+    minimum_recent_last: int = 3,
+    maximum_early_last: int = 1,
+    limit: int = 20,
+) -> list[AuthorshipShift]:
+    """Authors who used to publish first and now publish last.
+
+    In this field the last byline position usually marks the researcher who
+    directs the work, so a move from first to last is the visible trace of
+    someone starting to lead their own group. That makes this list useful for
+    finding collaborators and emerging agendas rather than established names.
+
+    It is an observation about byline position, not a claim about anyone's
+    appointment, seniority or independence: group conventions differ, and a
+    position can change for reasons this corpus cannot see.
+    """
+    rows = _paper_rows(db_path, topic=topic, area=area, allowed_tiers=allowed_tiers)
+    if not rows:
+        return []
+
+    latest_year = max(year for _, _, year in rows)
+    recent_from = latest_year - recent_years + 1
+    counts: dict[str, dict[str, int]] = collections.defaultdict(
+        lambda: {"early_first": 0, "early_last": 0, "recent_first": 0, "recent_last": 0}
+    )
+    venues: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
+
+    for authors, event, year in rows:
+        names = _split_authors(authors)
+        if not names:
+            continue
+        window = "recent" if year >= recent_from else "early"
+        counts[names[0]][f"{window}_first"] += 1
+        if len(names) > 1:
+            counts[names[-1]][f"{window}_last"] += 1
+            if window == "recent" and event:
+                venues[names[-1]][event] += 1
+
+    shifts = [
+        AuthorshipShift(
+            author=author,
+            early_first=tally["early_first"],
+            early_last=tally["early_last"],
+            recent_first=tally["recent_first"],
+            recent_last=tally["recent_last"],
+            early_window=f"{min(year for _, _, year in rows)}–{recent_from - 1}",
+            recent_window=f"{recent_from}–{latest_year}",
+            venues=[venue for venue, _ in venues[author].most_common(3)],
+        )
+        for author, tally in counts.items()
+        if tally["early_first"] >= minimum_early_first
+        and tally["recent_last"] >= minimum_recent_last
+        and tally["early_last"] <= maximum_early_last
+    ]
+    shifts.sort(key=lambda shift: (-shift.recent_last, -shift.early_first, shift.author))
+    return shifts[:limit]
 
 
 def arxiv_author_search_url(author: str) -> str:

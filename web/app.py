@@ -17,7 +17,7 @@ ARTIFACT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ARTIFACT_ROOT))
 
 from src.abstract_fetcher import AbstractFetcher
-from src.analytics import authors_at_position
+from src.analytics import CONCENTRATION_MINIMUM_PAPERS, authors_at_position
 from src.areas import area_for
 from src.awards import build_corpus_award_map
 from src.chart_interactions import selected_chart_value
@@ -247,6 +247,22 @@ def _cached_reference_authors(
 
 
 @st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False)
+def _cached_authorship_shifts(
+    db_path: str, topic: str | None, area: str | None, tier_scope: str, limit: int
+) -> list[dict]:
+    from src.research_intelligence import authorship_shifts
+
+    shifts = authorship_shifts(
+        Path(db_path),
+        topic=topic,
+        area=area,
+        allowed_tiers=tiers_in_scope(tier_scope),
+        limit=limit,
+    )
+    return [shift.model_dump() for shift in shifts]
+
+
 def _cached_emerging_researchers(
     db_path: str, topic: str | None, area: str | None, tier_scope: str, limit: int
 ) -> list[dict]:
@@ -1269,9 +1285,16 @@ def page_insights() -> None:
     with col_metric:
         author_metric = st.selectbox(
             "Ranking metric",
-            ["Paper count", "Tier-weighted visibility"],
+            ["Paper count", "Tier-weighted visibility", "Top-4 concentration"],
             key="authors_metric",
-            help="Paper count answers the requested frequency ranking. The weighted view is a separate, declared heuristic.",
+            help=(
+                "Paper count answers the frequency ranking. Tier-weighted visibility "
+                "favours volume at strong venues. Top-4 concentration asks a different "
+                "question: what share of an author's work appears in ACM CCS, IEEE S&P, "
+                "USENIX Security or NDSS. It considers only authors with at least "
+                f"{CONCENTRATION_MINIMUM_PAPERS} papers, because a ratio over one paper "
+                "is noise."
+            ),
         )
     with col_n:
         author_limit = st.number_input("Authors", 5, 50, 15, key="authors_limit")
@@ -1282,7 +1305,11 @@ def page_insights() -> None:
         None if author_area == "All areas" else author_area,
         {"Any author": "any", "First author": "first", "Last author": "last"}[author_position],
         author_tier_scope,
-        {"Paper count": "paper_count", "Tier-weighted visibility": "tier_weighted"}[author_metric],
+        {
+            "Paper count": "paper_count",
+            "Tier-weighted visibility": "tier_weighted",
+            "Top-4 concentration": "top4_concentration",
+        }[author_metric],
         int(author_limit),
     )
     if ranked_authors:
@@ -1294,6 +1321,7 @@ def page_insights() -> None:
                     "Tier-weighted score": entry["score"],
                     "Papers": entry["papers"],
                     "Top-4": entry["top4"],
+                    "Top-4 share": f"{entry.get('top4_share', 0):.0%}",
                     "Other top-tier": entry["top_tier"],
                     "Top-4 regional": entry["top4_regional"],
                     "Awards": entry["awards"],
@@ -1457,6 +1485,40 @@ def page_insights() -> None:
                 mime="application/json",
                 width="stretch",
             )
+
+        st.markdown("#### Newly leading a group")
+        st.caption(
+            "Authors who used to publish in the first byline position and now publish in the "
+            "last one. In this field the last position usually marks whoever directs the work, "
+            "so this is where new groups become visible: the people most open to collaboration "
+            "and most likely to define a new agenda. It reads byline position only, and cannot "
+            "see appointments, seniority, or a group's own authorship conventions."
+        )
+        shifts = _cached_authorship_shifts(
+            str(collector.db.db_path),
+            author_topic or None,
+            None if author_area == "All areas" else author_area,
+            author_tier_scope,
+            int(author_limit),
+        )
+        if shifts:
+            st.dataframe(
+                pd.DataFrame(
+                    [
+                        {
+                            "Author": shift["author"],
+                            f"First author ({shift['early_window']})": shift["early_first"],
+                            f"Last author ({shift['recent_window']})": shift["recent_last"],
+                            "Leads at": ", ".join(shift["venues"]),
+                        }
+                        for shift in shifts
+                    ]
+                ),
+                width="stretch",
+                hide_index=True,
+            )
+        else:
+            st.caption("No authorship shift meets the declared thresholds in this scope.")
 
         st.markdown("#### Emerging activity")
         st.caption(
