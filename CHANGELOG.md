@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0 — 2026-08-24
+
+- Publish `security-20-v4`, repairing ten titles truncated at inline DBLP markup
+  without changing the 14,859-record denominator or any abstract text.
+- Complete and publish a deterministic 200-record human abstract audit: 169
+  records satisfy completeness, contamination, and paper-identity criteria
+  (84.5%; 95% Wilson interval 78.8%–88.9%).
+- Add exact audit-transfer evidence from v3 to v4 and retain the append-only
+  provenance log rather than rewriting superseded events.
+- Standardize researcher-facing `top-4` terminology, remove internal release
+  counters from ordinary search screens, and improve chart semantics,
+  readability, and record-level drill-down.
+- Document and package a seven-minute end-to-end demonstration with US-English
+  narration and English and Brazilian Portuguese captions.
+
 ## 1.4.0 — 2026-08-24
 
 - Add researcher trajectories, direct collaboration evidence, and a transparent

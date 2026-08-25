@@ -33,7 +33,7 @@ a later immutable profile:
 
 ```bash
 python scripts/evaluate_watchlist.py topvenues-watchlist.json \
-  --profile security-20-v3
+  --profile security-20-v4
 ```
 
 The delta is deterministic. To retrieve possible new preprints, run
