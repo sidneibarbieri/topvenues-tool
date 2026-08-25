@@ -79,7 +79,5 @@ def area_for(event: str | None) -> str:
 
 def area_distribution(events: list[str | None]) -> dict[str, int]:
     """Count papers per area for a sequence of venue event names."""
-    counter: collections.Counter[str] = collections.Counter(
-        area_for(event) for event in events
-    )
+    counter: collections.Counter[str] = collections.Counter(area_for(event) for event in events)
     return dict(counter)

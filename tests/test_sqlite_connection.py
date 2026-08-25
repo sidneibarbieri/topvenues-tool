@@ -33,8 +33,6 @@ def test_connection_rolls_back_and_closes_after_failure(tmp_path) -> None:
     with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
         connection.execute("SELECT 1")
     with managed_sqlite_connection(database) as verification_connection:
-        count = verification_connection.execute(
-            "SELECT COUNT(*) FROM values_table"
-        ).fetchone()[0]
+        count = verification_connection.execute("SELECT COUNT(*) FROM values_table").fetchone()[0]
     assert count == 0
     database.unlink()

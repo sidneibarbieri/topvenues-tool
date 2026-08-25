@@ -19,9 +19,7 @@ from src.tiers import tier_for
 def _canonical_names() -> set[str]:
     """Every canonical name the normalizer's rules can produce."""
     return {
-        rule.normalized_name
-        for rule in EventNormalizer().rules
-        if hasattr(rule, "normalized_name")
+        rule.normalized_name for rule in EventNormalizer().rules if hasattr(rule, "normalized_name")
     }
 
 

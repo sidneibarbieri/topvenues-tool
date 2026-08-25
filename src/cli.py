@@ -823,9 +823,7 @@ def export_results(
     help="Immutable source-release tag recorded in the dataset card.",
 )
 @click.pass_context
-def export_hf(
-    ctx: click.Context, output: Path, repo_id: str, release_tag: str | None
-) -> None:
+def export_hf(ctx: click.Context, output: Path, repo_id: str, release_tag: str | None) -> None:
     """Export the corpus as a Hugging Face dataset (Parquet + dataset card)."""
     from .hf_export import export_hf_dataset
 

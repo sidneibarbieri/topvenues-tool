@@ -10,10 +10,10 @@ coverage gaps stay visible.
 from __future__ import annotations
 
 # Tier labels, ordered strongest first.
-TOP4 = "top-4"                 # the four top-ranked security venues
+TOP4 = "top-4"  # the four top-ranked security venues
 TOP4_REGIONAL = "top-4-regional"  # regional editions of a top-4 venue
-TOP_TIER = "top-tier"          # A* venue, top of its (non-security) area or strong security
-STRONG = "strong"              # solid A/B venue
+TOP_TIER = "top-tier"  # A* venue, top of its (non-security) area or strong security
+STRONG = "strong"  # solid A/B venue
 WORKSHOP = "workshop"
 JOURNAL = "journal"
 UNKNOWN = "unknown"

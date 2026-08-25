@@ -52,8 +52,7 @@ def main() -> None:
         for record in records:
             writer.writerow([getattr(record, field) or "" for field in FIELDS])
 
-    print(f"wrote {len(records)} top-4 award records -> "
-          f"{OUTPUT_JSON.name}, {OUTPUT_TSV.name}")
+    print(f"wrote {len(records)} top-4 award records -> {OUTPUT_JSON.name}, {OUTPUT_TSV.name}")
 
 
 if __name__ == "__main__":

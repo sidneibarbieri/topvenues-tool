@@ -33,9 +33,7 @@ class AbstractExtractor(ABC):
         return random.choice(collector.config.user_agents)
 
     # One "Name (Affiliation)" block plus optional separator (comma / semicolon / spaces).
-    _AUTHOR_BLOCK_RE = re.compile(
-        r"[A-Za-zÀ-ÿ][\w\.\-'\sÀ-ÿ]*?\(([^)]{2,120})\)\s*([,;]?)\s*"
-    )
+    _AUTHOR_BLOCK_RE = re.compile(r"[A-Za-zÀ-ÿ][\w\.\-'\sÀ-ÿ]*?\(([^)]{2,120})\)\s*([,;]?)\s*")
 
     def _clean_abstract(self, text: str | None) -> str | None:
         if not text:

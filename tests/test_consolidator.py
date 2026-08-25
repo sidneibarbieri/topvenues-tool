@@ -45,7 +45,10 @@ class TestNormalizeEvent:
         assert consolidator._normalize_event("sacmat") == "ACM SACMAT"
 
     def test_acsac(self, consolidator):
-        assert consolidator._normalize_event("Annual Computer Security Applications Conference") == "ACSAC"
+        assert (
+            consolidator._normalize_event("Annual Computer Security Applications Conference")
+            == "ACSAC"
+        )
 
     def test_acm_csur(self, consolidator):
         assert consolidator._normalize_event("csur") == "ACM Computing Surveys"
@@ -66,9 +69,7 @@ class TestExtractAuthors:
         assert result == "Alice"
 
     def test_multiple_authors(self, consolidator):
-        result = consolidator._extract_authors({
-            "author": [{"text": "Alice"}, {"text": "Bob"}]
-        })
+        result = consolidator._extract_authors({"author": [{"text": "Alice"}, {"text": "Bob"}]})
         assert result == "Alice, Bob"
 
     def test_empty(self, consolidator):
@@ -161,14 +162,23 @@ class TestListVenueRecords:
         json_dir = tmp_path / "json"
         json_dir.mkdir(exist_ok=True)
         record = {
-            "result": {"hits": {"hit": [{
-                "@score": "1", "@id": "1",
-                "info": {
-                    "title": "List Venue Paper",
-                    "year": "2026", "venue": ["NDSS", "CoRR"],
-                    "type": "inproceedings", "key": "conf/ndss/X26",
-                },
-            }]}}
+            "result": {
+                "hits": {
+                    "hit": [
+                        {
+                            "@score": "1",
+                            "@id": "1",
+                            "info": {
+                                "title": "List Venue Paper",
+                                "year": "2026",
+                                "venue": ["NDSS", "CoRR"],
+                                "type": "inproceedings",
+                                "key": "conf/ndss/X26",
+                            },
+                        }
+                    ]
+                }
+            }
         }
         (json_dir / "data_ndss2026.json").write_text(json.dumps(record))
 
@@ -182,14 +192,23 @@ class TestListVenueRecords:
         json_dir = tmp_path / "json"
         json_dir.mkdir(exist_ok=True)
         record = {
-            "result": {"hits": {"hit": [{
-                "@score": "1", "@id": "2",
-                "info": {
-                    "title": "No Venue Paper",
-                    "year": "2026", "venue": [],
-                    "type": "inproceedings", "key": "conf/x/Y26",
-                },
-            }]}}
+            "result": {
+                "hits": {
+                    "hit": [
+                        {
+                            "@score": "1",
+                            "@id": "2",
+                            "info": {
+                                "title": "No Venue Paper",
+                                "year": "2026",
+                                "venue": [],
+                                "type": "inproceedings",
+                                "key": "conf/x/Y26",
+                            },
+                        }
+                    ]
+                }
+            }
         }
         (json_dir / "data_x2026.json").write_text(json.dumps(record))
 

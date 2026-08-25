@@ -38,8 +38,11 @@ def command_for_profile(command: ReproductionCommand, profile_id: str | None) ->
     """The command a reader should run to reproduce a named profile."""
     if not profile_id:
         return command.command
-    return f"{command.command} -Profile {profile_id}" if command is WINDOWS \
+    return (
+        f"{command.command} -Profile {profile_id}"
+        if command is WINDOWS
         else f"{command.command} --profile {profile_id}"
+    )
 
 
 def summary_line() -> str:

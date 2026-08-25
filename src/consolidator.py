@@ -20,6 +20,7 @@ def _decode_entities(value: str | None) -> str | None:
     """
     return html.unescape(value) if isinstance(value, str) else value
 
+
 logger = logging.getLogger(__name__)
 
 

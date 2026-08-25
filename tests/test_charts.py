@@ -5,9 +5,7 @@ from web import charts
 
 
 def test_bar_chart_accepts_explicit_log_scale() -> None:
-    data = pd.DataFrame(
-        [{"Class": "Article", "Papers": 1000}, {"Class": "Poster", "Papers": 10}]
-    )
+    data = pd.DataFrame([{"Class": "Article", "Papers": 1000}, {"Class": "Poster", "Papers": 10}])
     selection = alt.selection_point(fields=["Class"], empty=True)
 
     chart = charts.bar_chart(

@@ -109,15 +109,19 @@ def bar_chart(
             ),
         )
 
-    bars = base.mark_bar(color=color, cornerRadiusEnd=2, size=BAR_THICKNESS).encode(
-        tooltip=[
-            alt.Tooltip(f"{category}:N", title=category_title or category),
-            alt.Tooltip(f"{value}:Q", title=value_title or value, format=value_format),
-        ],
-        opacity=alt.condition(
-            selection, alt.value(SELECTED_OPACITY), alt.value(UNSELECTED_OPACITY)
-        ),
-    ).add_params(selection)
+    bars = (
+        base.mark_bar(color=color, cornerRadiusEnd=2, size=BAR_THICKNESS)
+        .encode(
+            tooltip=[
+                alt.Tooltip(f"{category}:N", title=category_title or category),
+                alt.Tooltip(f"{value}:Q", title=value_title or value, format=value_format),
+            ],
+            opacity=alt.condition(
+                selection, alt.value(SELECTED_OPACITY), alt.value(UNSELECTED_OPACITY)
+            ),
+        )
+        .add_params(selection)
+    )
 
     labels = base.mark_text(
         align="left" if horizontal else "center",
@@ -156,13 +160,17 @@ def line_chart(
         y=alt.Y(f"{y_field}:Q", title=y_title, scale=alt.Scale(zero=True)),
     )
     line = base.mark_line(color=ACCENT, strokeWidth=2.2)
-    points = base.mark_point(filled=True, color=ACCENT, size=70).encode(
-        tooltip=[
-            alt.Tooltip(f"{x_field}:O", title=x_title or x_field),
-            alt.Tooltip(f"{y_field}:Q", title=y_title or y_field, format=value_format),
-        ],
-        opacity=alt.condition(
-            selection, alt.value(SELECTED_OPACITY), alt.value(UNSELECTED_OPACITY)
-        ),
-    ).add_params(selection)
+    points = (
+        base.mark_point(filled=True, color=ACCENT, size=70)
+        .encode(
+            tooltip=[
+                alt.Tooltip(f"{x_field}:O", title=x_title or x_field),
+                alt.Tooltip(f"{y_field}:Q", title=y_title or y_field, format=value_format),
+            ],
+            opacity=alt.condition(
+                selection, alt.value(SELECTED_OPACITY), alt.value(UNSELECTED_OPACITY)
+            ),
+        )
+        .add_params(selection)
+    )
     return (line + points).properties(height=height)

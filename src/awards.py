@@ -117,17 +117,13 @@ def build_corpus_award_map(awards_dir: Path, db_path: Path) -> dict[str, list[st
 def _build_title_index(connection: sqlite3.Connection) -> dict[tuple[str, str], str]:
     """Map (corpus_venue, normalized_title) -> paper_id over the whole corpus."""
     index: dict[tuple[str, str], str] = {}
-    for paper_id, title, venue in connection.execute(
-        "select paper_id, title, venue from papers"
-    ):
+    for paper_id, title, venue in connection.execute("select paper_id, title, venue from papers"):
         if title and venue:
             index[(venue, normalize_title(title))] = paper_id
     return index
 
 
-def _lookup_paper_id(
-    record: AwardRecord, index: dict[tuple[str, str], str]
-) -> str | None:
+def _lookup_paper_id(record: AwardRecord, index: dict[tuple[str, str], str]) -> str | None:
     corpus_venues = CONFERENCE_TO_CORPUS_VENUES.get(record.venue, (record.venue,))
     key_title = normalize_title(record.title)
     for corpus_venue in corpus_venues:

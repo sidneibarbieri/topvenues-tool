@@ -196,9 +196,7 @@ def export_hf_dataset(
         df = pd.read_sql_query("SELECT * FROM papers", conn)
 
     df["area"] = df["event"].map(area_for)
-    df = df[_EXPORT_COLUMNS].sort_values(
-        ["area", "event", "year", "title"]
-    ).reset_index(drop=True)
+    df = df[_EXPORT_COLUMNS].sort_values(["area", "event", "year", "title"]).reset_index(drop=True)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     asset_source_dir = Path(__file__).resolve().parents[1] / "docs" / "assets"
@@ -217,7 +215,7 @@ def export_hf_dataset(
     shard_count = max(1, -(-len(df) // rows_per_shard))
     parquet_paths = []
     for shard_index in range(shard_count):
-        shard = df.iloc[shard_index * rows_per_shard:(shard_index + 1) * rows_per_shard]
+        shard = df.iloc[shard_index * rows_per_shard : (shard_index + 1) * rows_per_shard]
         path = out_dir / f"train-{shard_index:05d}-of-{shard_count:05d}.parquet"
         shard.to_parquet(path, index=False)
         parquet_paths.append(path)

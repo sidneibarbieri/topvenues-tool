@@ -169,7 +169,8 @@ def should_refresh_from_snapshot(db_path: Path, gz_path: Path) -> bool:
         "%s and %s have both changed since the last sync. Your local DB has "
         "unpublished modifications. Run `python -m src.cli refresh-db` to "
         "discard them, or `python -m src.cli write-snapshot` to publish.",
-        gz_path.name, db_path.name,
+        gz_path.name,
+        db_path.name,
     )
     return False
 
@@ -353,31 +354,31 @@ class DatabaseManager:
             if not title or not pd.notna(year_raw):
                 continue
             paper_type_raw = str(row.get("Type", "")).lower() if pd.notna(row.get("Type")) else ""
-            papers.append(Paper(
-                score=row.get("Score") if pd.notna(row.get("Score")) else None,
-                paper_id=str(row.get("ID", "")) if pd.notna(row.get("ID")) else "",
-                authors=row.get("Authors") if pd.notna(row.get("Authors")) else None,
-                title=title,
-                venue=row.get("Venue") if pd.notna(row.get("Venue")) else None,
-                pages=row.get("Pages") if pd.notna(row.get("Pages")) else None,
-                year=int(year_raw),
-                paper_type=self._PAPER_TYPE_MAP.get(paper_type_raw, "unknown"),
-                access=row.get("Access") if pd.notna(row.get("Access")) else None,
-                key=row.get("Key") if pd.notna(row.get("Key")) else None,
-                ee=row.get("EE") if pd.notna(row.get("EE")) else None,
-                url=row.get("URL") if pd.notna(row.get("URL")) else None,
-                event=row.get("Event") if pd.notna(row.get("Event")) else None,
-                abstract=row.get("Abstract") if pd.notna(row.get("Abstract")) else None,
-            ))
+            papers.append(
+                Paper(
+                    score=row.get("Score") if pd.notna(row.get("Score")) else None,
+                    paper_id=str(row.get("ID", "")) if pd.notna(row.get("ID")) else "",
+                    authors=row.get("Authors") if pd.notna(row.get("Authors")) else None,
+                    title=title,
+                    venue=row.get("Venue") if pd.notna(row.get("Venue")) else None,
+                    pages=row.get("Pages") if pd.notna(row.get("Pages")) else None,
+                    year=int(year_raw),
+                    paper_type=self._PAPER_TYPE_MAP.get(paper_type_raw, "unknown"),
+                    access=row.get("Access") if pd.notna(row.get("Access")) else None,
+                    key=row.get("Key") if pd.notna(row.get("Key")) else None,
+                    ee=row.get("EE") if pd.notna(row.get("EE")) else None,
+                    url=row.get("URL") if pd.notna(row.get("URL")) else None,
+                    event=row.get("Event") if pd.notna(row.get("Event")) else None,
+                    abstract=row.get("Abstract") if pd.notna(row.get("Abstract")) else None,
+                )
+            )
         return self.upsert_papers(papers)
 
     def get_all_papers(self) -> list[dict]:
         """Return all papers as dicts with field names matching the Paper model."""
         with managed_sqlite_connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            rows = conn.execute(
-                "SELECT * FROM papers ORDER BY year DESC, event, title"
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM papers ORDER BY year DESC, event, title").fetchall()
         return [dict(row) for row in rows]
 
     def search(
@@ -562,9 +563,7 @@ class DatabaseManager:
     def get_paper_by_id(self, paper_id: str) -> dict | None:
         with managed_sqlite_connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            row = conn.execute(
-                "SELECT * FROM papers WHERE paper_id = ?", (paper_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM papers WHERE paper_id = ?", (paper_id,)).fetchone()
         return dict(row) if row else None
 
     def update_abstract(self, paper_id: str, abstract: str) -> bool:
@@ -584,9 +583,11 @@ class DatabaseManager:
         return cursor.rowcount > 0
 
     def get_papers_without_bibtex(self, limit: int | None = None) -> list[dict]:
-        query = ("SELECT * FROM papers WHERE (bibtex IS NULL OR bibtex = '') "
-                 "AND key IS NOT NULL AND key != '' "
-                 "ORDER BY year DESC, event, title")
+        query = (
+            "SELECT * FROM papers WHERE (bibtex IS NULL OR bibtex = '') "
+            "AND key IS NOT NULL AND key != '' "
+            "ORDER BY year DESC, event, title"
+        )
         if limit:
             query += " LIMIT ?"
             params: tuple = (limit,)
@@ -625,8 +626,7 @@ class DatabaseManager:
 
             scanned = conn.execute("SELECT COUNT(*) FROM _abstract_import").fetchone()[0]
             matched = conn.execute(
-                "SELECT COUNT(*) FROM _abstract_import i "
-                "JOIN papers p ON p.paper_id = i.paper_id"
+                "SELECT COUNT(*) FROM _abstract_import i JOIN papers p ON p.paper_id = i.paper_id"
             ).fetchone()[0]
             already_full = conn.execute(
                 "SELECT COUNT(*) FROM _abstract_import i "

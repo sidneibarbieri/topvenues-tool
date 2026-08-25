@@ -48,7 +48,9 @@ class AbstractFetcher:
             if "CERTIFICATE_VERIFY_FAILED" in str(e):
                 self.semantic_scholar_disabled = True
                 if not self.semantic_scholar_disable_logged:
-                    logger.warning("Semantic Scholar disabled after TLS verification failure: %s", e)
+                    logger.warning(
+                        "Semantic Scholar disabled after TLS verification failure: %s", e
+                    )
                     self.semantic_scholar_disable_logged = True
             else:
                 logger.warning("Semantic Scholar HTTP error for %s: %s", doi, e)

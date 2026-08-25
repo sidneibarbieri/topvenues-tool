@@ -28,9 +28,7 @@ def test_manual_audit_primary_evidence_matches_published_summary() -> None:
 
 def test_v4_audit_transfer_is_explicit_and_lossless() -> None:
     transfer = json.loads(
-        (ROOT / "evaluation" / "security-20-v4" / "audit_transfer.json").read_text(
-            encoding="utf-8"
-        )
+        (ROOT / "evaluation" / "security-20-v4" / "audit_transfer.json").read_text(encoding="utf-8")
     )
 
     assert transfer["transfer_valid"] is True

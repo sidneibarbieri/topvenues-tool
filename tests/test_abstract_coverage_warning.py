@@ -13,9 +13,7 @@ def snapshot(tmp_path):
     with sqlite3.connect(path) as conn:
         conn.execute("CREATE TABLE papers (event TEXT, abstract TEXT)")
         # Full coverage.
-        conn.executemany(
-            "INSERT INTO papers VALUES (?, ?)", [("ACM CCS", "text")] * 10
-        )
+        conn.executemany("INSERT INTO papers VALUES (?, ?)", [("ACM CCS", "text")] * 10)
         # A venue indexed bibliographically but never enriched.
         conn.executemany("INSERT INTO papers VALUES (?, ?)", [("ESORICS", None)] * 9)
         conn.execute("INSERT INTO papers VALUES ('ESORICS', 'text')")
@@ -35,9 +33,7 @@ def test_coverage_counts_blank_abstracts_as_missing(snapshot):
 def test_only_under_covered_venues_are_flagged(snapshot):
     coverage = _abstract_coverage_by_venue.__wrapped__(snapshot)
     flagged = {
-        venue
-        for venue, (hit, total) in coverage.items()
-        if hit / total < ABSTRACT_COVERAGE_FLOOR
+        venue for venue, (hit, total) in coverage.items() if hit / total < ABSTRACT_COVERAGE_FLOOR
     }
     assert flagged == {"ESORICS", "RAID"}
     assert "ACM CCS" not in flagged

@@ -163,6 +163,7 @@ class TestBootstrapFromGzippedSnapshot:
 
         with pytest.raises(CorpusBusyError, match="Timed out waiting"):
             from src.database import _materialization_lock
+
             with _materialization_lock(db_path, timeout_seconds=0):
                 pass
 

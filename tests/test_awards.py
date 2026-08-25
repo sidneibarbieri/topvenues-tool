@@ -37,15 +37,26 @@ def test_conference_mapping_covers_top4_and_acsac() -> None:
 def test_load_award_records_reads_paper_award_tables(tmp_path: Path) -> None:
     table = tmp_path / "demo_paper_awards.json"
     table.write_text(
-        json.dumps([
-            {"venue": "NDSS", "year": 2025, "award": "Distinguished Paper Award",
-             "title": "A Title", "url": None, "source_url": "https://example/awards"}
-        ]),
+        json.dumps(
+            [
+                {
+                    "venue": "NDSS",
+                    "year": 2025,
+                    "award": "Distinguished Paper Award",
+                    "title": "A Title",
+                    "url": None,
+                    "source_url": "https://example/awards",
+                }
+            ]
+        ),
         encoding="utf-8",
     )
     records = load_award_records(tmp_path)
-    assert records == [AwardRecord("NDSS", 2025, "Distinguished Paper Award",
-                                   "A Title", None, "https://example/awards")]
+    assert records == [
+        AwardRecord(
+            "NDSS", 2025, "Distinguished Paper Award", "A Title", None, "https://example/awards"
+        )
+    ]
 
 
 def test_match_awards_to_corpus_matches_by_venue_and_title(tmp_path: Path) -> None:
@@ -63,10 +74,15 @@ def test_match_awards_to_corpus_matches_by_venue_and_title(tmp_path: Path) -> No
     connection.close()
 
     awards = [
-        AwardRecord("IEEE S&P", 2025, "Distinguished Paper Award",
-                    "LeapFrog: The Rowhammer Attack", None, "https://sp/awards"),
-        AwardRecord("NDSS", 2025, "Best Paper Award",
-                    "Not In Corpus", None, "https://ndss/awards"),
+        AwardRecord(
+            "IEEE S&P",
+            2025,
+            "Distinguished Paper Award",
+            "LeapFrog: The Rowhammer Attack",
+            None,
+            "https://sp/awards",
+        ),
+        AwardRecord("NDSS", 2025, "Best Paper Award", "Not In Corpus", None, "https://ndss/awards"),
     ]
     matched, unmatched = match_awards_to_corpus(awards, db_path)
 
@@ -78,11 +94,18 @@ def test_build_corpus_award_map_labels_matched_papers(tmp_path: Path) -> None:
     db_path = tmp_path / "papers.db"
     _write_corpus(db_path, [("p1", "LeapFrog: The Rowhammer Attack.", "SP")])
     (tmp_path / "demo_paper_awards.json").write_text(
-        json.dumps([
-            {"venue": "IEEE S&P", "year": 2025, "award": "Distinguished Paper Award",
-             "title": "LeapFrog: The Rowhammer Attack", "url": None,
-             "source_url": "https://sp/awards"}
-        ]),
+        json.dumps(
+            [
+                {
+                    "venue": "IEEE S&P",
+                    "year": 2025,
+                    "award": "Distinguished Paper Award",
+                    "title": "LeapFrog: The Rowhammer Attack",
+                    "url": None,
+                    "source_url": "https://sp/awards",
+                }
+            ]
+        ),
         encoding="utf-8",
     )
     award_map = build_corpus_award_map(tmp_path, db_path)

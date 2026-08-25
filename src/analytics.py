@@ -94,9 +94,7 @@ def area_year_counts(db_path: Path) -> dict[str, dict[int, int]]:
     return {area: dict(sorted(years.items())) for area, years in counts.items()}
 
 
-def top_authors(
-    db_path: Path, area: str | None = None, limit: int = 15
-) -> list[tuple[str, int]]:
+def top_authors(db_path: Path, area: str | None = None, limit: int = 15) -> list[tuple[str, int]]:
     """Most prolific authors, optionally restricted to a single area."""
     counter: collections.Counter[str] = collections.Counter()
     connection = sqlite3.connect(db_path)
@@ -165,22 +163,25 @@ def reference_authors(
                 continue
             weight = weight_for(tier)
             for author in authors_at_position(authors, position):
-                entry = stats.setdefault(author, {
-                    "author": author,
-                    "score": 0.0,
-                    "papers": 0,
-                    "top4": 0,
-                    "top_tier": 0,
-                    "top4_regional": 0,
-                    "awards": 0,
-                    "recent_papers": 0,
-                    "recent_since": recent_since,
-                    "recent_through": latest_year,
-                    "first_year": year,
-                    "last_year": year,
-                    "_venues": collections.Counter(),
-                    "_in_scope": False,
-                })
+                entry = stats.setdefault(
+                    author,
+                    {
+                        "author": author,
+                        "score": 0.0,
+                        "papers": 0,
+                        "top4": 0,
+                        "top_tier": 0,
+                        "top4_regional": 0,
+                        "awards": 0,
+                        "recent_papers": 0,
+                        "recent_since": recent_since,
+                        "recent_through": latest_year,
+                        "first_year": year,
+                        "last_year": year,
+                        "_venues": collections.Counter(),
+                        "_in_scope": False,
+                    },
+                )
                 entry["_in_scope"] = entry["_in_scope"] or in_scope
                 entry["score"] += weight
                 entry["papers"] += 1
@@ -209,9 +210,7 @@ def reference_authors(
             for entry in candidates
             if entry["_in_scope"] and entry["papers"] >= CONCENTRATION_MINIMUM_PAPERS
         ]
-    ranked = sorted(
-        candidates, key=lambda entry: _author_sort_key(entry, ranking_metric)
-    )[:limit]
+    ranked = sorted(candidates, key=lambda entry: _author_sort_key(entry, ranking_metric))[:limit]
     for entry in ranked:
         entry.pop("_in_scope")
         entry["venues"] = [venue for venue, _ in entry.pop("_venues").most_common(3)]
@@ -288,9 +287,7 @@ def awarded_by_area(awards_dir: Path, db_path: Path) -> dict[str, list[AwardMatc
     try:
         area_by_id = {
             paper_id: area_for(event)
-            for paper_id, event in connection.execute(
-                "select paper_id, event from papers"
-            )
+            for paper_id, event in connection.execute("select paper_id, event from papers")
         }
     finally:
         connection.close()

@@ -34,9 +34,7 @@ class AuditDecision(BaseModel):
     sample_id: int
     paper_id: str
     source_url: str
-    source_mode: Literal[
-        "live_publisher_or_landing_page", "crossref_deposited_metadata"
-    ]
+    source_mode: Literal["live_publisher_or_landing_page", "crossref_deposited_metadata"]
     decision_mode: Literal["human_only", "human_supervised_codex_assisted"]
     reviewer: str
     label_complete: str
@@ -133,9 +131,11 @@ def load_audit_progress(sample: pd.DataFrame, progress_path: Path) -> pd.DataFra
     progress = pd.read_csv(progress_path, keep_default_na=False)
     if "decision_mode" not in progress.columns:
         progress["decision_mode"] = progress.apply(
-            lambda row: "human_only"
-            if all(_as_label(row[label]) is not None for label in AUDIT_LABELS)
-            else "",
+            lambda row: (
+                "human_only"
+                if all(_as_label(row[label]) is not None for label in AUDIT_LABELS)
+                else ""
+            ),
             axis=1,
         )
     missing_columns = set(sample.columns) - set(progress.columns)

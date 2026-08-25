@@ -23,9 +23,7 @@ from streamlit.testing.v1 import AppTest
 # mode. Silencing that one logger keeps the reproduction output free of a
 # warning a reviewer cannot act on. Errors are unaffected: anything the script
 # raises still arrives through `AppTest.exception` below.
-logging.getLogger("streamlit.runtime.scriptrunner_utils.script_run_context").setLevel(
-    logging.ERROR
-)
+logging.getLogger("streamlit.runtime.scriptrunner_utils.script_run_context").setLevel(logging.ERROR)
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "web" / "app.py"

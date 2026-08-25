@@ -56,9 +56,7 @@ def main() -> None:
     target_snapshot.parent.mkdir(parents=True, exist_ok=False)
 
     merge_decisions = [
-        decision
-        for decision in adjudication["decisions"]
-        if decision["decision"] == "merge_alias"
+        decision for decision in adjudication["decisions"] if decision["decision"] == "merge_alias"
     ]
     declared_years = set(adjudication["strict_year_window"])
 

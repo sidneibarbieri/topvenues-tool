@@ -23,15 +23,29 @@ def _paper(paper_id: str, **overrides) -> Paper:
 
 
 def _seed_corpus(db: DatabaseManager) -> None:
-    db.upsert_papers([
-        _paper("1", title="Fuzzing the Kernel", abstract="We fuzz kernels."),
-        _paper("2", title="A Survey of Intrusion Detection",
-               abstract="Fuzzing is mentioned once in passing."),
-        _paper("3", title="Unrelated Networking Paper",
-               abstract="Congestion control.", event="ACM SIGCOMM"),
-        _paper("4", title="Fuzzing Fuzzing Fuzzing", year=2020,
-               abstract="All about fuzzing.", authors="Alice Fuzzer"),
-    ])
+    db.upsert_papers(
+        [
+            _paper("1", title="Fuzzing the Kernel", abstract="We fuzz kernels."),
+            _paper(
+                "2",
+                title="A Survey of Intrusion Detection",
+                abstract="Fuzzing is mentioned once in passing.",
+            ),
+            _paper(
+                "3",
+                title="Unrelated Networking Paper",
+                abstract="Congestion control.",
+                event="ACM SIGCOMM",
+            ),
+            _paper(
+                "4",
+                title="Fuzzing Fuzzing Fuzzing",
+                year=2020,
+                abstract="All about fuzzing.",
+                authors="Alice Fuzzer",
+            ),
+        ]
+    )
 
 
 class TestBuildFtsIndex:

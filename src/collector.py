@@ -230,6 +230,7 @@ class Collector:
 
     async def run_full(self) -> None:
         from .database import write_gzipped_snapshot
+
         print("Starting Top Venues Collector…")
         print("\n[1/5] Downloading JSON files…")
         await self.run_download()

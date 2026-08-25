@@ -19,8 +19,8 @@ MIN_ABSTRACT_LENGTH = 100
 # A name token is a capitalized word or single initial (e.g. "S", "Sakshi").
 _NAME = r"[A-Z][\w.'-]*"
 _AUTHOR_LIST_PROCEEDINGS = re.compile(
-    rf"^(?:{_NAME} )+{_NAME}"                       # a full name
-    rf"(?:,\s*(?:and\s+)?(?:{_NAME} )+{_NAME})*"    # more names, comma-separated
+    rf"^(?:{_NAME} )+{_NAME}"  # a full name
+    rf"(?:,\s*(?:and\s+)?(?:{_NAME} )+{_NAME})*"  # more names, comma-separated
     r"\.?\s*Proceedings of",
     re.IGNORECASE,
 )

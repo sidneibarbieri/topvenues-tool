@@ -164,8 +164,11 @@ class Paper(BaseModel):
             return PaperClass.WORKSHOP
         if "short paper" in title_lower:
             return PaperClass.SHORT
-        if (self.event or "").lower().startswith(("acm computing", "ieee communications",
-                                                   "foundations and trends")):
+        if (
+            (self.event or "")
+            .lower()
+            .startswith(("acm computing", "ieee communications", "foundations and trends"))
+        ):
             return PaperClass.JOURNAL
         return PaperClass.ARTICLE
 

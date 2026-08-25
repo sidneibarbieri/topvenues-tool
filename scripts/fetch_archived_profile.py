@@ -42,9 +42,10 @@ def fetch_profile(profile_id: str, root: Path = ROOT) -> Path:
     digest = hashlib.sha256()
     bytes_written = 0
     try:
-        with os.fdopen(descriptor, "wb") as target, httpx.stream(
-            "GET", url, follow_redirects=True, timeout=180.0
-        ) as response:
+        with (
+            os.fdopen(descriptor, "wb") as target,
+            httpx.stream("GET", url, follow_redirects=True, timeout=180.0) as response,
+        ):
             response.raise_for_status()
             for chunk in response.iter_bytes():
                 target.write(chunk)
@@ -67,9 +68,7 @@ def main() -> int:
     parser.add_argument("--profile", required=True, choices=PROFILE_IDS)
     args = parser.parse_args()
     path = fetch_profile(args.profile)
-    manifest = json.loads(
-        (ROOT / "data" / "profiles" / args.profile / "manifest.json").read_text()
-    )
+    manifest = json.loads((ROOT / "data" / "profiles" / args.profile / "manifest.json").read_text())
     print(f"verified {path} (sha256={manifest['snapshot']['gzip_sha256']})")
     return 0
 

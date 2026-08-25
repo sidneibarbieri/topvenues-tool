@@ -9,10 +9,34 @@ from src.collector import Collector
 from src.dblp_dump_materializer import DblpDumpMaterializer
 
 NEW_VENUES = [
-    "esorics", "codaspy", "raid", "cns", "wisec", "woot", "satml", "aisec", "trustcom",
-    "sigcomm", "nsdi", "imc", "sigmetrics", "atc", "eurosys",
-    "mobicom", "mobisys", "sensys", "hotmobile",
-    "neurips", "icml", "iclr", "aaai", "ijcai", "kdd", "acl", "emnlp", "naacl",
+    "esorics",
+    "codaspy",
+    "raid",
+    "cns",
+    "wisec",
+    "woot",
+    "satml",
+    "aisec",
+    "trustcom",
+    "sigcomm",
+    "nsdi",
+    "imc",
+    "sigmetrics",
+    "atc",
+    "eurosys",
+    "mobicom",
+    "mobisys",
+    "sensys",
+    "hotmobile",
+    "neurips",
+    "icml",
+    "iclr",
+    "aaai",
+    "ijcai",
+    "kdd",
+    "acl",
+    "emnlp",
+    "naacl",
 ]
 
 

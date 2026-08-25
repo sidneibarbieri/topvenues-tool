@@ -143,8 +143,7 @@ class DblpDumpMaterializer:
             urls.append(f"https://dblp.org/db/conf/wmcsa/hotmobile{year}.html")
         elif event == "kdd":
             urls.extend(
-                f"https://dblp.org/db/conf/kdd/kdd{year}-{part}.html"
-                for part in range(1, 5)
+                f"https://dblp.org/db/conf/kdd/kdd{year}-{part}.html" for part in range(1, 5)
             )
         elif event in {"acl", "emnlp", "naacl"}:
             urls.extend(

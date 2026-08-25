@@ -62,9 +62,7 @@ async def fetch_pmlr(client: httpx.AsyncClient, ee: str) -> str | None:
         return None
     if response.status_code != 200:
         return None
-    match = re.search(
-        r'<div[^>]*class="abstract"[^>]*>(.*?)</div>', response.text, re.DOTALL
-    )
+    match = re.search(r'<div[^>]*class="abstract"[^>]*>(.*?)</div>', response.text, re.DOTALL)
     if not match:
         return None
     abstract = normalize_abstract_text(match.group(1))
@@ -78,9 +76,7 @@ async def fetch_neurips(client: httpx.AsyncClient, ee: str) -> str | None:
         return None
     if response.status_code != 200:
         return None
-    match = re.search(
-        r'<p class="paper-abstract">(.*?)</p>\s*</div>', response.text, re.DOTALL
-    )
+    match = re.search(r'<p class="paper-abstract">(.*?)</p>\s*</div>', response.text, re.DOTALL)
     if not match:
         return None
     abstract = normalize_abstract_text(match.group(1))

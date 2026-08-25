@@ -469,7 +469,6 @@ def _queue_search_from_chart(**filters: str | int | None) -> None:
     st.rerun()
 
 
-
 @st.cache_data(show_spinner=False)
 def _release_identity(profile_id: str) -> dict:
     """Reader- and auditor-facing names for the active release."""
@@ -565,9 +564,7 @@ def page_artifact() -> None:
     tier1_col, broad_col, monitor_col = st.columns(3)
     with tier1_col:
         st.markdown("**Reference mapping**  ")
-        st.caption(
-            "Use Security top-4 to identify canonical venue papers and recurring authors."
-        )
+        st.caption("Use Security top-4 to identify canonical venue papers and recurring authors.")
     with broad_col:
         st.markdown("**Review protocol**  ")
         st.caption(
@@ -590,7 +587,9 @@ def page_artifact() -> None:
     )
 
     active_profile = _load_collector().config.profile_id
-    for tab, reproduction in zip(st.tabs([item.platform for item in SUPPORTED]), SUPPORTED, strict=True):
+    for tab, reproduction in zip(
+        st.tabs([item.platform for item in SUPPORTED]), SUPPORTED, strict=True
+    ):
         with tab:
             st.code(
                 command_for_profile(reproduction, active_profile),
@@ -1141,9 +1140,7 @@ def page_insights() -> None:
         st.subheader("Papers by class")
         class_counts = {}
         for paper in collector.papers:
-            class_counts[paper.paper_class.value] = (
-                class_counts.get(paper.paper_class.value, 0) + 1
-            )
+            class_counts[paper.paper_class.value] = class_counts.get(paper.paper_class.value, 0) + 1
         class_df = pd.DataFrame(
             [
                 {"Class": k, "Papers": v}
@@ -1629,14 +1626,9 @@ def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
     )
 
     progress_path = (
-        ARTIFACT_ROOT
-        / "output"
-        / "manual_audit"
-        / f"{profile_id}-{len(sample)}-progress.csv"
+        ARTIFACT_ROOT / "output" / "manual_audit" / f"{profile_id}-{len(sample)}-progress.csv"
     )
-    decision_log_path = progress_path.with_name(
-        f"{profile_id}-{len(sample)}-decisions.jsonl"
-    )
+    decision_log_path = progress_path.with_name(f"{profile_id}-{len(sample)}-decisions.jsonl")
     audit_frame = load_audit_progress(sample, progress_path)
     summary = summarize_audit(audit_frame)
     completion = summary.labelled / summary.sampled if summary.sampled else 0.0
@@ -1671,9 +1663,7 @@ def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
         f"{position + 1} of {len(audit_frame)}</strong></div>",
         unsafe_allow_html=True,
     )
-    if navigation[2].button(
-        "Next →", disabled=position == len(audit_frame) - 1, width="stretch"
-    ):
+    if navigation[2].button("Next →", disabled=position == len(audit_frame) - 1, width="stretch"):
         st.session_state.audit_position = position + 1
         st.rerun()
 
@@ -1762,9 +1752,7 @@ def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
             audit_frame.loc[position, "label_uncontaminated"] = label_uncontaminated.casefold()
             audit_frame.loc[position, "label_matches_paper"] = label_matches_paper.casefold()
             audit_frame.loc[position, "reviewer"] = reviewer.strip()
-            audit_frame.loc[position, "decision_mode"] = decision_mode_labels[
-                decision_mode_label
-            ]
+            audit_frame.loc[position, "decision_mode"] = decision_mode_labels[decision_mode_label]
             audit_frame.loc[position, "notes"] = notes.strip()
             save_audit_progress(audit_frame, progress_path)
             append_audit_decision(
@@ -1849,14 +1837,9 @@ def page_evidence() -> None:
     )
 
     audit_summary_path = (
-        ARTIFACT_ROOT
-        / "evaluation"
-        / "security-20-v3"
-        / "manual_abstract_audit_summary.json"
+        ARTIFACT_ROOT / "evaluation" / "security-20-v3" / "manual_abstract_audit_summary.json"
     )
-    audit_transfer_path = (
-        ARTIFACT_ROOT / "evaluation" / "security-20-v4" / "audit_transfer.json"
-    )
+    audit_transfer_path = ARTIFACT_ROOT / "evaluation" / "security-20-v4" / "audit_transfer.json"
     audit_summary = json.loads(audit_summary_path.read_text(encoding="utf-8"))
     audit_transfer = json.loads(audit_transfer_path.read_text(encoding="utf-8"))
 

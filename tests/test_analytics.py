@@ -13,9 +13,7 @@ from src.models import Paper
 
 def _corpus(db_path: Path) -> None:
     connection = sqlite3.connect(db_path)
-    connection.execute(
-        "create table papers (paper_id text, authors text, event text, year int)"
-    )
+    connection.execute("create table papers (paper_id text, authors text, event text, year int)")
     connection.executemany(
         "insert into papers values (?, ?, ?, ?)",
         [
@@ -45,9 +43,7 @@ def test_top_authors_overall_and_by_area(tmp_path: Path) -> None:
 
 
 def test_dblp_identity_suffix_is_preserved() -> None:
-    assert _split_authors("Wei Wang 0001, Wei Wang 0002") == [
-        "Wei Wang 0001", "Wei Wang 0002"
-    ]
+    assert _split_authors("Wei Wang 0001, Wei Wang 0002") == ["Wei Wang 0001", "Wei Wang 0002"]
 
 
 def test_author_position_views_preserve_dblp_identity_suffixes() -> None:
@@ -62,22 +58,24 @@ def test_reference_authors_supports_first_and_last_author_views(tmp_path: Path) 
     from src.database import DatabaseManager
 
     manager = DatabaseManager(tmp_path / "papers.db")
-    manager.upsert_papers([
-        Paper(
-            paper_id="conf/ccs/One24",
-            title="One",
-            year=2024,
-            event="ACM CCS",
-            authors="Alice, Bob",
-        ),
-        Paper(
-            paper_id="conf/ndss/Two25",
-            title="Two",
-            year=2025,
-            event="NDSS",
-            authors="Carol, Bob",
-        ),
-    ])
+    manager.upsert_papers(
+        [
+            Paper(
+                paper_id="conf/ccs/One24",
+                title="One",
+                year=2024,
+                event="ACM CCS",
+                authors="Alice, Bob",
+            ),
+            Paper(
+                paper_id="conf/ndss/Two25",
+                title="Two",
+                year=2025,
+                event="NDSS",
+                authors="Carol, Bob",
+            ),
+        ]
+    )
 
     assert reference_authors(manager.db_path, position="first")[0]["author"] == "Alice"
     assert reference_authors(manager.db_path, position="last")[0]["author"] == "Bob"
@@ -89,10 +87,12 @@ def test_reference_authors_can_restrict_to_security_big_four(tmp_path: Path) -> 
     from src.tiers import TOP4
 
     manager = DatabaseManager(tmp_path / "papers.db")
-    manager.upsert_papers([
-        Paper(paper_id="1", title="Top", year=2024, event="ACM CCS", authors="Alice"),
-        Paper(paper_id="2", title="Strong", year=2024, event="IEEE CNS", authors="Bob"),
-    ])
+    manager.upsert_papers(
+        [
+            Paper(paper_id="1", title="Top", year=2024, event="ACM CCS", authors="Alice"),
+            Paper(paper_id="2", title="Strong", year=2024, event="IEEE CNS", authors="Bob"),
+        ]
+    )
 
     authors = reference_authors(manager.db_path, allowed_tiers=frozenset({TOP4}))
     assert [entry["author"] for entry in authors] == ["Alice"]
@@ -105,17 +105,20 @@ def test_reference_authors_defaults_to_raw_count_and_exposes_weighted_view(
     from src.database import DatabaseManager
 
     manager = DatabaseManager(tmp_path / "papers.db")
-    manager.upsert_papers([
-        Paper(paper_id="1", title="One", year=2024, event="IEEE CNS", authors="Alice"),
-        Paper(paper_id="2", title="Two", year=2025, event="IEEE CNS", authors="Alice"),
-        Paper(paper_id="3", title="Three", year=2025, event="ACM CCS", authors="Bob"),
-    ])
+    manager.upsert_papers(
+        [
+            Paper(paper_id="1", title="One", year=2024, event="IEEE CNS", authors="Alice"),
+            Paper(paper_id="2", title="Two", year=2025, event="IEEE CNS", authors="Alice"),
+            Paper(paper_id="3", title="Three", year=2025, event="ACM CCS", authors="Bob"),
+        ]
+    )
 
     assert reference_authors(manager.db_path)[0]["author"] == "Alice"
     assert reference_authors(manager.db_path)[0]["recent_papers"] == 2
-    assert reference_authors(manager.db_path, ranking_metric=TIER_WEIGHTED_METRIC)[0][
-        "author"
-    ] == "Bob"
+    assert (
+        reference_authors(manager.db_path, ranking_metric=TIER_WEIGHTED_METRIC)[0]["author"]
+        == "Bob"
+    )
 
 
 def test_reference_authors_rejects_unknown_metric(tmp_path: Path) -> None:
@@ -134,14 +137,21 @@ class TestTopicTrend:
         from src.models import Paper
 
         manager = DatabaseManager(tmp_path / "papers.db")
-        manager.upsert_papers([
-            Paper(paper_id="1", title="LLM agents", year=2024, event="ACM CCS"),
-            Paper(paper_id="2", title="Fuzzing loops", year=2024, event="ACM CCS",
-                  abstract="uses an llm oracle"),
-            Paper(paper_id="3", title="Routing", year=2024, event="ACM SIGCOMM"),
-            Paper(paper_id="4", title="LLM watermarking", year=2025, event="NDSS"),
-            Paper(paper_id="5", title="Congestion", year=2025, event="ACM SIGCOMM"),
-        ])
+        manager.upsert_papers(
+            [
+                Paper(paper_id="1", title="LLM agents", year=2024, event="ACM CCS"),
+                Paper(
+                    paper_id="2",
+                    title="Fuzzing loops",
+                    year=2024,
+                    event="ACM CCS",
+                    abstract="uses an llm oracle",
+                ),
+                Paper(paper_id="3", title="Routing", year=2024, event="ACM SIGCOMM"),
+                Paper(paper_id="4", title="LLM watermarking", year=2025, event="NDSS"),
+                Paper(paper_id="5", title="Congestion", year=2025, event="ACM SIGCOMM"),
+            ]
+        )
         return manager.db_path
 
     def test_counts_and_share_by_year(self, trend_db):

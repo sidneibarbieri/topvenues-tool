@@ -216,7 +216,6 @@ def collaboration_network(db_path: Path, author: str, *, limit: int = 20) -> lis
     return sorted(result, key=lambda item: (-item.joint_papers, item.collaborator))[:limit]
 
 
-
 def authorship_shifts(
     db_path: Path,
     *,

@@ -62,7 +62,10 @@ def main() -> None:
                 )
             connection.executemany(
                 "DELETE FROM papers WHERE paper_id = ?",
-                [(paper_id,) for paper_id in {record.paper_id for record in records} - retained_ids],
+                [
+                    (paper_id,)
+                    for paper_id in {record.paper_id for record in records} - retained_ids
+                ],
             )
         with managed_sqlite_connection(database_path) as connection:
             connection.execute("VACUUM")

@@ -11,13 +11,26 @@ from src.models import Paper
 @pytest.fixture
 def db(tmp_path):
     manager = DatabaseManager(tmp_path / "papers.db")
-    manager.upsert_papers([
-        Paper(paper_id="1", title="Fuzzing the Kernel", year=2024,
-              event="ACM CCS", abstract="We fuzz kernels.", bibtex="@inproceedings{x}"),
-        Paper(paper_id="2", title="Congestion Control", year=2023,
-              event="ACM SIGCOMM", bibtex="@inproceedings{y}"),
-        Paper(paper_id="3", title="Deep Nets", year=2022, event="NeurIPS"),
-    ])
+    manager.upsert_papers(
+        [
+            Paper(
+                paper_id="1",
+                title="Fuzzing the Kernel",
+                year=2024,
+                event="ACM CCS",
+                abstract="We fuzz kernels.",
+                bibtex="@inproceedings{x}",
+            ),
+            Paper(
+                paper_id="2",
+                title="Congestion Control",
+                year=2023,
+                event="ACM SIGCOMM",
+                bibtex="@inproceedings{y}",
+            ),
+            Paper(paper_id="3", title="Deep Nets", year=2022, event="NeurIPS"),
+        ]
+    )
     return manager
 
 
@@ -87,10 +100,12 @@ def test_large_corpus_is_sharded(tmp_path):
     from src.models import Paper
 
     manager = DatabaseManager(tmp_path / "papers.db")
-    manager.upsert_papers([
-        Paper(paper_id=str(index), title=f"Paper {index}", year=2024, event="ACM CCS")
-        for index in range(20_001)
-    ])
+    manager.upsert_papers(
+        [
+            Paper(paper_id=str(index), title=f"Paper {index}", year=2024, event="ACM CCS")
+            for index in range(20_001)
+        ]
+    )
 
     stats = export_hf_dataset(manager.db_path, tmp_path / "hf")
 
