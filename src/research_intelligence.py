@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from src.analytics import _split_authors
 from src.areas import area_for
+from src.sql_patterns import LIKE_ESCAPE_CLAUSE, contains_pattern
 from src.tiers import tier_for
 
 
@@ -82,8 +83,8 @@ def _paper_rows(
     sql = "SELECT authors, event, year FROM papers WHERE authors IS NOT NULL AND year IS NOT NULL"
     params: list[str] = []
     if topic:
-        sql += " AND (title LIKE ? OR abstract LIKE ?)"
-        pattern = f"%{topic}%"
+        sql += f" AND (title LIKE ? {LIKE_ESCAPE_CLAUSE} OR abstract LIKE ? {LIKE_ESCAPE_CLAUSE})"
+        pattern = contains_pattern(topic)
         params.extend([pattern, pattern])
     with sqlite3.connect(db_path) as connection:
         rows = connection.execute(sql, params).fetchall()

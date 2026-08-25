@@ -30,6 +30,59 @@ from src.reproduction_commands import SUPPORTED, command_for_profile, summary_li
 from src.tiers import tier_for, tier_scope_options, tiers_in_scope
 from web import charts
 
+
+@dataclass(frozen=True)
+class PageMovement:
+    """One question a page answers, and the means it offers for answering it."""
+
+    question: str
+    answer: str
+
+
+RESEARCH_QUESTIONS = (
+    PageMovement(
+        "Reference mapping",
+        "Use Security top-4 to identify canonical venue papers and recurring authors.",
+    ),
+    PageMovement(
+        "Review protocol",
+        "Start with the declared full scope, then record any venue restriction as an "
+        "inclusion decision.",
+    ),
+    PageMovement(
+        "Research monitoring",
+        "Use topic, year, tier, and author-position filters to decide which new work to inspect.",
+    ),
+)
+
+# The order is the investigation: what the corpus holds, how a topic moves inside
+# it, who produces that work, and where the corpus cannot answer at all.
+INSIGHTS_MOVEMENTS = (
+    PageMovement(
+        "What is in it",
+        "Papers per venue, year and record class. Click any bar to open those records in Search.",
+    ),
+    PageMovement(
+        "How a topic moves",
+        "Yearly volume and corpus share for one topic, normalized so corpus growth cannot read "
+        "as topic growth.",
+    ),
+    PageMovement(
+        "Who produces it",
+        "Recurring authors by volume, tier weight or top-4 concentration, each row backed by "
+        "its own trajectory and coauthorship evidence.",
+    ),
+    PageMovement(
+        "Where it stays silent",
+        "Abstract coverage per venue, so a gap is visible before it becomes an unrecorded "
+        "exclusion.",
+    ),
+)
+
+# Offered as one-click starting points. The trend section is otherwise an empty
+# form, which hides the one view that normalizes a topic against corpus growth.
+TREND_EXAMPLE_TOPICS = ("LLM", "ransomware", "fuzzing")
+
 PAGE_SIZE_OPTIONS = (25, 50, 100, 200)
 ABSTRACT_PREVIEW_CHARS = 280
 
@@ -378,6 +431,31 @@ def _artifact_claims(stats: dict) -> tuple[HeadlineCard, ...]:
     )
 
 
+def _offer_example_topics() -> None:
+    """Let a reader reach a live trend without inventing a query first.
+
+    The topic field is a widget, so its session key cannot be written after it
+    renders. The choice is parked instead and applied on the next run, the same
+    way the search page receives a chart selection.
+    """
+    st.caption("No topic yet. Start from one of these, or type your own above.")
+    for column, topic in zip(
+        st.columns(len(TREND_EXAMPLE_TOPICS)), TREND_EXAMPLE_TOPICS, strict=True
+    ):
+        with column:
+            if st.button(topic, key=f"trend_example_{topic}", use_container_width=True):
+                st.session_state["pending_trend_topic"] = topic
+                st.rerun()
+
+
+def _render_movements(movements: tuple[PageMovement, ...]) -> None:
+    """Name what a page is for before the reader meets its first chart."""
+    for column, movement in zip(st.columns(len(movements)), movements, strict=True):
+        with column:
+            st.markdown(f"**{movement.question}**  ")
+            st.caption(movement.answer)
+
+
 def _render_card_row(cards: tuple[HeadlineCard, ...]) -> None:
     """Render a headline row. Every page uses this, so the rows stay identical.
 
@@ -488,6 +566,17 @@ def _release_identity(profile_id: str) -> dict:
     return {"reader": identity.reader_label, "auditor": identity.auditor_label}
 
 
+def _count_with_share(counts: pd.Series) -> list[str]:
+    """Label each bar with its count and its share, so rare rows still read.
+
+    A class holding 86 of 14,859 records draws a bar under a pixel wide. The
+    share is what tells a reader whether that class is worth a protocol
+    decision, and no bar length can carry it at this range.
+    """
+    total = counts.sum()
+    return [f"{count:,} ({count / total:.1%})" if total else f"{count:,}" for count in counts]
+
+
 def _interactive_bar_chart(
     data: pd.DataFrame,
     category: str,
@@ -502,6 +591,7 @@ def _interactive_bar_chart(
     value_format: str = ",",
     color: str = charts.ACCENT,
     value_scale: alt.Scale | None = None,
+    label_field: str | None = None,
 ) -> object | None:
     """Render a selectable bar chart and return the category the reader picked."""
     selection_name = f"{key}_selection"
@@ -520,6 +610,7 @@ def _interactive_bar_chart(
             height=height,
             color=color,
             value_scale=value_scale,
+            label_field=label_field,
         )
     )
     event = st.altair_chart(
@@ -571,27 +662,14 @@ def page_artifact() -> None:
     _render_card_row(_artifact_claims(_load_collector().db.get_statistics()))
 
     st.subheader("Start from a research question")
-    tier1_col, broad_col, monitor_col = st.columns(3)
-    with tier1_col:
-        st.markdown("**Reference mapping**  ")
-        st.caption("Use Security top-4 to identify canonical venue papers and recurring authors.")
-    with broad_col:
-        st.markdown("**Review protocol**  ")
-        st.caption(
-            "Start with the declared full scope, then record any venue restriction as an inclusion decision."
-        )
-    with monitor_col:
-        st.markdown("**Research monitoring**  ")
-        st.caption(
-            "Use topic, year, tier, and author-position filters to decide which new work to inspect."
-        )
+    _render_movements(RESEARCH_QUESTIONS)
 
     st.subheader("Verification path")
     st.markdown(
         """
         1. Run the reproduction script to validate the headline claims.
         2. Use Search to inspect the corpus and export CSV, JSON or BibTeX.
-        3. Use Insights to verify scope, coverage and temporal distribution.
+        3. Use Insights to read scope, coverage, topic movement and author activity.
         4. Use Dataset lifecycle only when creating a new successor from live sources.
         """
     )
@@ -1100,13 +1178,19 @@ def page_search() -> None:
 
 
 def page_insights() -> None:
+    pending_topic = st.session_state.pop("pending_trend_topic", None)
+    if pending_topic:
+        st.session_state["trend_topic"] = pending_topic
     collector = _load_collector()
     stats = collector.db.get_statistics()
     _render_header(
         "Dataset insights",
-        "Distribution of papers across venues, years, paper classes and abstract coverage.",
+        "Read the corpus in four passes: what it holds, how a topic moves, who produces "
+        "that work, and where it cannot answer.",
     )
     _render_card_row(_corpus_cards(stats))
+    _render_movements(INSIGHTS_MOVEMENTS)
+    st.divider()
 
     st.subheader("Papers by venue")
     venue_df = pd.DataFrame(
@@ -1157,17 +1241,13 @@ def page_insights() -> None:
                 for k, v in sorted(class_counts.items(), key=lambda x: x[1], reverse=True)
             ]
         )
+        class_df["Label"] = _count_with_share(class_df["Papers"])
         selected_class = _interactive_bar_chart(
-            class_df,
-            "Class",
-            "Papers",
-            "class_chart",
-            320,
-            value_scale=alt.Scale(type="log", domainMin=1),
+            class_df, "Class", "Papers", "class_chart", 320, label_field="Label"
         )
         st.caption(
-            "Logarithmic scale keeps rare classes visible; printed labels show exact counts. "
-            "Click a bar to open records in that class."
+            "Full articles dominate the corpus; the rare classes are what a protocol "
+            "usually decides to include or exclude. Click a bar to open records in that class."
         )
         if selected_class:
             _queue_search_from_chart(paper_class=str(selected_class))
@@ -1254,6 +1334,8 @@ def page_insights() -> None:
                 )
         else:
             st.info("No papers match this topic in the selected scope.")
+    else:
+        _offer_example_topics()
 
     st.divider()
     st.subheader("Researcher Radar")

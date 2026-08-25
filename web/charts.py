@@ -80,12 +80,20 @@ def bar_chart(
     height: int = 320,
     color: str = ACCENT,
     value_scale: alt.Scale | None = None,
+    label_field: str | None = None,
 ) -> alt.Chart:
     """A selectable bar chart with the value printed beside every bar.
+
+    `label_field` names a column to print instead of the raw value, for when a
+    bar is worth more than one number, such as a count beside its share.
 
     Both marks share one base encoding. Encoding the layers separately makes
     Altair resolve two axes for the same channel, and the second one paints
     over the category names.
+
+    A bar encodes magnitude as length from zero, so `value_scale` must stay
+    linear. A logarithmic scale has no zero to start from, and Vega draws every
+    bar zero pixels wide: the labels appear, the bars do not.
     """
     category_axis = alt.Axis(labelAngle=0, labelLimit=200)
     if horizontal:
@@ -131,11 +139,15 @@ def bar_chart(
         color=MUTED,
         font=FONT,
         fontSize=VALUE_LABEL_SIZE,
-    ).encode(text=alt.Text(f"{value}:Q", format=value_format))
+    ).encode(
+        text=alt.Text(f"{label_field}:N")
+        if label_field
+        else alt.Text(f"{value}:Q", format=value_format)
+    )
 
     # The value label sits outside the longest bar, so the plot needs room on
     # that side or the largest number is clipped at the frame.
-    padding = {"right": 44} if horizontal else {"top": 18}
+    padding = {"right": 96 if label_field else 44} if horizontal else {"top": 18}
     # Height follows the bar count so every chart keeps the same bar thickness.
     # The caller's height is a floor, not an override.
     if horizontal:

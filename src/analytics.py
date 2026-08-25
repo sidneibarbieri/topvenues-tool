@@ -15,6 +15,7 @@ from pathlib import Path
 
 from src.areas import area_for
 from src.awards import AwardMatch, load_award_records, match_awards_to_corpus
+from src.sql_patterns import LIKE_ESCAPE_CLAUSE, contains_pattern
 from src.tiers import TOP4, TOP4_REGIONAL, TOP_TIER, tier_for, weight_for
 
 _AUTHOR_SPLIT = re.compile(r"\s*,\s*|\s+and\s+")
@@ -139,8 +140,8 @@ def reference_authors(
     sql = "select paper_id, authors, event, year from papers where authors is not null"
     params: list = []
     if topic:
-        sql += " and (title like ? or abstract like ?)"
-        pattern = f"%{topic}%"
+        sql += f" and (title like ? {LIKE_ESCAPE_CLAUSE} or abstract like ? {LIKE_ESCAPE_CLAUSE})"
+        pattern = contains_pattern(topic)
         params.extend([pattern, pattern])
 
     awarded_ids: set[str] = set()
@@ -237,7 +238,7 @@ def topic_trend(
     the curation policy backfills them, so counts are a lower bound for
     venues outside the enriched layers.
     """
-    pattern = f"%{topic}%"
+    pattern = contains_pattern(topic)
     matched_by_year: dict[int, int] = collections.defaultdict(int)
     total_by_year: dict[int, int] = collections.defaultdict(int)
     venue_counter: collections.Counter[str] = collections.Counter()
@@ -245,7 +246,8 @@ def topic_trend(
     connection = sqlite3.connect(db_path)
     try:
         rows = connection.execute(
-            "select event, year, (title like ? or abstract like ?) as matched "
+            f"select event, year, (title like ? {LIKE_ESCAPE_CLAUSE}"
+            f" or abstract like ? {LIKE_ESCAPE_CLAUSE}) as matched "
             "from papers where year is not null",
             (pattern, pattern),
         )

@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.sql_patterns import LIKE_ESCAPE_CLAUSE, contains_pattern
+
 from .models import AbstractImportResult, Paper
 from .sqlite_connection import managed_sqlite_connection
 
@@ -395,14 +397,14 @@ class DatabaseManager:
         params: list = []
 
         if title_contains:
-            query += " AND title LIKE ?"
-            params.append(f"%{title_contains}%")
+            query += f" AND title LIKE ? {LIKE_ESCAPE_CLAUSE}"
+            params.append(contains_pattern(title_contains))
         if abstract_contains:
-            query += " AND abstract LIKE ?"
-            params.append(f"%{abstract_contains}%")
+            query += f" AND abstract LIKE ? {LIKE_ESCAPE_CLAUSE}"
+            params.append(contains_pattern(abstract_contains))
         if author_contains:
-            query += " AND authors LIKE ?"
-            params.append(f"%{author_contains}%")
+            query += f" AND authors LIKE ? {LIKE_ESCAPE_CLAUSE}"
+            params.append(contains_pattern(author_contains))
         if event:
             query += " AND event = ?"
             params.append(event)
@@ -410,8 +412,11 @@ class DatabaseManager:
             query += " AND year = ?"
             params.append(year)
         if technology:
-            query += " AND (title LIKE ? OR abstract LIKE ?)"
-            params.extend([f"%{technology}%", f"%{technology}%"])
+            query += (
+                f" AND (title LIKE ? {LIKE_ESCAPE_CLAUSE} OR abstract LIKE ? {LIKE_ESCAPE_CLAUSE})"
+            )
+            pattern = contains_pattern(technology)
+            params.extend([pattern, pattern])
 
         query += " ORDER BY year DESC, event, title"
 
