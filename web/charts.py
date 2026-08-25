@@ -73,6 +73,7 @@ def bar_chart(
     value_format: str = ",",
     height: int = 320,
     color: str = ACCENT,
+    value_scale: alt.Scale | None = None,
 ) -> alt.Chart:
     """A selectable bar chart with the value printed beside every bar.
 
@@ -84,12 +85,22 @@ def bar_chart(
     if horizontal:
         base = alt.Chart(data).encode(
             y=alt.Y(f"{category}:N", sort=sort, title=category_title, axis=category_axis),
-            x=alt.X(f"{value}:Q", title=value_title, axis=alt.Axis(tickCount=4)),
+            x=alt.X(
+                f"{value}:Q",
+                title=value_title,
+                axis=alt.Axis(tickCount=4),
+                scale=value_scale or alt.Undefined,
+            ),
         )
     else:
         base = alt.Chart(data).encode(
             x=alt.X(f"{category}:O", sort=sort, title=category_title, axis=category_axis),
-            y=alt.Y(f"{value}:Q", title=value_title, axis=alt.Axis(tickCount=4)),
+            y=alt.Y(
+                f"{value}:Q",
+                title=value_title,
+                axis=alt.Axis(tickCount=4),
+                scale=value_scale or alt.Undefined,
+            ),
         )
 
     bars = base.mark_bar(color=color, cornerRadiusEnd=2).encode(

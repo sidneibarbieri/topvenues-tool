@@ -475,6 +475,7 @@ def _interactive_bar_chart(
     value_title: str | None = None,
     value_format: str = ",",
     color: str = charts.ACCENT,
+    value_scale: alt.Scale | None = None,
 ) -> object | None:
     """Render a selectable bar chart and return the category the reader picked."""
     selection_name = f"{key}_selection"
@@ -492,6 +493,7 @@ def _interactive_bar_chart(
             value_format=value_format,
             height=height,
             color=color,
+            value_scale=value_scale,
         )
     )
     event = st.altair_chart(
@@ -1074,21 +1076,20 @@ def page_insights() -> None:
     )
     _render_metrics(stats)
 
+    st.subheader("Papers by venue")
+    venue_df = pd.DataFrame(
+        [
+            {"Venue": k, "Papers": v}
+            for k, v in sorted(stats["by_event"].items(), key=lambda x: x[1], reverse=True)
+        ]
+    )
+    selected_venue = _interactive_bar_chart(venue_df, "Venue", "Papers", "venue_chart", 520)
+    st.caption("Click a bar to open that venue's records. Double-click clears the selection.")
+    if selected_venue:
+        _queue_search_from_chart(venue=str(selected_venue))
+
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("Papers by venue")
-        venue_df = pd.DataFrame(
-            [
-                {"Venue": k, "Papers": v}
-                for k, v in sorted(stats["by_event"].items(), key=lambda x: x[1], reverse=True)
-            ]
-        )
-        selected_venue = _interactive_bar_chart(venue_df, "Venue", "Papers", "venue_chart", 460)
-        st.caption("Click a bar to open that venue's records. Double-click clears the selection.")
-        if selected_venue:
-            _queue_search_from_chart(venue=str(selected_venue))
-
-    with col2:
         st.subheader("Papers by year")
         year_df = pd.DataFrame(
             [{"Year": k, "Papers": v} for k, v in sorted(stats["by_year"].items())]
@@ -1113,23 +1114,33 @@ def page_insights() -> None:
         if selected_year is not None:
             _queue_search_from_chart(year=int(selected_year))
 
-    st.divider()
-    st.subheader("Papers by class")
-    class_counts = {}
-    for paper in collector.papers:
-        class_counts[paper.paper_class.value] = class_counts.get(paper.paper_class.value, 0) + 1
-    class_df = pd.DataFrame(
-        [
-            {"Class": k, "Papers": v}
-            for k, v in sorted(class_counts.items(), key=lambda x: x[1], reverse=True)
-        ]
-    )
-    selected_class = _interactive_bar_chart(
-        class_df, "Class", "Papers", "class_chart", 320
-    )
-    st.caption("Click a bar to open records in that paper class.")
-    if selected_class:
-        _queue_search_from_chart(paper_class=str(selected_class))
+    with col2:
+        st.subheader("Papers by class")
+        class_counts = {}
+        for paper in collector.papers:
+            class_counts[paper.paper_class.value] = (
+                class_counts.get(paper.paper_class.value, 0) + 1
+            )
+        class_df = pd.DataFrame(
+            [
+                {"Class": k, "Papers": v}
+                for k, v in sorted(class_counts.items(), key=lambda x: x[1], reverse=True)
+            ]
+        )
+        selected_class = _interactive_bar_chart(
+            class_df,
+            "Class",
+            "Papers",
+            "class_chart",
+            320,
+            value_scale=alt.Scale(type="log", domainMin=1),
+        )
+        st.caption(
+            "Logarithmic scale keeps rare classes visible; printed labels show exact counts. "
+            "Click a bar to open records in that class."
+        )
+        if selected_class:
+            _queue_search_from_chart(paper_class=str(selected_class))
 
     st.divider()
     st.subheader("Topic trend")
@@ -1712,32 +1723,8 @@ def _render_manual_audit(sample: pd.DataFrame, profile_id: str) -> None:
         )
 
 
-def page_evidence() -> None:
-    """Keep released-profile claims separate from companion-study evidence."""
-    _render_header(
-        "Evidence and claim boundaries",
-        "What this snapshot verifies, and what requires a separate empirical protocol.",
-    )
-    release = _release_identity(_load_collector().config.profile_id or "")
-    st.subheader(f"Current release: {release['reader']}")
-    st.caption(f"Snapshot identifier for citation and audit: `{release['auditor']}`")
-    st.markdown(
-        "This interface verifies the manifest, exact-resource identity policy, coverage, search, "
-        "exports, and platform reproduction for the selected snapshot. It does not claim a manual "
-        "accuracy audit or cross-index comparison for this successor profile."
-    )
-    st.subheader("Companion full-paper evaluation")
-    st.markdown(
-        "The published full-paper protocol is bound to a different frozen 9,925-record snapshot "
-        "(SHA-256 `0f4dbaa9…ef64cd`): a venue-stratified 200-record live comparison and a 200-record "
-        "manual publisher-source audit. Its data, instrument, labels, and offline summarizer are "
-        "available in the [frozen evaluation package](https://github.com/sidneibarbieri/topVenues/tree/07674480ff3172f4b195387438ab3af3c9c5655f/evaluation/baseline_validation)."
-    )
-    st.info(
-        "Those results are evidence for the companion snapshot only. Reusing them as accuracy for "
-            "this release would be invalid; it needs its own sampled-label protocol."
-    )
-    st.subheader("Run a manual audit of this release")
+def _render_audit_workbench() -> None:
+    """Render the optional annotation and import controls."""
     st.markdown(
         "TopVenues generates a deterministic, venue-stratified sample. Each extracted abstract "
         "must be compared with the linked source and labelled for completeness, contamination, "
@@ -1756,22 +1743,103 @@ def page_evidence() -> None:
             type=["csv"],
             help="Accepted labels: yes/no, true/false, 1/0. Partially labelled rows are excluded.",
         )
-        if uploaded_audit is not None:
-            from src.manual_audit import summarize_audit
+        if uploaded_audit is None:
+            return
 
-            uploaded_frame = pd.read_csv(uploaded_audit, keep_default_na=False)
-            uploaded_summary = summarize_audit(uploaded_frame)
-            if uploaded_summary.labelled == 0:
-                st.warning("The uploaded sheet contains no fully labelled rows.")
-            else:
-                st.metric(
-                    "Usable abstract rate among labelled records",
-                    f"{uploaded_summary.usable_rate:.1%}",
-                )
-                st.caption(
-                    f"{uploaded_summary.usable}/{uploaded_summary.labelled} usable; 95% Wilson "
-                    f"interval {uploaded_summary.ci95_low:.1%}–{uploaded_summary.ci95_high:.1%}."
-                )
+        from src.manual_audit import summarize_audit
+
+        uploaded_frame = pd.read_csv(uploaded_audit, keep_default_na=False)
+        uploaded_summary = summarize_audit(uploaded_frame)
+        if uploaded_summary.labelled == 0:
+            st.warning("The uploaded sheet contains no fully labelled rows.")
+            return
+        st.metric(
+            "Usable abstract rate among labelled records",
+            f"{uploaded_summary.usable_rate:.1%}",
+        )
+        st.caption(
+            f"{uploaded_summary.usable}/{uploaded_summary.labelled} usable; 95% Wilson "
+            f"interval {uploaded_summary.ci95_low:.1%}–{uploaded_summary.ci95_high:.1%}."
+        )
+
+
+def page_evidence() -> None:
+    """Keep released-profile claims separate from companion-study evidence."""
+    _render_header(
+        "Evidence and claim boundaries",
+        "What this snapshot verifies, and what requires a separate empirical protocol.",
+    )
+    release = _release_identity(_load_collector().config.profile_id or "")
+    st.subheader(f"Current release: {release['reader']}")
+    st.caption(f"Snapshot identifier for citation and audit: `{release['auditor']}`")
+    st.markdown(
+        "This interface verifies the manifest, exact-resource identity policy, coverage, search, "
+        "exports, and platform reproduction for the selected snapshot. Abstract quality was "
+        "evaluated separately with a deterministic, venue-stratified manual audit."
+    )
+
+    audit_summary_path = (
+        ARTIFACT_ROOT
+        / "evaluation"
+        / "security-20-v3"
+        / "manual_abstract_audit_summary.json"
+    )
+    audit_transfer_path = (
+        ARTIFACT_ROOT / "evaluation" / "security-20-v4" / "audit_transfer.json"
+    )
+    audit_summary = json.loads(audit_summary_path.read_text(encoding="utf-8"))
+    audit_transfer = json.loads(audit_transfer_path.read_text(encoding="utf-8"))
+
+    st.subheader("Manual abstract audit")
+    metric_columns = st.columns(4)
+    metric_columns[0].metric("Human-reviewed records", audit_summary["labelled"])
+    metric_columns[1].metric("Usable abstracts", audit_summary["usable"])
+    metric_columns[2].metric("Usable rate", f"{audit_summary['usable_rate']:.1%}")
+    interval_low, interval_high = audit_summary["wilson_95_ci"]
+    metric_columns[3].metric("95% Wilson interval", f"{interval_low:.1%}–{interval_high:.1%}")
+    st.markdown(
+        "All 200 final decisions were recorded as **human-only** by Sidnei Barbieri. A record was "
+        "counted as usable only when its abstract was complete, uncontaminated, and matched the "
+        "sampled paper. The append-only decision log retains superseded provenance events."
+    )
+    if audit_transfer["transfer_valid"]:
+        st.info(
+            "The audit was executed on the v3 snapshot and remains valid for this release: v3 and "
+            "v4 have the same 14,859 paper IDs and identical abstract text. The ten v4 changes are "
+            "title repairs, and none belongs to the audit sample."
+        )
+    with st.expander("Inspect audit criteria and provenance"):
+        criteria = audit_summary["criteria"]
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {"Criterion": "Complete", "Yes": criteria["complete_yes"]},
+                    {"Criterion": "Uncontaminated", "Yes": criteria["uncontaminated_yes"]},
+                    {"Criterion": "Matches sampled paper", "Yes": criteria["matches_paper_yes"]},
+                ]
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+        st.caption(
+            "Primary evidence: evaluation/security-20-v3/manual_abstract_audit.csv and "
+            "manual_abstract_audit_decisions.jsonl. Transfer verification: "
+            "evaluation/security-20-v4/audit_transfer.json."
+        )
+
+    st.subheader("Companion full-paper evaluation")
+    st.markdown(
+        "The published full-paper protocol is bound to a different frozen 9,925-record snapshot "
+        "(SHA-256 `0f4dbaa9…ef64cd`): a venue-stratified 200-record live comparison and a 200-record "
+        "manual publisher-source audit. Its data, instrument, labels, and offline summarizer are "
+        "available in the [frozen evaluation package](https://github.com/sidneibarbieri/topVenues/tree/07674480ff3172f4b195387438ab3af3c9c5655f/evaluation/baseline_validation)."
+    )
+    st.warning(
+        "The companion paper's baseline-comparison results remain bound to its 9,925-record "
+        "snapshot. They are not transferred to this release."
+    )
+    with st.expander("Repeat or extend the manual audit"):
+        _render_audit_workbench()
     st.subheader("Identity policy")
     st.markdown(
         "This release applies exact-resource deduplication, enforces the declared 2019–2026 "
