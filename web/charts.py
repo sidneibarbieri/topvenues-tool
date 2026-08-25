@@ -185,4 +185,14 @@ def line_chart(
         )
         .add_params(selection)
     )
-    return (line + points).properties(height=height)
+    # The module prints every bar's value; a line left the reader hovering for
+    # the one series that is normalized, which is the one worth reading exactly.
+    labels = base.mark_text(
+        align="center",
+        baseline="bottom",
+        dy=-10,
+        color=MUTED,
+        font=FONT,
+        fontSize=VALUE_LABEL_SIZE,
+    ).encode(text=alt.Text(f"{y_field}:Q", format=value_format))
+    return (line + points + labels).properties(height=height, padding={"top": 18})

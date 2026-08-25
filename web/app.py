@@ -1311,6 +1311,7 @@ def page_insights() -> None:
                     "Share (%)",
                     "trend_share_chart",
                     280,
+                    value_format=".1f",
                 )
             venues = " · ".join(f"{event} ({count:,})" for event, count in trend["top_venues"])
             st.markdown(f"**Main venues:** {venues}")

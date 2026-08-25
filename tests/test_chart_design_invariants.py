@@ -96,3 +96,24 @@ def test_both_headline_rows_use_the_same_card_type():
         assert all(isinstance(card, HeadlineCard) for card in row)
     assert _corpus_cards(stats)[1].note == "94.0% coverage"
     assert _corpus_cards(stats, filtered_count=50)[3].note == "25.0% of the corpus"
+
+
+def test_a_line_prints_its_values_like_every_bar_does():
+    """The module's promise is that no reader hovers to learn a number.
+
+    The topic-share chart was the one series without printed values, and it is
+    the normalized one: the number a reader would actually quote.
+    """
+    import altair as alt
+    import pandas as pd
+
+    from web import charts
+
+    data = pd.DataFrame([{"Year": 2024, "Share (%)": 1.8}, {"Year": 2025, "Share (%)": 9.5}])
+    chart = charts.line_chart(
+        data, "Year", "Share (%)", alt.selection_point("s", fields=["Year"]), value_format=".1f"
+    )
+
+    text_layers = [layer for layer in chart.to_dict()["layer"] if layer["mark"]["type"] == "text"]
+    assert text_layers, "the line chart prints no values"
+    assert text_layers[0]["encoding"]["text"]["format"] == ".1f"
