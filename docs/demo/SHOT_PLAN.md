@@ -1,17 +1,15 @@
-# Seven-minute demonstration shot plan
+# Demonstration shot plan
 
 | Time | Screen and action | Proof shown |
 | --- | --- | --- |
-| 0:00–1:00 | Overview; headline counts and offline verification | Fixed corpus identity and one-command reviewer path |
-| 1:00–2:00 | Search `LLM security`; apply Security top-4; inspect and export | Query, scope, supporting record, and portable output |
-| 2:00–3:00 | Insights; click venue/year; show LLM volume and annual share | Every aggregate drills into records; volume is normalized |
-| 3:00–4:00 | Researcher Radar; any/first/last author; trajectory and coauthors | Transparent author-position evidence and claim limits |
-| 4:00–4:30 | Watchlist, emerging activity, and arXiv handoff | Deterministic monitoring without asserting cross-source identity |
-| 4:30–5:30 | Evidence; audit metrics, transfer check, and missing-data boundary | Human labels, uncertainty, and snapshot applicability |
-| 5:30–6:00 | Dataset lifecycle; immutable-release warning | Refresh creates a successor rather than mutating cited data |
-| 6:00–7:00 | Return to Overview; summarize workflows and release links | Reproducible denominator, workbench, and monitoring handoff |
+| 0:00–0:33 | The problem a fixed denominator solves | Why two people following one protocol get different corpora |
+| 0:33–1:23 | Clone, one script, and offline verification | SHA-256, record counts and the suite verified before any claim |
+| 1:23–2:41 | Overview, ranked search, scope, record, exports | Query, scope, the record behind a row, and portable exports |
+| 2:41–5:26 | Insights: composition, topic movement, Researcher Radar | Every aggregate drills into records; share normalized against growth |
+| 5:26–6:45 | Coverage limits, manual audit, immutability | Reported uncertainty and a snapshot that cannot be mutated |
+| 6:45–7:48 | What a fixed corpus buys a researcher | A citable denominator, fast questions, and visible evidence |
 
-Production source is `cues.json`. Each cue occupies an exact 30-second window.
-The English narration is generated at measured US-English delivery; captions are
-published in English and Brazilian Portuguese, with Brazilian Portuguese marked
-as the default track.
+Production source is `narration.json`: one entry per narration segment,
+with its measured audio duration and its start and end in the finished cut.
+Shot lengths follow those durations, so the picture is cut to the voice
+rather than to a fixed per-cue grid.

@@ -19,7 +19,7 @@ author-visibility view, a chart-to-record transition, and an export.
 ## Seven-minute shot list
 
 The production timing, US-English narration, Brazilian Portuguese translation,
-and exact screen actions are frozen in [`demo/cues.json`](demo/cues.json) and
+and exact screen actions are frozen in [`demo/narration.json`](demo/narration.json) and
 [`demo/SHOT_PLAN.md`](demo/SHOT_PLAN.md). The concise live sequence remains:
 
 | Time | Visible action | Takeaway |
