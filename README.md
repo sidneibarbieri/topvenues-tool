@@ -401,7 +401,22 @@ por BM25, com peso maior para correspondências no título — por isso ela enco
 mais registros em `machine learning` e `intrusion detection`: o índice FTS5
 casa tokens que a busca literal por substring não alcança.
 
-## Reivindicação #7 — A suíte de testes é executada offline
+## Reivindicação #7 — A Tabela 2 do artigo é reproduzida linha a linha
+
+Seção 4 do artigo, Tabela 2 (*Abstract coverage in the security core*). O script
+reconstrói a tabela a partir do snapshot e imprime o valor publicado ao lado do
+observado, de modo que uma divergência apareça na linha e não escondida no total.
+
+```bash
+python scripts/reproduce_paper_table2.py --profile security-20
+```
+
+- **Tempo esperado:** ~20 s
+- **Resultado esperado:** as dez linhas conferem, encerrando em
+  `All 10 rows reproduce the published table exactly.` O núcleo de segurança
+  soma 16.806 artigos e 14.290 resumos (85,0%).
+
+## Reivindicação #8 — A suíte de testes é executada offline
 
 Seção 6 do artigo. O artigo submetido informa **238 testes**, número correto na
 data da submissão. Desde então o artefato recebeu correções, e a suíte cresceu
@@ -425,6 +440,14 @@ bash reproduce.sh --profile security-20        # Linux e macOS
 - **Tempo esperado:** ~4 min no ambiente descrito
 - **Resultado esperado:** todas as etapas com `✓`, encerrando em
   `Profile security-20 reproduced successfully`.
+
+## Prova de execução para o parecer
+
+Ao final, a reprodução grava um arquivo `evidence-<perfil>-<data>.txt` contendo o
+commit, a data em UTC, o sistema operacional, a versão do Python, o SHA-256 do
+snapshot, a verificação das reivindicações, a Tabela 2 reproduzida e o resultado
+da suíte de testes. O arquivo pode ser anexado diretamente ao parecer como
+comprovação de execução, sem que o avaliador precise copiar o terminal.
 
 ---
 

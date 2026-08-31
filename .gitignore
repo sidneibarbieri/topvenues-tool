@@ -114,3 +114,4 @@ data/hf-dataset/
 
 # Timestamped live-baseline reruns; freeze selected evidence explicitly.
 evaluation/baseline_validation/reruns/
+evidence-*.txt

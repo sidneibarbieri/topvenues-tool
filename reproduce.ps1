@@ -74,6 +74,23 @@ if ($LASTEXITCODE -ne 0) { throw "Database refresh failed." }
 if ($LASTEXITCODE -ne 0) { throw "Statistics check failed." }
 & $venvPython scripts\verify_paper_claims.py --profile $Profile
 if ($LASTEXITCODE -ne 0) { throw "A paper claim does not hold." }
+& $venvPython scripts\reproduce_paper_table2.py --profile $Profile
+if ($LASTEXITCODE -ne 0) { throw "Table 2 does not reproduce." }
+$evidence = "evidence-$Profile-" + (Get-Date -Format "yyyyMMddTHHmmssZ") + ".txt"
+& {
+  "TopVenues reproduction evidence"
+  "profile:     $Profile"
+  "date (UTC):  " + (Get-Date -Format "u")
+  "os:          " + [System.Environment]::OSVersion.VersionString
+  "python:      " + (& $venvPython --version)
+  ""
+  "--- paper claims ---"
+  & $venvPython scripts\verify_paper_claims.py --profile $Profile
+  ""
+  "--- Table 2 ---"
+  & $venvPython scripts\reproduce_paper_table2.py --profile $Profile
+} | Out-File -Encoding utf8 $evidence
+Write-Host "execution evidence written to $evidence"
 & $venvPython -m pytest -q
 if ($LASTEXITCODE -ne 0) { throw "Test suite failed." }
 & $venvPython scripts\smoke_web_app.py

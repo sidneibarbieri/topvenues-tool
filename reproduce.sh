@@ -144,6 +144,9 @@ ok "Streamlit interface rendered without raising"
 step "Verifying the claims stated in the paper"
 python scripts/verify_paper_claims.py --profile "$profile" || fail "a paper claim does not hold"
 
+step "Reproducing Table 2 of the paper"
+python scripts/reproduce_paper_table2.py --profile "$profile" || fail "Table 2 does not reproduce"
+
 step "Comparing the ranked search against the substring baseline"
 python scripts/benchmark_search.py --profile "$profile" --trials 11 || \
   fail "search benchmark failed"
@@ -159,5 +162,26 @@ sample_size=$(wc -c < "$sample_bib" | tr -d ' ')
 ok "BibTeX export produced $(wc -l < "$sample_bib" | tr -d ' ') lines ($sample_size bytes)"
 rm -f "$sample_bib"
 trap - EXIT
+
+evidence="evidence-$profile-$(date -u +%Y%m%dT%H%M%SZ).txt"
+{
+  echo "TopVenues reproduction evidence"
+  echo "profile:     $profile"
+  echo "commit:      $(git rev-parse --short HEAD 2>/dev/null || echo 'not a git checkout')"
+  echo "date (UTC):  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "os:          $(uname -srm)"
+  echo "python:      $(python --version 2>&1)"
+  echo "snapshot:    sha256=$expected_snapshot_sha"
+  echo
+  echo "--- paper claims ---"
+  python scripts/verify_paper_claims.py --profile "$profile"
+  echo
+  echo "--- Table 2 ---"
+  python scripts/reproduce_paper_table2.py --profile "$profile"
+  echo
+  echo "--- test suite ---"
+  python -m pytest -q 2>&1 | tail -3
+} > "$evidence" 2>&1
+ok "execution evidence written to $evidence"
 
 step "Profile $profile reproduced successfully"
