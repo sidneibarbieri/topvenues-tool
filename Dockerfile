@@ -23,9 +23,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install dependencies first so changes to source do not invalidate the layer.
-COPY requirements.txt requirements-web.txt ./
-RUN pip install -r requirements.txt -r requirements-web.txt
+# The same pinned, hash-checked set the reproduction script installs. Installing
+# the open ranges from requirements.txt here gave the container different
+# versions from the ones a reviewer running reproduce.sh receives.
+COPY requirements-frozen.txt ./
+RUN pip install --require-hashes -r requirements-frozen.txt
 
 # Copy only what the artifact needs at runtime.
 COPY src/ ./src/
@@ -34,7 +36,6 @@ COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY profiles/ ./profiles/
 COPY config.yaml README.md LICENSE ./
-COPY data/dataset/papers.db.gz data/dataset/papers.db.gz.sha256 ./data/dataset/
 COPY data/profiles/ ./data/profiles/
 COPY data/awards/ ./data/awards/
 COPY reproduce.sh ./
@@ -45,6 +46,6 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health').read()" || exit 1
 
-CMD ["streamlit", "run", "web/app.py", \
+CMD ["python", "-m", "streamlit", "run", "web/app.py", \
      "--server.port=8501", "--server.address=0.0.0.0", \
      "--server.headless=true", "--browser.gatherUsageStats=false"]

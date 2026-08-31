@@ -87,6 +87,8 @@ import sys
 raise SystemExit(0 if (3, 11) <= sys.version_info < (3, 15) else 1)
 PY
 ok "active environment: $(python --version)"
+ok "dependencies installed from requirements-frozen.txt (pinned and hash-checked,"
+ok "  including the web interface: streamlit, altair, watchdog)"
 
 if [[ "$skip_install" == false ]]; then
   if command -v uv >/dev/null 2>&1; then
@@ -139,10 +141,13 @@ step "Starting the research interface"
 python scripts/smoke_web_app.py || fail "the web interface did not render"
 ok "Streamlit interface rendered without raising"
 
-step "Benchmarking search on a verified disposable copy"
+step "Verifying the claims stated in the paper"
+python scripts/verify_paper_claims.py --profile "$profile" || fail "a paper claim does not hold"
+
+step "Comparing the ranked search against the substring baseline"
 python scripts/benchmark_search.py --profile "$profile" --trials 11 || \
   fail "search benchmark failed"
-ok "substring and ranked search returned results"
+ok "baseline substring search and ranked BM25 search both returned results"
 
 step "Exporting a sample BibTeX corpus"
 sample_bib=$(mktemp -t topvenues_repro.XXXXXX.bib)

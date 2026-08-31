@@ -72,6 +72,8 @@ if ($LASTEXITCODE -ne 0) { throw "Snapshot manifest verification failed." }
 if ($LASTEXITCODE -ne 0) { throw "Database refresh failed." }
 & $venvPython -m src.cli --profile $Profile stats
 if ($LASTEXITCODE -ne 0) { throw "Statistics check failed." }
+& $venvPython scripts\verify_paper_claims.py --profile $Profile
+if ($LASTEXITCODE -ne 0) { throw "A paper claim does not hold." }
 & $venvPython -m pytest -q
 if ($LASTEXITCODE -ne 0) { throw "Test suite failed." }
 & $venvPython scripts\smoke_web_app.py

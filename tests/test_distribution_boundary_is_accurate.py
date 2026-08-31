@@ -19,7 +19,7 @@ def _bundled_profiles() -> set[str]:
 
 
 def _profiles_named_as_bundled() -> set[str]:
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme = (ROOT / "README.en.md").read_text(encoding="utf-8")
     section = readme.split("## Distribution boundary", 1)[1].split("\n## ", 1)[0]
     sentence = section.split(".", 1)[0]
     return set(re.findall(r"`(security-[\w-]+)`", sentence))

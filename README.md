@@ -1,178 +1,412 @@
 # TopVenues
 
-TopVenues is an open-source, local-first tool for constructing and inspecting a declared corpus for cybersecurity literature reviews. The current researcher-facing release is pinned to the immutable `security-20-v4` profile.
+**Artefato do artigo #189 — Salão de Ferramentas, SBSeg 2026**
+*TopVenues: An Executable Corpus and Research Tool for Cybersecurity Literature Reviews*
+Sidnei Barbieri, Ágney Roth Ferraz, Lourenço Alves Pereira Júnior (ITA)
 
-The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submission-r1`](https://github.com/sidneibarbieri/topvenues-tool/releases/tag/sbseg2026-sf-submission-r1) release and its `security-20` snapshot. It is preserved unchanged; do not use current counts to verify claims in that paper.
+Revisões de literatura em segurança dependem de um denominador estável: o
+conjunto de artigos elegíveis antes de a triagem começar. Na prática, esse
+denominador é remontado a partir de portais, APIs e exportações que mudam ao
+longo do tempo, o que torna o corpus resultante difícil de auditar ou reutilizar.
 
-## Authors
+O TopVenues transforma a construção do corpus em um artefato de pesquisa
+executável. Dado um escopo declarado de veículos e anos, ele normaliza metadados
+do DBLP, enriquece registros com resumos e entradas BibTeX, e materializa um
+snapshot SQLite monotônico exposto por uma interface de linha de comando, uma
+aplicação web, busca ranqueada e exportações orientadas a revisão. O release
+declara sua política de veículos, distingue registros bibliográficos de registros
+enriquecidos com resumo, e registra proveniência em nível de campo. Um revisor
+consegue verificar um snapshot fixado offline, exercitar busca ranqueada e
+exportações, e reproduzir os fluxos vinculados ao snapshot que acompanham o
+release.
 
-- Sidnei Barbieri — `sidneibarbieri@gmail.com`
-- Ágney Lopes Roth Ferraz — `agneyroth@gmail.com`
-- Lourenço Alves Pereira Júnior — `lourenco.junior@gp.ita.br`
+> **Documentação em inglês:** [README.en.md](README.en.md) descreve a mesma
+> ferramenta para leitores internacionais. Este arquivo é a documentação
+> normativa do artefato para o CTA.
 
+---
 
-| Property | Value |
+# Estrutura do readme.md
+
+Este README segue o modelo mínimo exigido pelo CTA do SBSeg 2026.
+
+| Seção | Conteúdo |
 | --- | --- |
-| Tool release | `v1.6.0` |
-| Snapshot source release | `v1.2.1` |
-| Scope | 20 declared security and security-relevant venues |
-| Records | 14,859 corpus records |
-| Abstract-enriched records | 13,987 (94.1%) |
-| BibTeX entries | 14,859 |
-| Snapshot SHA-256 | `bcb762c1c9b1f8ce6f075a8c1a23d68310caec853b0cc8ce3f42931e43c370c5` |
+| [Selos Considerados](#selos-considerados) | Quais selos são pleiteados |
+| [Informações básicas](#informações-básicas) | Ambiente de execução, hardware e software |
+| [Dependências](#dependências) | Versões, fixação por hash e recursos de terceiros |
+| [Preocupações com segurança](#preocupações-com-segurança) | Riscos para o revisor (nenhum) |
+| [Instalação](#instalação) | Clone e um único comando |
+| [Teste mínimo](#teste-mínimo) | Verificação rápida de que a ferramenta funciona |
+| [Experimentos](#experimentos) | Uma subseção por reivindicação do artigo |
+| [LICENSE](#license) | Licença do código e dos dados |
 
-The successor enforces the declared 2019–2026 window, inherits exact-resource deduplication, and repairs ten titles truncated at inline DBLP markup. Four same-metadata pairs remain separate because their publisher resources remain distinct; metadata similarity alone is not identity evidence. The versioned decision records are in `data/adjudication/`. Records without abstracts remain available for metadata and citation workflows; abstract-dependent retrieval must treat them as missing data, not negative evidence. The declared scope, per-venue coverage, identity policy, and exact snapshot identity are in `profiles/security-20-v4/config.yaml` and `data/profiles/security-20-v4/manifest.json`.
+Organização do repositório:
 
-## Reviewer quick start
-
-### Linux and macOS
-
-Requires Python 3.11–3.14, Git, and Bash.
-
-```bash
-git clone --depth 1 --branch v1.6.0 https://github.com/sidneibarbieri/topvenues-tool.git
-cd topvenues-tool
-bash reproduce.sh --profile security-20-v4
+```
+topvenues-tool/
+├── README.md                  este arquivo (documentação normativa do CTA)
+├── README.en.md               documentação em inglês
+├── reproduce.sh               reprodução em uma linha (macOS e Linux)
+├── reproduce.ps1              reprodução em uma linha (Windows / PowerShell)
+├── Dockerfile                 imagem alternativa, mesmas dependências fixadas
+├── docker-compose.yml         atalho de uma linha para a imagem
+├── requirements-frozen.txt    dependências fixadas e verificadas por hash
+├── uv.lock                    lockfile equivalente para o gerenciador uv
+├── config.yaml                escopo declarado de veículos e anos
+├── profiles/                  configuração de cada perfil imutável
+├── data/profiles/             snapshots comprimidos e seus manifestos
+├── src/                       biblioteca e interface de linha de comando
+├── web/                       aplicação Streamlit
+├── scripts/                   automação de verificação e de experimentos
+├── tests/                     356 testes automatizados
+└── docs/                      guia do revisor, protocolo de auditoria, demonstração
 ```
 
-The command installs the CLI and web dependencies, verifies the snapshot manifest, materializes a disposable SQLite database, runs the regression suite, starts and health-checks the Streamlit interface, exercises search, and writes a BibTeX sample. It needs no API key, institutional access, publisher credential, or GPU. After dependencies are installed, validation is offline.
+---
 
-### Native Windows
+# Selos Considerados
 
-Requires Python 3.11–3.14 with the Python Launcher (`py`), Git, and
-PowerShell. Use the native PowerShell workflow rather than editing the Unix
-script or mixing Git Bash and PowerShell environments:
+Os selos considerados são: **Disponíveis (SeloD)**, **Funcionais (SeloF)**,
+**Sustentáveis (SeloS)** e **Experimentos Reprodutíveis (SeloR)**.
+
+| Selo | Onde é atendido |
+| --- | --- |
+| **SeloD** | Repositório público e estável no GitHub, com este README no modelo do CTA e release marcado por tag. |
+| **SeloF** | [Dependências](#dependências) com versões fixadas, [Informações básicas](#informações-básicas) com o ambiente, [Instalação](#instalação) e [Teste mínimo](#teste-mínimo). |
+| **SeloS** | Código modularizado com documentação por módulo e função, parametrização fora do código (`config.yaml`, `profiles/`), e as reivindicações do artigo identificadas no artefato por `scripts/verify_paper_claims.py`. |
+| **SeloR** | [Experimentos](#experimentos), uma subseção por reivindicação, com comando, tempo, recursos, resultado esperado e linha de base para comparação. |
+
+---
+
+# Informações básicas
+
+## Ambiente utilizado nos experimentos
+
+Os resultados relatados no artigo e nesta documentação foram obtidos no
+seguinte ambiente:
+
+| Item | Valor |
+| --- | --- |
+| Sistema operacional | macOS 26.5.2 (build 25F84) |
+| Kernel | Darwin 25.5.0 |
+| Arquitetura | arm64 (Apple Silicon) |
+| Processador | Apple M4 Max, 16 núcleos |
+| Memória RAM | 64 GB |
+| Armazenamento livre | 53 GB |
+| Python | 3.14.7 |
+
+## Requisitos mínimos para reprodução
+
+O artefato não exige o hardware acima. Os requisitos mínimos verificados são:
+
+| Recurso | Mínimo | Observação |
+| --- | --- | --- |
+| Sistema operacional | Linux, macOS ou Windows 10+ | `reproduce.sh` em Linux/macOS; `reproduce.ps1` em Windows |
+| Python | 3.11 ou superior | Testado em 3.11, 3.12, 3.13 e 3.14 |
+| Memória RAM | 4 GB | O pico de uso observado é inferior a 1 GB |
+| Espaço em disco | 3 GB | 76 MB de snapshot, ~450 MB de banco materializado, ~1,5 GB de ambiente virtual |
+| Rede | Apenas na instalação | Necessária para baixar as dependências. A verificação, a busca e as exportações são offline. |
+| Navegador | Qualquer navegador atual | Somente para a interface web; a linha de comando não precisa dele. |
+| Privilégios | Usuário comum | Não requer administrador nem `sudo`. |
+
+## Tempo total esperado
+
+| Etapa | Tempo no ambiente acima | Tempo estimado em máquina modesta |
+| --- | --- | --- |
+| Instalação das dependências | 60–120 s | até 5 min |
+| Reprodução completa (`reproduce.sh`) | ~4 min | até 12 min |
+| Teste mínimo | ~90 s | até 4 min |
+
+---
+
+# Dependências
+
+## Fixação de versões
+
+Todas as dependências de execução são instaladas a partir de
+**`requirements-frozen.txt`**, que fixa 71 pacotes por versão exata e contém
+1.161 hashes SHA-256. A instalação usa `pip install --require-hashes`, portanto
+qualquer divergência de bytes interrompe a instalação em vez de produzir um
+ambiente diferente do relatado. O mesmo conjunto está disponível como
+**`uv.lock`** para quem usa o gerenciador `uv`, que o `reproduce.sh` prefere
+quando encontra.
+
+**As dependências da interface web estão incluídas nesse mesmo arquivo.** Não há
+passo adicional: `streamlit`, `altair` e `watchdog` são instalados junto com o
+restante, e o `reproduce.sh` exibe isso explicitamente na primeira etapa. O
+arquivo `requirements-web.txt` existe apenas como declaração legível do
+subconjunto web e **não** é usado por nenhum caminho de instalação.
+
+## Dependências principais
+
+<!-- dependency-table:start -->
+
+| Pacote | Versão fixada | Função |
+| --- | --- | --- |
+| `pandas` | 3.0.3 | Manipulação tabular e exportações |
+| `pyarrow` | 24.0.0 | Escrita de Parquet |
+| `pydantic` | 2.13.4 | Modelos de dados validados |
+| `httpx` | 0.28.1 | Cliente HTTP dos coletores |
+| `beautifulsoup4` | 4.15.0 | Extração de resumos em HTML |
+| `click` | 8.4.2 | Interface de linha de comando |
+| `rich` | 15.0.0 | Saída formatada no terminal |
+| `pyyaml` | 6.0.3 | Leitura da configuração declarada |
+| `streamlit` | 1.58.0 | Interface web |
+| `altair` | 6.2.2 | Gráficos da interface web |
+| `pytest` | 9.1.1 | Suíte de testes automatizados |
+| `ruff` | 0.15.20 | Verificação de estilo e lint |
+
+<!-- dependency-table:end -->
+
+A lista completa, com hashes, está em `requirements-frozen.txt`.
+
+## Recursos de terceiros
+
+**Nenhuma chave de API, credencial ou conta é necessária para reproduzir o
+artefato.** O snapshot já acompanha o repositório.
+
+Serviços externos são usados apenas pelos comandos opcionais de coleta
+(`download`, `consolidate`, `extract`), que **não** fazem parte da reprodução e
+**não** alteram o snapshot publicado: DBLP, Semantic Scholar, OpenAlex, CrossRef,
+ACM Digital Library, IEEE Xplore, USENIX e NDSS. Todos são consultados por
+endpoints públicos e sem autenticação.
+
+---
+
+# Preocupações com segurança
+
+**A execução deste artefato não oferece risco ao revisor.**
+
+- Não requer privilégios de administrador nem `sudo`.
+- Não instala serviços, não altera configurações do sistema e não abre portas
+  para fora da máquina. A interface web escuta apenas em `localhost`.
+- Não executa código de terceiros baixado em tempo de execução: as dependências
+  são fixadas por hash na instalação.
+- Não coleta, transmite nem armazena dados pessoais do revisor.
+- A reprodução é **offline** após a instalação das dependências. Os comandos que
+  acessam a rede são opcionais, estão claramente identificados e não são
+  exercitados por `reproduce.sh`.
+- Todos os arquivos criados ficam dentro do diretório do repositório clonado.
+  Remover o diretório desfaz completamente a instalação.
+- O snapshot é aberto em modo somente leitura (`mode=ro&immutable=1`), de forma
+  que a execução não pode corromper o corpus verificado.
+
+---
+
+# Instalação
+
+## Linux e macOS
+
+```bash
+git clone https://github.com/sidneibarbieri/topvenues-tool
+cd topvenues-tool
+bash reproduce.sh --profile security-20
+```
+
+## Windows (PowerShell)
 
 ```powershell
-git clone --depth 1 --branch v1.6.0 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone https://github.com/sidneibarbieri/topvenues-tool
 cd topvenues-tool
-powershell -ExecutionPolicy Bypass -File .\reproduce.ps1 -Profile security-20-v4
+powershell -ExecutionPolicy Bypass -File .\reproduce.ps1 -Profile security-20
 ```
 
-The script creates `.venv` and installs the hash-locked cross-platform
-`requirements-frozen.txt` itself. If a prior
-attempt created `.venv` with Python 3.10 or older, remove only that directory
-before rerunning: `Remove-Item -Recurse -Force .venv`.
-
-Do not start a second reproduction while one is running. The verification
-script refreshes a disposable local SQLite copy; materialization is serialized
-and a locked database produces an actionable wait-and-retry error.
-
-For a concise evidence map, read [REVIEWER_GUIDE.md](REVIEWER_GUIDE.md). For the full artifact boundary, read [ARTIFACT_README.md](ARTIFACT_README.md).
-
-## Use the local interface
+## Docker (alternativa)
 
 ```bash
-source .venv/bin/activate
+docker compose up          # interface web em http://localhost:8501
+docker compose run --rm app python -m pytest -q
+```
+
+A imagem instala exatamente as mesmas dependências fixadas por hash do
+`reproduce.sh`.
+
+O script cria um ambiente virtual isolado em `.venv/`, instala as dependências
+fixadas, materializa o snapshot comprimido, verifica seu SHA-256 contra o
+manifesto, executa a suíte de testes, renderiza a interface, confere as
+reivindicações do artigo, compara a busca ranqueada com a linha de base e exporta
+uma amostra BibTeX. **Ao final desse comando a ferramenta está instalada e
+verificada.**
+
+---
+
+# Teste mínimo
+
+Este teste confirma, em cerca de 90 segundos, que a instalação funciona e que as
+principais funcionalidades são observáveis.
+
+```bash
+# 1. Estado do corpus: contagens por veículo e cobertura de resumos
+python -m src.cli --profile security-20 stats
+
+# 2. Busca por substring no título
+python -m src.cli --profile security-20 search --title "intrusion detection"
+
+# 3. Busca ranqueada por relevância (FTS5/BM25)
+python -m src.cli --profile security-20 search --rank "memory corruption mitigation" --limit 10
+
+# 4. Exportação pronta para revisão
+python -m src.cli --profile security-20 export --title intrusion --format bibtex --output amostra.bib
+
+# 5. Interface web
 python -m streamlit run web/app.py
 ```
 
-On Windows PowerShell, activate with `.\.venv\Scripts\Activate.ps1` before
-running the same `python -m streamlit run web/app.py` command.
+**Resultado esperado:**
 
-The interface exposes coverage inspection, substring and BM25-ranked search,
-topic trends, Researcher Radar, and exports. Search and author analytics offer
-an explicit Security top-4 scope: ACM CCS, IEEE S&P, USENIX
-Security, and NDSS. Aggregates are traceable to supporting records. Researcher
-Radar adds exact-identity trajectories, direct coauthorship, recent publication-
-rate change, portable watchlists, and an explicitly unverified arXiv name-search
-handoff. These are corpus observations, not measurements of citations, quality,
-seniority, authority, or future impact. See
-[docs/RESEARCH_WORKFLOWS.md](docs/RESEARCH_WORKFLOWS.md) before using a tier
-restriction or monitoring signal. The local interface runs at
-`http://localhost:8501`.
+| Passo | Saída esperada |
+| --- | --- |
+| 1 | `Total Papers: 20305`, `With Abstracts: 17491 (86.14%)`, `With BibTeX: 20305 (100.00%)` |
+| 2 | 50 registros exibidos (limite padrão); use `--limit 100000` para ver os 157 que casam |
+| 3 | 7 registros ordenados por relevância BM25 (`--limit 10` é um teto, não uma cota) |
+| 4 | `amostra.bib` com 2.928 linhas (122.391 bytes) |
+| 5 | Interface em `http://localhost:8501`, com as cinco páginas navegáveis |
 
-## Interface walkthrough
+---
 
-[![Abstract-text search with populated previews](docs/assets/topvenues-abstract-search.png)](docs/assets/topvenues-abstract-search.pdf)
+# Experimentos
 
-This capture runs BM25 search for `LLM security` within the Security top-4 and
-returns 78 inspectable records. The linked
-[high-resolution PDF](docs/assets/topvenues-abstract-search.pdf) preserves the
-capture for close inspection. Additional current-release captures show the
-[corpus overview](docs/assets/screenshots/overview.png),
-[topic trend](docs/assets/screenshots/insights-llm-top4.png),
-[researcher trajectory and collaboration evidence](docs/assets/screenshots/researcher-radar-llm-top4.png),
-and [manual audit evidence](docs/assets/screenshots/evidence.png).
-
-## Demonstration
-
-[![TopVenues demonstration](docs/assets/demos/posters/topvenues-demo-v1.5.9.jpg)](docs/assets/demos/topvenues-demo-v1.5.9.mp4)
-
-Seven minutes and forty-nine seconds, in 1920x1080, recorded against this
-release. It follows one path end to end: the problem a fixed denominator
-solves, installation and offline verification, an ordinary search with its
-exports, then the four passes of the Insights page, the audit evidence, and the
-immutability boundary.
-
-Narration is US English; captions ship in Brazilian Portuguese, the default
-stream, and English. Sidecar SRT files, the timed narration source, and the
-shot plan are in [docs/demo/](docs/demo/README.md).
-
-## Command-line workflows
+Todas as reivindicações abaixo são verificadas automaticamente por um único
+comando:
 
 ```bash
-# Inspect corpus state and coverage
-python -m src.cli --profile security-20-v4 stats
-
-# Search records that mention a term
-python -m src.cli --profile security-20-v4 search --abstract "intrusion detection"
-
-# Restrict a review query to the Security top-4
-python -m src.cli --profile security-20-v4 search --rank "LLM security" \
-  --tier-scope "Security top-4" --limit 20
-
-# Build a topic-specific author shortlist from Tier 1 evidence
-python -m src.cli --profile security-20-v4 authors --topic "fuzzing" \
-  --tier-scope "Security top-4"
-
-# Rank records by multi-token FTS5/BM25 relevance
-python -m src.cli --profile security-20-v4 search --rank "memory corruption mitigations" --limit 20
-
-# Export a review-ready subset
-python -m src.cli --profile security-20-v4 export --format bibtex --tech "fuzzing" \
-  --tier-scope "Security top-4" -o fuzzing-tier1.bib
-
-# Build the Hugging Face Parquet export from the immutable profile
-python -m src.cli --profile security-20-v4 export-hf --release-tag v1.6.0
-
-# Create and later evaluate a portable research watch
-python scripts/evaluate_watchlist.py topvenues-watchlist.json --profile security-20-v4
-
-# Repeat or extend the deterministic manual-audit protocol
-python scripts/manual_abstract_audit.py --profile security-20-v4 --sample-size 200
+python scripts/verify_paper_claims.py --profile security-20
 ```
 
-Substring and ranked search answer different questions: substring search finds records that mention text, whereas ranked search orders title, abstract, and author matches by BM25. Multi-word ranked queries use token semantics.
+O mesmo script é executado dentro de `reproduce.sh` e de `reproduce.ps1`, de modo
+que a reprodução completa já cobre todas as reivindicações. Cada subseção abaixo
+indica também o comando isolado, o tempo, os recursos e o resultado esperado.
 
-## Scope and extension
+**Recursos comuns a todos os experimentos:** menos de 1 GB de RAM, menos de 3 GB
+de disco, sem rede e sem GPU.
 
-Venue names and policies are explicit because they define the scientific denominator. Adding a venue requires a deliberate configuration change, normalization mapping, coverage check, a new immutable profile snapshot, and a new release tag. It is not a routine refresh of this object.
+## Reivindicação #1 — O snapshot publicado contém 20.305 artigos entre 2017 e 2026
 
-Live `download`, `consolidate`, `extract`, and `bibtex` commands are maintenance operations. They may use changing external services; they do not alter the committed release snapshot. Unexpected collection errors surface to the caller rather than being silently converted into successful enrichment.
+Seção 4 do artigo (*The Corpus as an Artifact*).
 
-The released profile disables live refresh controls in the web interface. The **Dataset lifecycle** page describes the boundary; the controlled successor-profile procedure is in [docs/PROFILE_REFRESH.md](docs/PROFILE_REFRESH.md). The SBSeg bench and seven-minute presentation walkthrough is in [docs/SBSEG_2026_DEMO_SCRIPT.md](docs/SBSEG_2026_DEMO_SCRIPT.md).
+```bash
+python scripts/verify_paper_claims.py --profile security-20
+python -m src.cli --profile security-20 stats
+```
 
-The companion full paper's 200-record audit and live baseline comparison are documented in [docs/COMPANION_FULL_PAPER_EVALUATION.md](docs/COMPANION_FULL_PAPER_EVALUATION.md) and remain bound to that paper's snapshot. The current corpus has a separate completed 200-record human audit: 169 records satisfied all three criteria (84.5%; 95% Wilson interval 78.8%–88.9%). The v3 labels transfer to v4 because every paper ID and abstract byte is unchanged; the machine-readable transfer check is in `evaluation/security-20-v4/audit_transfer.json`. See [docs/MANUAL_ABSTRACT_AUDIT.md](docs/MANUAL_ABSTRACT_AUDIT.md).
+- **Tempo esperado:** ~20 s
+- **Resultado esperado:** `Claim #1 ... expected 20305, observed 20305` e
+  `Claim #2 ... expected '2017-2026', observed '2017-2026'`.
 
-## Distribution boundary
+## Reivindicação #2 — O escopo declarado é de 20 veículos
 
-The package bundles the snapshots for `security-20`, `security-20-v3` and
-`security-20-v4`. `security-20` is among them because the published
-tools-track paper prints `bash reproduce.sh --profile security-20` as its
-reviewer's command, and that command runs against a bare clone with no fetch
-step.
+Seção 3 do artigo (*Design*). O escopo é dado por `config.yaml`, fora do código.
 
-`security-20-v2` keeps its manifest visible while its unchanged binary stays in
-the release tag where it was published. Fetch it explicitly with
-`python scripts/fetch_archived_profile.py --profile security-20-v2`, so a
-reviewer downloads a superseded corpus only when they actually want to compare
-against it.
+```bash
+python scripts/verify_paper_claims.py --profile security-20
+```
 
-## Hugging Face export
+- **Tempo esperado:** ~20 s
+- **Resultado esperado:** `Claim #3 ... expected 20, observed 20`.
 
-The public dataset is at [sidneibarbieri/topvenues](https://huggingface.co/datasets/sidneibarbieri/topvenues). The dataset card records the selected profile, source tag, and snapshot SHA-256.
+## Reivindicação #3 — 17.491 dos 20.305 registros têm resumo (86,1%)
 
-## License and provenance
+Seção 4 do artigo (*Coverage*).
 
-TopVenues code is released under the MIT license. DBLP bibliographic metadata and BibTeX follow DBLP's CC0 terms. Original abstract text remains subject to its source terms; the tool records provenance and does not claim ownership of third-party abstracts.
+```bash
+python scripts/verify_paper_claims.py --profile security-20
+```
+
+- **Tempo esperado:** ~20 s
+- **Resultado esperado:** `Claim #4 ... expected 17491, observed 17491` e
+  `Claim #5 ... expected 86.1, observed 86.1`.
+
+## Reivindicação #4 — Todo registro carrega uma entrada BibTeX
+
+Seção 5 do artigo (*Exports*).
+
+```bash
+python scripts/verify_paper_claims.py --profile security-20
+python -m src.cli --profile security-20 export --title intrusion --format bibtex --output amostra.bib
+```
+
+- **Tempo esperado:** ~30 s
+- **Resultado esperado:** `Claim #6 ... expected 20305, observed 20305`; o arquivo
+  `amostra.bib` tem 2.928 linhas (122.391 bytes).
+
+## Reivindicação #5 — A identidade do corpus é verificável offline por SHA-256
+
+Seção 6 do artigo (*Reviewer-path validation*).
+
+```bash
+python scripts/verify_profile_snapshot.py --profile security-20
+```
+
+- **Tempo esperado:** ~15 s
+- **Resultado esperado:** o SHA-256 do snapshot confere com o manifesto:
+  `5a35bd6e3ec6845a0fde4cc3d6aa05b1db04e511cb39e783eeaee2cea7493b08`.
+
+## Reivindicação #6 — A busca ranqueada supera a busca por substring
+
+Seção 5 do artigo (*Search*). Este experimento traz a **linha de base para
+comparação**: a busca por substring (`LIKE`), que é o que uma planilha ou um
+`grep` fazem, medida contra a busca ranqueada por FTS5/BM25 sobre o mesmo corpus
+e na mesma máquina.
+
+```bash
+python scripts/benchmark_search.py --profile security-20 --trials 11
+```
+
+- **Tempo esperado:** ~40 s (11 repetições por consulta, mediana relatada)
+- **Resultado esperado no ambiente descrito:**
+
+| Consulta | Linha de base `LIKE` | Ranqueada BM25 | Ganho de tempo |
+| --- | --- | --- | --- |
+| `machine learning` | 1.962 res., 37,6 ms | 2.093 res., 27–32 ms | ~1,3× |
+| `fuzzing` | 661 res., 36,0 ms | 661 res., 6,1 ms | ~5,9× |
+| `intrusion detection` | 337 res., 65,5 ms | 354 res., 3,9 ms | ~16,8× |
+| `ransomware` | 84 res., 55,8 ms | 84 res., 1,5 ms | ~37× |
+
+As contagens de resultados são determinísticas e se repetem a cada execução. Os
+tempos são medianas de 11 repetições e variam alguns milissegundos entre
+execuções e bastante entre máquinas; o que o experimento demonstra é a **relação
+entre as duas colunas**, não o valor absoluto.
+
+A linha de base retorna registros em ordem arbitrária, que é o comportamento de
+uma planilha ou de um `grep`. A busca ranqueada os ordena de forma determinística
+por BM25, com peso maior para correspondências no título — por isso ela encontra
+mais registros em `machine learning` e `intrusion detection`: o índice FTS5
+casa tokens que a busca literal por substring não alcança.
+
+## Reivindicação #7 — A suíte de testes é executada offline
+
+Seção 6 do artigo. O artigo submetido informa **238 testes**, número correto na
+data da submissão. Desde então o artefato recebeu correções, e a suíte cresceu
+para **356 testes**; nenhum teste foi removido. As contagens do corpus permanecem
+idênticas às do artigo, como as reivindicações #1 a #4 demonstram.
+
+```bash
+python -m pytest -q
+```
+
+- **Tempo esperado:** ~10 s
+- **Resultado esperado:** `356 passed`, sem acesso à rede.
+
+## Reprodução completa
+
+```bash
+bash reproduce.sh --profile security-20        # Linux e macOS
+.\reproduce.ps1 -Profile security-20           # Windows
+```
+
+- **Tempo esperado:** ~4 min no ambiente descrito
+- **Resultado esperado:** todas as etapas com `✓`, encerrando em
+  `Profile security-20 reproduced successfully`.
+
+---
+
+# LICENSE
+
+O código do TopVenues é distribuído sob a **licença MIT**, reproduzida em
+[LICENSE](LICENSE).
+
+Os metadados bibliográficos e as entradas BibTeX provêm do DBLP e seguem os
+termos **CC0** do DBLP. O texto original dos resumos permanece sob os direitos de
+seus respectivos editores e é redistribuído aqui apenas para fins de pesquisa,
+com a proveniência de cada campo registrada no snapshot.
