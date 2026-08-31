@@ -13,7 +13,12 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from tests.repository_only import skip_unless_repository
+
+skip_unless_repository()
+
 ROOT = Path(__file__).resolve().parents[1]
+
 DOCKERFILE = (ROOT / "Dockerfile").read_text(encoding="utf-8")
 
 COPY_LINE = re.compile(r"^COPY\s+(?!--from)(.+)$", re.MULTILINE)
@@ -41,3 +46,21 @@ def test_the_image_installs_the_pinned_hash_checked_set():
 def test_the_image_starts_the_interface_through_the_module_launcher():
     """`streamlit run` puts web/ on sys.path, not the repository root."""
     assert '"python", "-m", "streamlit"' in DOCKERFILE
+
+
+def test_the_image_carries_what_the_interface_reads_at_runtime():
+    """The Evidence page raised inside the image: its audit files were excluded.
+
+    The health endpoint still answered 200 while that page was broken, so only
+    rendering every page inside the container revealed it.
+    """
+    ignore = (ROOT / ".dockerignore").read_text(encoding="utf-8")
+    assert "!evaluation/security-20-v3" in ignore
+    assert "!evaluation/security-20-v4" in ignore
+    assert "COPY evaluation/" in DOCKERFILE
+
+    for needed in (
+        "evaluation/security-20-v3/manual_abstract_audit_summary.json",
+        "evaluation/security-20-v4/audit_transfer.json",
+    ):
+        assert (ROOT / needed).exists(), needed

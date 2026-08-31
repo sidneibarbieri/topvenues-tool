@@ -6,6 +6,9 @@ from pathlib import Path
 import pandas as pd
 
 from src.manual_audit import summarize_audit
+from tests.repository_only import skip_unless_repository
+
+skip_unless_repository()
 
 ROOT = Path(__file__).resolve().parent.parent
 

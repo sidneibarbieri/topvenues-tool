@@ -10,6 +10,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from tests.repository_only import skip_unless_repository
+
+skip_unless_repository()
+
 ROOT = Path(__file__).resolve().parents[1]
 DOCUMENTS = [ROOT / "README.md", *(ROOT / "docs").rglob("*.md"), *(ROOT / "docs").rglob("*.html")]
 MEDIA = re.compile(r"(?:\(|src=\"|poster=\")([^\s\"')]+\.(?:mp4|jpg|png|srt|vtt|json))")

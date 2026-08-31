@@ -1,6 +1,7 @@
 """SQLite database layer for complex paper queries."""
 
 import gzip
+import hashlib
 import logging
 import os
 import shutil
@@ -211,9 +212,22 @@ def _marker_path(db_path: Path) -> Path:
 
 
 def _file_fingerprint(path: Path) -> str:
-    """Cheap identity fingerprint: file size + modification time (ns)."""
-    st = path.stat()
-    return f"{st.st_size}-{st.st_mtime_ns}"
+    """Content identity: file size plus the SHA-256 of its bytes.
+
+    Size and modification time are cheaper, but they are not identity. A local
+    edit that leaves the file the same size and lands in the same timestamp tick
+    as the last sync produces the same pair, and the snapshot then overwrites
+    work this policy exists to protect. Filesystems differ in how finely they
+    record mtime -- container overlay filesystems are coarser than APFS -- so
+    the collision is reachable in practice, not only in theory.
+
+    Hashing 232 MB takes about 0.09 s, and this runs once per bootstrap.
+    """
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return f"{path.stat().st_size}-{digest.hexdigest()}"
 
 
 def _read_sync_marker(db_path: Path) -> tuple[str, str] | None:

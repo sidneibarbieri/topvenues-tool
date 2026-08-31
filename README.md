@@ -80,7 +80,7 @@ topvenues-tool/
 ├── src/                       biblioteca e interface de linha de comando
 ├── web/                       aplicação Streamlit
 ├── scripts/                   automação de verificação e de experimentos
-├── tests/                     360 testes automatizados
+├── tests/                     362 testes automatizados
 └── docs/                      guia do revisor, protocolo de auditoria, demonstração
 ```
 
@@ -445,7 +445,7 @@ python -m pytest -q
 ```
 
 - **Tempo esperado:** ~10 s
-- **Resultado esperado:** `360 passed`, sem acesso à rede.
+- **Resultado esperado:** `362 passed`, sem acesso à rede.
 - **Contagem de testes:** o número cresce a cada versão; o
   [histórico de versões](#histórico-de-versões) registra a evolução. O valor
   corrente é verificado automaticamente contra este README.
@@ -480,6 +480,7 @@ relevante para quem reproduz ou audita o corpus.
 
 | Versão | Mudanças relevantes para reprodução |
 | --- | --- |
+| `v1.9.0` | Imagem de contêiner validada por execução: a página de evidências deixava de renderizar dentro dela, e a identidade do banco passa a ser o conteúdo do arquivo, não seu tamanho e horário. |
 | `v1.8.1` | Galeria de telas e demonstração no topo do documento; histórico de versões. |
 | `v1.8.0` | A Tabela 2 do artigo passa a ser reproduzida por comando (`reproduce_paper_table2.py`), e a reprodução grava um registro de execução com ambiente, hashes e resultados. |
 | `v1.7.1` | Cada reivindicação declara o snapshot em que foi medida, de modo que um perfil diferente é reportado como fora de escopo em vez de falha. Documentada a solução de problemas no Windows. |

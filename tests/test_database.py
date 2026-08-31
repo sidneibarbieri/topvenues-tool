@@ -250,3 +250,28 @@ class TestBootstrapFromGzippedSnapshot:
         assert not any(r["paper_id"] == "upstream" for r in rows)
         # User was warned
         assert any("modifications" in r.message for r in caplog.records)
+
+
+def test_a_local_edit_is_detected_even_within_one_timestamp_tick(tmp_path):
+    """Identity must come from content, not from size and modification time.
+
+    An edit that keeps the file the same size and lands in the same timestamp
+    tick as the last sync produced an identical size-mtime pair, so the snapshot
+    overwrote local work. Coarse mtime resolution on container filesystems makes
+    that reachable; the failure appeared inside the image and not on APFS.
+    """
+    import os
+
+    from src.database import _file_fingerprint
+
+    first = tmp_path / "a.db"
+    second = tmp_path / "b.db"
+    first.write_bytes(b"A" * 4096)
+    second.write_bytes(b"B" * 4096)  # same size, different content
+    stamp = (1_700_000_000, 1_700_000_000)
+    os.utime(first, stamp)
+    os.utime(second, stamp)
+
+    assert first.stat().st_size == second.stat().st_size
+    assert first.stat().st_mtime_ns == second.stat().st_mtime_ns
+    assert _file_fingerprint(first) != _file_fingerprint(second)

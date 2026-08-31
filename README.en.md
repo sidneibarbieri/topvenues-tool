@@ -13,7 +13,7 @@ The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submis
 
 | Property | Value |
 | --- | --- |
-| Tool release | `v1.8.1` |
+| Tool release | `v1.9.0` |
 | Snapshot source release | `v1.2.1` |
 | Scope | 20 declared security and security-relevant venues |
 | Records | 14,859 corpus records |
@@ -30,7 +30,7 @@ The successor enforces the declared 2019–2026 window, inherits exact-resource 
 Requires Python 3.11–3.14, Git, and Bash.
 
 ```bash
-git clone --depth 1 --branch v1.8.1 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --depth 1 --branch v1.9.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 bash reproduce.sh --profile security-20-v4
 ```
@@ -44,7 +44,7 @@ PowerShell. Use the native PowerShell workflow rather than editing the Unix
 script or mixing Git Bash and PowerShell environments:
 
 ```powershell
-git clone --depth 1 --branch v1.8.1 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --depth 1 --branch v1.9.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 powershell -ExecutionPolicy Bypass -File .\reproduce.ps1 -Profile security-20-v4
 ```
@@ -134,7 +134,7 @@ python -m src.cli --profile security-20-v4 export --format bibtex --tech "fuzzin
   --tier-scope "Security top-4" -o fuzzing-tier1.bib
 
 # Build the Hugging Face Parquet export from the immutable profile
-python -m src.cli --profile security-20-v4 export-hf --release-tag v1.8.1
+python -m src.cli --profile security-20-v4 export-hf --release-tag v1.9.0
 
 # Create and later evaluate a portable research watch
 python scripts/evaluate_watchlist.py topvenues-watchlist.json --profile security-20-v4

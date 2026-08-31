@@ -35,8 +35,14 @@ COPY web/ ./web/
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY profiles/ ./profiles/
-COPY config.yaml README.md LICENSE ./
+COPY config.yaml README.md README.en.md LICENSE pyproject.toml uv.lock ./
+COPY requirements.txt requirements-web.txt requirements-frozen.txt ./
 COPY data/profiles/ ./data/profiles/
+COPY data/adjudication/ ./data/adjudication/
+# The Evidence page renders the manual-audit summary and the v3-to-v4 transfer.
+COPY evaluation/ ./evaluation/
+# The Hugging Face export copies these into the dataset card it builds.
+COPY docs/assets/topvenues-abstract-search.png docs/assets/topvenues-abstract-search.pdf ./docs/assets/
 COPY data/awards/ ./data/awards/
 COPY reproduce.sh ./
 
