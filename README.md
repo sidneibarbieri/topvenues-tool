@@ -24,6 +24,23 @@ release.
 > ferramenta para leitores internacionais. Este arquivo é a documentação
 > normativa do artefato para o CTA.
 
+## A ferramenta em uso
+
+| | |
+| --- | --- |
+| ![Visão geral do corpus](docs/assets/screenshots/overview.png) | ![Busca com escopo no top-4](docs/assets/screenshots/search-top4-llm.png) |
+| **Visão geral** — identidade do corpus, cobertura e caminho de verificação. | **Busca** — consulta ranqueada restrita ao top-4 de segurança, com o registro por trás de cada linha. |
+| ![Análises do corpus](docs/assets/screenshots/insights-llm-top4.png) | ![Recorrência de autores](docs/assets/screenshots/researcher-radar-llm-top4.png) |
+| **Análises** — distribuição por veículo, ano e classe; volume de um tópico e sua participação normalizada. | **Autores** — recorrência por volume, peso de estrato ou concentração no top-4, com trajetória e coautoria. |
+
+[![Demonstração de 7min49s](docs/assets/demos/posters/topvenues-demo-v1.5.9.jpg)](docs/assets/demos/topvenues-demo-v1.5.9.mp4)
+
+**Demonstração completa em vídeo** (7min49s, 1920x1080, narração em inglês com
+legendas em português e inglês): percorre a instalação, a verificação offline, a
+busca com exportações, as quatro passagens da página de análises e a página de
+evidências. Arquivo em
+[`docs/assets/demos/`](docs/assets/demos/topvenues-demo-v1.5.9.mp4).
+
 ---
 
 # Estrutura do readme.md
@@ -35,10 +52,11 @@ Este README segue o modelo mínimo exigido pelo CTA do SBSeg 2026.
 | [Selos Considerados](#selos-considerados) | Quais selos são pleiteados |
 | [Informações básicas](#informações-básicas) | Ambiente de execução, hardware e software |
 | [Dependências](#dependências) | Versões, fixação por hash e recursos de terceiros |
-| [Preocupações com segurança](#preocupações-com-segurança) | Riscos para o revisor (nenhum) |
+| [Preocupações com segurança](#preocupações-com-segurança) | Riscos para quem executa (nenhum) |
 | [Instalação](#instalação) | Clone e um único comando |
 | [Teste mínimo](#teste-mínimo) | Verificação rápida de que a ferramenta funciona |
 | [Experimentos](#experimentos) | Uma subseção por reivindicação do artigo |
+| [Histórico de versões](#histórico-de-versões) | O que mudou em cada versão |
 | [LICENSE](#license) | Licença do código e dos dados |
 
 O apêndice do artefato exigido pelo CTA, com os mesmos dados em formato PDF, está
@@ -62,7 +80,7 @@ topvenues-tool/
 ├── src/                       biblioteca e interface de linha de comando
 ├── web/                       aplicação Streamlit
 ├── scripts/                   automação de verificação e de experimentos
-├── tests/                     359 testes automatizados
+├── tests/                     360 testes automatizados
 └── docs/                      guia do revisor, protocolo de auditoria, demonstração
 ```
 
@@ -179,14 +197,14 @@ endpoints públicos e sem autenticação.
 
 # Preocupações com segurança
 
-**A execução deste artefato não oferece risco ao revisor.**
+**A execução deste artefato não oferece risco a quem o executa.**
 
 - Não requer privilégios de administrador nem `sudo`.
 - Não instala serviços, não altera configurações do sistema e não abre portas
   para fora da máquina. A interface web escuta apenas em `localhost`.
 - Não executa código de terceiros baixado em tempo de execução: as dependências
   são fixadas por hash na instalação.
-- Não coleta, transmite nem armazena dados pessoais do revisor.
+- Não coleta, transmite nem armazena dados pessoais de quem o executa.
 - A reprodução é **offline** após a instalação das dependências. Os comandos que
   acessam a rede são opcionais, estão claramente identificados e não são
   exercitados por `reproduce.sh`.
@@ -416,19 +434,21 @@ python scripts/reproduce_paper_table2.py --profile security-20
   `All 10 rows reproduce the published table exactly.` O núcleo de segurança
   soma 16.806 artigos e 14.290 resumos (85,0%).
 
-## Reivindicação #8 — A suíte de testes é executada offline
+## Reivindicação #8 — A suíte de testes é executada integralmente offline
 
-Seção 6 do artigo. O artigo submetido informa **238 testes**, número correto na
-data da submissão. Desde então o artefato recebeu correções, e a suíte cresceu
-para **359 testes**; nenhum teste foi removido. As contagens do corpus permanecem
-idênticas às do artigo, como as reivindicações #1 a #4 demonstram.
+Seção 6 do artigo. A suíte cobre invariantes de integridade dos dados, o
+contrato de cada extrator, a identidade do snapshot e a renderização das cinco
+páginas da interface, sem qualquer acesso à rede.
 
 ```bash
 python -m pytest -q
 ```
 
 - **Tempo esperado:** ~10 s
-- **Resultado esperado:** `359 passed`, sem acesso à rede.
+- **Resultado esperado:** `360 passed`, sem acesso à rede.
+- **Contagem de testes:** o número cresce a cada versão; o
+  [histórico de versões](#histórico-de-versões) registra a evolução. O valor
+  corrente é verificado automaticamente contra este README.
 
 ## Reprodução completa
 
@@ -441,15 +461,43 @@ bash reproduce.sh --profile security-20        # Linux e macOS
 - **Resultado esperado:** todas as etapas com `✓`, encerrando em
   `Profile security-20 reproduced successfully`.
 
-## Prova de execução para o parecer
+## Registro de execução
 
-Ao final, a reprodução grava um arquivo `evidence-<perfil>-<data>.txt` contendo o
-commit, a data em UTC, o sistema operacional, a versão do Python, o SHA-256 do
-snapshot, a verificação das reivindicações, a Tabela 2 reproduzida e o resultado
-da suíte de testes. O arquivo pode ser anexado diretamente ao parecer como
-comprovação de execução, sem que o avaliador precise copiar o terminal.
+Ao final, a reprodução grava `evidence-<perfil>-<data>.txt` com o commit, a data
+em UTC, o sistema operacional, a versão do Python, o SHA-256 do snapshot, a
+verificação das reivindicações, a Tabela 2 reproduzida e o resultado da suíte.
+
+O arquivo serve para anexar a um relatório, registrar em que máquina e em que
+data um resultado foi obtido, ou comparar duas execuções em ambientes
+diferentes — sem precisar copiar o terminal.
 
 ---
+
+# Histórico de versões
+
+O artefato é versionado por tags. Cada linha abaixo indica o que mudou de
+relevante para quem reproduz ou audita o corpus.
+
+| Versão | Mudanças relevantes para reprodução |
+| --- | --- |
+| `v1.8.1` | Galeria de telas e demonstração no topo do documento; histórico de versões. |
+| `v1.8.0` | A Tabela 2 do artigo passa a ser reproduzida por comando (`reproduce_paper_table2.py`), e a reprodução grava um registro de execução com ambiente, hashes e resultados. |
+| `v1.7.1` | Cada reivindicação declara o snapshot em que foi medida, de modo que um perfil diferente é reportado como fora de escopo em vez de falha. Documentada a solução de problemas no Windows. |
+| `v1.7.0` | Documentação reorganizada no modelo mínimo do CTA. Ambiente de execução descrito. `verify_paper_claims.py` liga cada afirmação numérica do artigo à consulta que a verifica. Corrigido o `Dockerfile`, que copiava um caminho inexistente e instalava versões não fixadas. |
+| `v1.6.0` | Nova demonstração em vídeo, 7min49s em 1920x1080, cortada pela narração e com legendas em português e inglês. |
+| `v1.5.9` | O botão de busca no arXiv passava sintaxe de API ao formulário web e retornava vazio para todo autor. |
+| `v1.5.8` | Altura dos gráficos horizontais derivada do número de barras, eliminando moldura vazia. |
+| `v1.5.7` | Correção de escala em *Papers by class*: uma barra parte do zero, e a escala logarítmica não tem zero, então nenhuma barra era desenhada. Texto digitado passa a ser escapado antes de virar padrão `LIKE`. |
+| `v1.5.5` | A interface passa a iniciar também por `streamlit run web/app.py`. Linha de indicadores unificada entre as páginas. |
+| `v1.5.3` | O teste de fumaça passa a verificar que a interface renderiza, e não apenas que a porta responde. |
+| `v1.0.x` | Primeiras versões públicas, com o snapshot `security-20` e a reprodução em uma linha. |
+
+**Sobre a contagem de testes.** O artigo publicado informa 238 testes, valor
+correspondente à versão descrita nele. A suíte cresceu desde então e nenhum teste
+foi removido; o valor corrente aparece na
+[Reivindicação #8](#reivindicação-8-a-suíte-de-testes-é-executada-integralmente-offline).
+As contagens do corpus não mudaram: continuam 20.305 registros e 17.491 resumos,
+como as reivindicações #1 a #4 verificam.
 
 # LICENSE
 

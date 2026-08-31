@@ -105,3 +105,18 @@ def test_the_readme_states_the_real_test_count():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert f"`{total} passed`" in readme, f"the README does not promise {total} passed"
     assert f"{total} testes automatizados" in readme
+
+
+def test_every_internal_anchor_in_the_readme_resolves():
+    """A table of contents that jumps nowhere is worse than none at all."""
+    import re
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    def slug(heading: str) -> str:
+        text = re.sub(r"[^\w\s-]", "", heading.lower().replace("`", ""), flags=re.UNICODE)
+        return re.sub(r"\s+", "-", text.strip())
+
+    headings = {slug(h) for h in re.findall(r"^#+\s+(.+?)\s*$", readme, re.MULTILINE)}
+    broken = [a for a in re.findall(r"\]\(#([^)]+)\)", readme) if a not in headings]
+    assert not broken, broken
