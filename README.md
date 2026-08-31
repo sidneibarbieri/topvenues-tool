@@ -1,5 +1,9 @@
 # TopVenues
 
+[![tests](https://github.com/sidneibarbieri/topvenues-tool/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/sidneibarbieri/topvenues-tool/actions/workflows/tests.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%E2%80%933.14-blue.svg)](#dependências)
+
 **Artefato do artigo #189 — Salão de Ferramentas, SBSeg 2026**
 *TopVenues: An Executable Corpus and Research Tool for Cybersecurity Literature Reviews*
 Sidnei Barbieri, Ágney Roth Ferraz, Lourenço Alves Pereira Júnior (ITA)
@@ -56,6 +60,7 @@ Este README segue o modelo mínimo exigido pelo CTA do SBSeg 2026.
 | [Instalação](#instalação) | Clone e um único comando |
 | [Teste mínimo](#teste-mínimo) | Verificação rápida de que a ferramenta funciona |
 | [Experimentos](#experimentos) | Uma subseção por reivindicação do artigo |
+| [Verificação contínua](#verificação-contínua) | Reprodução automática em 8 ambientes |
 | [Histórico de versões](#histórico-de-versões) | O que mudou em cada versão |
 | [LICENSE](#license) | Licença do código e dos dados |
 
@@ -461,6 +466,21 @@ bash reproduce.sh --profile security-20        # Linux e macOS
 - **Resultado esperado:** todas as etapas com `✓`, encerrando em
   `Profile security-20 reproduced successfully`.
 
+## Verificação contínua
+
+A cada alteração publicada, o GitHub Actions executa a reprodução completa em
+**oito ambientes**: Ubuntu e Windows, cada um com Python 3.11, 3.12, 3.13 e 3.14.
+Em cada ambiente os **dois perfis** são reproduzidos — o `security-20`, que é o
+citado no artigo, e o perfil corrente.
+
+Isso significa que a reprodução em Windows não depende de nenhuma configuração
+manual: ela é executada automaticamente pelo `reproduce.ps1` em todas as versões
+suportadas do Python. O resultado de cada execução, incluindo o registro descrito
+abaixo, fica disponível como artefato do fluxo de trabalho.
+
+O estado atual aparece no selo `tests` no topo deste documento e em
+[Actions](https://github.com/sidneibarbieri/topvenues-tool/actions/workflows/tests.yml).
+
 ## Registro de execução
 
 Ao final, a reprodução grava `evidence-<perfil>-<data>.txt` com o commit, a data
@@ -480,6 +500,7 @@ relevante para quem reproduz ou audita o corpus.
 
 | Versão | Mudanças relevantes para reprodução |
 | --- | --- |
+| `v1.9.1` | Verificação contínua passa a reproduzir também o perfil citado no artigo, nos oito ambientes, e publica o registro de execução como artefato. |
 | `v1.9.0` | Imagem de contêiner validada por execução: a página de evidências deixava de renderizar dentro dela, e a identidade do banco passa a ser o conteúdo do arquivo, não seu tamanho e horário. |
 | `v1.8.1` | Galeria de telas e demonstração no topo do documento; histórico de versões. |
 | `v1.8.0` | A Tabela 2 do artigo passa a ser reproduzida por comando (`reproduce_paper_table2.py`), e a reprodução grava um registro de execução com ambiente, hashes e resultados. |
