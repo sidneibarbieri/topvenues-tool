@@ -41,6 +41,9 @@ Este README segue o modelo mínimo exigido pelo CTA do SBSeg 2026.
 | [Experimentos](#experimentos) | Uma subseção por reivindicação do artigo |
 | [LICENSE](#license) | Licença do código e dos dados |
 
+O apêndice do artefato exigido pelo CTA, com os mesmos dados em formato PDF, está
+em [`docs/artifact-appendix/`](docs/artifact-appendix/TopVenues-189-Apendice.pdf).
+
 Organização do repositório:
 
 ```
@@ -59,7 +62,7 @@ topvenues-tool/
 ├── src/                       biblioteca e interface de linha de comando
 ├── web/                       aplicação Streamlit
 ├── scripts/                   automação de verificação e de experimentos
-├── tests/                     356 testes automatizados
+├── tests/                     359 testes automatizados
 └── docs/                      guia do revisor, protocolo de auditoria, demonstração
 ```
 
@@ -222,6 +225,30 @@ docker compose run --rm app python -m pytest -q
 A imagem instala exatamente as mesmas dependências fixadas por hash do
 `reproduce.sh`.
 
+## Solução de problemas
+
+**"Cannot refresh papers.db because it is open" / erro ao iniciar o banco.**
+Ocorre quando a interface web (ou outro processo) está com o corpus aberto e o
+script tenta materializá-lo de novo. No Windows o sistema operacional bloqueia o
+arquivo de forma mais estrita que no Linux e no macOS, então esse caso aparece
+primeiro ali. Feche a aba do Streamlit, encerre o processo `streamlit` e execute
+o script novamente. A materialização é protegida por um lock atômico e
+multiplataforma: duas execuções simultâneas se serializam em vez de corromper o
+banco, e a segunda espera até 30 segundos antes de relatar `CorpusBusyError` com
+a instrução acima.
+
+**PowerShell recusa executar o script.** Use exatamente a forma documentada,
+`powershell -ExecutionPolicy Bypass -File .\reproduce.ps1`, que não altera a
+política do sistema — ela vale só para aquela invocação.
+
+**`python` não encontrado no Windows.** O script tenta `py -3`, `python3` e
+`python`, nessa ordem. Se nenhum existir, instale o Python 3.11+ pela
+[python.org](https://www.python.org/downloads/) marcando *Add python.exe to PATH*.
+
+**A execução deixou `data/papers.db` para trás.** É o banco materializado e
+descartável; pode ser apagado a qualquer momento. O snapshot comprimido em
+`data/profiles/` é a fonte de verdade e nunca é modificado.
+
 O script cria um ambiente virtual isolado em `.venv/`, instala as dependências
 fixadas, materializa o snapshot comprimido, verifica seu SHA-256 contra o
 manifesto, executa a suíte de testes, renderiza a interface, confere as
@@ -378,7 +405,7 @@ casa tokens que a busca literal por substring não alcança.
 
 Seção 6 do artigo. O artigo submetido informa **238 testes**, número correto na
 data da submissão. Desde então o artefato recebeu correções, e a suíte cresceu
-para **356 testes**; nenhum teste foi removido. As contagens do corpus permanecem
+para **359 testes**; nenhum teste foi removido. As contagens do corpus permanecem
 idênticas às do artigo, como as reivindicações #1 a #4 demonstram.
 
 ```bash
@@ -386,7 +413,7 @@ python -m pytest -q
 ```
 
 - **Tempo esperado:** ~10 s
-- **Resultado esperado:** `356 passed`, sem acesso à rede.
+- **Resultado esperado:** `359 passed`, sem acesso à rede.
 
 ## Reprodução completa
 

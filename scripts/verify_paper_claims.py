@@ -24,6 +24,12 @@ from src.profiles import PROFILE_IDS, verified_profile_snapshot  # noqa: E402
 PAPER = "TopVenues: An Executable Corpus and Research Tool for Cybersecurity Literature Reviews"
 
 
+# Every number the paper prints was measured on one named snapshot. Checking a
+# claim against a different profile compares it to a corpus the paper never
+# described, so each claim carries the profile it is bound to.
+CLAIMED_PROFILE = "security-20"
+
+
 @dataclass(frozen=True)
 class Claim:
     """One sentence in the paper, and the query that settles it."""
@@ -33,6 +39,7 @@ class Claim:
     statement: str
     query: str
     expected: object
+    profile: str = CLAIMED_PROFILE
 
 
 CLAIMS = (
@@ -95,12 +102,19 @@ def main() -> int:
     print(f"Paper: {PAPER}")
     print(f"Profile under test: {arguments.profile}\n")
 
+    applicable = [claim for claim in CLAIMS if claim.profile == arguments.profile]
+    if not applicable:
+        print(f"  The paper states no claim about profile {arguments.profile}.")
+        print(f"  Its numbers are bound to {CLAIMED_PROFILE}; run:")
+        print(f"    python scripts/verify_paper_claims.py --profile {CLAIMED_PROFILE}")
+        return 0
+
     failures = 0
     with verified_profile_snapshot(arguments.profile, ROOT) as verified:
         uri = f"file:{verified.database_path.resolve()}?mode=ro&immutable=1"
         connection = sqlite3.connect(uri, uri=True)
         try:
-            for claim in CLAIMS:
+            for claim in applicable:
                 passed, observed = _run(connection, claim)
                 failures += not passed
                 mark = "ok  " if passed else "FAIL"
@@ -113,9 +127,9 @@ def main() -> int:
 
     print()
     if failures:
-        print(f"{failures} of {len(CLAIMS)} claims do not hold for profile {arguments.profile}.")
+        print(f"{failures} of {len(applicable)} claims do not hold for {arguments.profile}.")
         return 1
-    print(f"All {len(CLAIMS)} paper claims hold for profile {arguments.profile}.")
+    print(f"All {len(applicable)} paper claims hold for profile {arguments.profile}.")
     return 0
 
 
