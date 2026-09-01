@@ -124,3 +124,24 @@ def test_every_internal_anchor_in_the_readme_resolves():
     headings = {slug(h) for h in re.findall(r"^#+\s+(.+?)\s*$", readme, re.MULTILINE)}
     broken = [a for a in re.findall(r"\]\(#([^)]+)\)", readme) if a not in headings]
     assert not broken, broken
+
+
+def test_the_readme_tells_the_reader_to_activate_the_environment():
+    """Bare `python` is not the environment the installation built.
+
+    The minimal test opened with `python -m src.cli ...` and never said to
+    activate .venv. On a fresh machine `python` may not exist at all, and the
+    system interpreter is usually too old to import this code -- so the first
+    command of the minimal test crashed for anyone following the file literally.
+    """
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "source .venv/bin/activate" in readme
+    assert ".venv\\Scripts\\Activate.ps1" in readme
+    # The direct-path alternative, for readers who prefer not to activate.
+    assert ".venv/bin/python" in readme
+
+    minimal = readme.split("# Teste mínimo", 1)[1].split("# Experimentos", 1)[0]
+    activation = minimal.index("activate")
+    first_command = minimal.index("python -m src.cli")
+    assert activation < first_command, "activation must come before the commands"

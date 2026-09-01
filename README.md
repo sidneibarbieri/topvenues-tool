@@ -85,7 +85,7 @@ topvenues-tool/
 ├── src/                       biblioteca e interface de linha de comando
 ├── web/                       aplicação Streamlit
 ├── scripts/                   automação de verificação e de experimentos
-├── tests/                     362 testes automatizados
+├── tests/                     363 testes automatizados
 └── docs/                      guia do revisor, protocolo de auditoria, demonstração
 ```
 
@@ -130,8 +130,8 @@ O artefato não exige o hardware acima. Os requisitos mínimos verificados são:
 | --- | --- | --- |
 | Sistema operacional | Linux, macOS ou Windows 10+ | `reproduce.sh` em Linux/macOS; `reproduce.ps1` em Windows |
 | Python | 3.11 ou superior | Testado em 3.11, 3.12, 3.13 e 3.14 |
-| Memória RAM | 4 GB | O pico de uso observado é inferior a 1 GB |
-| Espaço em disco | 3 GB | 76 MB de snapshot, ~450 MB de banco materializado, ~1,5 GB de ambiente virtual |
+| Memória RAM | 4 GB | Pico medido durante a reprodução completa: 943 MB |
+| Espaço em disco | 2,5 GB | Medido: 452 MB de clone raso, 435 MB de ambiente virtual, 413 MB de banco materializado; um clone completo ocupa 1,9 GB por causa do histórico |
 | Rede | Apenas na instalação | Necessária para baixar as dependências. A verificação, a busca e as exportações são offline. |
 | Navegador | Qualquer navegador atual | Somente para a interface web; a linha de comando não precisa dele. |
 | Privilégios | Usuário comum | Não requer administrador nem `sudo`. |
@@ -286,6 +286,30 @@ verificada.**
 Este teste confirma, em cerca de 90 segundos, que a instalação funciona e que as
 principais funcionalidades são observáveis.
 
+## Passo 0 — ative o ambiente criado pela instalação
+
+A instalação cria um ambiente virtual em `.venv/`. Os comandos abaixo usam o
+Python **desse ambiente**, e não o do sistema. Ative-o uma vez por sessão de
+terminal:
+
+```bash
+source .venv/bin/activate          # Linux e macOS
+```
+
+```powershell
+.\.venv\Scripts\Activate.ps1       # Windows
+```
+
+Para confirmar que a ativação funcionou, `python --version` deve responder 3.11
+ou superior. Se preferir não ativar nada, chame o interpretador pelo caminho
+direto em todos os comandos — `.venv/bin/python` no Linux e no macOS,
+`.venv\Scripts\python` no Windows — que o resultado é o mesmo.
+
+> Sem esse passo, `python` pode não existir no sistema, ou pode ser uma versão
+> antiga sem as dependências instaladas, e os comandos abaixo falham.
+
+## Comandos
+
 ```bash
 # 1. Estado do corpus: contagens por veículo e cobertura de resumos
 python -m src.cli --profile security-20 stats
@@ -316,6 +340,10 @@ python -m streamlit run web/app.py
 ---
 
 # Experimentos
+
+> Os comandos desta seção também usam o Python do ambiente virtual. Ative-o com
+> `source .venv/bin/activate` (ou `.\.venv\Scripts\Activate.ps1` no Windows)
+> antes de executá-los, conforme o [Passo 0](#passo-0-ative-o-ambiente-criado-pela-instalação).
 
 Todas as reivindicações abaixo são verificadas automaticamente por um único
 comando:
@@ -450,7 +478,7 @@ python -m pytest -q
 ```
 
 - **Tempo esperado:** ~10 s
-- **Resultado esperado:** `362 passed`, sem acesso à rede.
+- **Resultado esperado:** `363 passed`, sem acesso à rede.
 - **Contagem de testes:** o número cresce a cada versão; o
   [histórico de versões](#histórico-de-versões) registra a evolução. O valor
   corrente é verificado automaticamente contra este README.
@@ -500,6 +528,7 @@ relevante para quem reproduz ou audita o corpus.
 
 | Versão | Mudanças relevantes para reprodução |
 | --- | --- |
+| `v1.9.2` | Teste mínimo passa a indicar a ativação do ambiente virtual, sem a qual o primeiro comando falhava em máquina limpa. Requisitos de memória e disco substituídos por valores medidos. |
 | `v1.9.1` | Verificação contínua passa a reproduzir também o perfil citado no artigo, nos oito ambientes, e publica o registro de execução como artefato. |
 | `v1.9.0` | Imagem de contêiner validada por execução: a página de evidências deixava de renderizar dentro dela, e a identidade do banco passa a ser o conteúdo do arquivo, não seu tamanho e horário. |
 | `v1.8.1` | Galeria de telas e demonstração no topo do documento; histórico de versões. |
