@@ -145,3 +145,15 @@ def test_the_readme_tells_the_reader_to_activate_the_environment():
     activation = minimal.index("activate")
     first_command = minimal.index("python -m src.cli")
     assert activation < first_command, "activation must come before the commands"
+
+
+def test_the_readme_counts_its_own_claim_subsections_correctly():
+    """The summary at the top states a number the Experimentos section must match."""
+    import re
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    subsections = len(re.findall(r"^## Reivindicação #", readme, re.MULTILINE))
+    spelled = {6: "seis", 7: "sete", 8: "oito", 9: "nove", 10: "dez"}[subsections]
+    assert f"{spelled} reivindicações do artigo" in readme, (
+        f"the README has {subsections} claim subsections but does not say '{spelled}'"
+    )

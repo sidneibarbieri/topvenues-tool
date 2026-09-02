@@ -28,6 +28,36 @@ release.
 > ferramenta para leitores internacionais. Este arquivo é a documentação
 > normativa do artefato para o CTA.
 
+---
+
+## Reprodução em um comando
+
+Copie e execute. Nada mais é necessário: sem contas, sem chaves, sem
+configuração, sem privilégios de administrador.
+
+```bash
+git clone https://github.com/sidneibarbieri/topvenues-tool
+cd topvenues-tool
+bash reproduce.sh --profile security-20
+```
+
+No Windows, a última linha é:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\reproduce.ps1 -Profile security-20
+```
+
+Em cerca de quatro minutos o script instala as dependências fixadas, verifica o
+SHA-256 do corpus, executa a suíte de testes, renderiza a interface, confere as
+oito reivindicações do artigo, reproduz a Tabela 2, compara a busca ranqueada com
+a linha de base, exporta uma amostra BibTeX e grava um registro da execução.
+Termina em `Profile security-20 reproduced successfully`.
+
+Depois disso, o [Teste mínimo](#teste-mínimo) mostra a ferramenta em uso e os
+[Experimentos](#experimentos) detalham cada reivindicação isoladamente.
+
+---
+
 ## A ferramenta em uso
 
 | | |
@@ -85,7 +115,7 @@ topvenues-tool/
 ├── src/                       biblioteca e interface de linha de comando
 ├── web/                       aplicação Streamlit
 ├── scripts/                   automação de verificação e de experimentos
-├── tests/                     363 testes automatizados
+├── tests/                     364 testes automatizados
 └── docs/                      guia do revisor, protocolo de auditoria, demonstração
 ```
 
@@ -478,7 +508,7 @@ python -m pytest -q
 ```
 
 - **Tempo esperado:** ~10 s
-- **Resultado esperado:** `363 passed`, sem acesso à rede.
+- **Resultado esperado:** `364 passed`, sem acesso à rede.
 - **Contagem de testes:** o número cresce a cada versão; o
   [histórico de versões](#histórico-de-versões) registra a evolução. O valor
   corrente é verificado automaticamente contra este README.
@@ -528,6 +558,7 @@ relevante para quem reproduz ou audita o corpus.
 
 | Versão | Mudanças relevantes para reprodução |
 | --- | --- |
+| `v1.9.3` | Reprodução em um comando movida para o topo do documento, antes de qualquer outra leitura. |
 | `v1.9.2` | Teste mínimo passa a indicar a ativação do ambiente virtual, sem a qual o primeiro comando falhava em máquina limpa. Requisitos de memória e disco substituídos por valores medidos. |
 | `v1.9.1` | Verificação contínua passa a reproduzir também o perfil citado no artigo, nos oito ambientes, e publica o registro de execução como artefato. |
 | `v1.9.0` | Imagem de contêiner validada por execução: a página de evidências deixava de renderizar dentro dela, e a identidade do banco passa a ser o conteúdo do arquivo, não seu tamanho e horário. |
