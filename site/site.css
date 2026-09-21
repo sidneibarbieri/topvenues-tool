@@ -304,6 +304,7 @@ dl.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap
 .facts a:hover { text-decoration: underline; }
 code.hash { font-size: .78rem; word-break: break-all; color: var(--fg); }
 .paper .code { margin-top: auto; }
+.paper .code pre { font-size: 12.5px; }
 .current { margin-top: 28px; background: var(--surface); border-style: dashed; }
 .current .kicker { color: var(--muted); }
 .current p { margin: 8px 0 0; max-width: 52em; }
