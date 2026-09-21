@@ -71,6 +71,8 @@ security and security-relevant venues, with {n_abstracts:,} abstracts and a BibT
 every record.
 
 - **Code / tool:** <https://github.com/sidneibarbieri/topvenues-tool>
+- **Project page:** <https://sidneibarbieri.github.io/topVenues/>, with both
+  published papers, the repository that reproduces each one, and how to cite them.
 - **Pinned source of truth:** the gzipped SQLite snapshot shipped with the
   tool; this dataset is a faithful Parquet export of the same named snapshot.
 
