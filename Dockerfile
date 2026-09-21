@@ -43,6 +43,10 @@ COPY data/adjudication/ ./data/adjudication/
 COPY evaluation/ ./evaluation/
 # The Hugging Face export copies these into the dataset card it builds.
 COPY docs/assets/topvenues-abstract-search.png docs/assets/topvenues-abstract-search.pdf ./docs/assets/
+# The interface draws its logo and favicon from the brand masters.
+COPY docs/brand/ ./docs/brand/
+# Theme and font configuration; without it the image ran on Streamlit defaults.
+COPY .streamlit/ ./.streamlit/
 COPY data/awards/ ./data/awards/
 COPY reproduce.sh ./
 

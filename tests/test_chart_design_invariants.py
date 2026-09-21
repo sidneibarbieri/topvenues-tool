@@ -136,3 +136,10 @@ def test_a_horizontal_chart_is_as_tall_as_its_bars():
     )
 
     assert chart.to_dict()["height"] == len(data) * (charts.BAR_THICKNESS + charts.BAR_GAP)
+
+
+def test_series_differ_by_dash_as_well_as_hue():
+    """No chart may rely on colour alone (docs/brand/BRAND.md)."""
+    assert len(charts.SERIES_DASH) == len(charts.SERIES)
+    assert len(set(charts.SERIES_DASH)) == len(charts.SERIES_DASH)
+    assert charts.series_legend().to_dict()["symbolType"] == "stroke"

@@ -1,5 +1,112 @@
 # Changelog
 
+## 1.10.0 — 2026-09-21
+
+- Apply the TopVenues visual identity to the interface: logo and favicon from
+  the brand masters in `docs/brand/`, brand tokens in the stylesheet and the
+  Streamlit theme. Chart colours are data colours, kept apart from the brand
+  accent, and multi-series lines differ by dash as well as hue so that no chart
+  relies on colour alone.
+- Add `docs/PAPERS.md`, which binds each published paper to its repository,
+  release, snapshot, SHA-256 and reproduction command, and route readers to the
+  right artifact from both READMEs.
+- Add the landing-page source under `site/`; it reads every figure about the
+  current release from the profile manifest at build time.
+- `CITATION.cff` declares the current version and cites the tools-track paper,
+  with the main-track paper as a reference; a test keeps its version in step.
+- The container image ships `docs/brand/`, which the interface now loads.
+
+## 1.9.3 — 2026-09-02
+
+- Move the one-command reproduction to the top of the README, before anything
+  else a reviewer reads.
+
+## 1.9.2 — 2026-09-01
+
+- The minimal test tells the reader to activate the virtual environment, without
+  which the first command failed on a clean machine. Memory and disk
+  requirements are measured values.
+
+## 1.9.1 — 2026-08-31
+
+- Continuous integration also reproduces the profile the paper cites, in all
+  eight environments, and publishes the execution record as an artifact.
+
+## 1.9.0 — 2026-08-31
+
+- Validate the container image by running it: the Evidence page no longer
+  rendered inside it. Database identity is the file content, not its size and
+  modification time.
+
+## 1.8.1 — 2026-08-31
+
+- Screenshot gallery and demonstration at the top of the README; version
+  history.
+
+## 1.8.0 — 2026-08-31
+
+- Reproduce the paper's Table 2 by command (`reproduce_paper_table2.py`); each
+  reproduction writes an execution record with environment, hashes and results.
+
+## 1.7.1 — 2026-08-31
+
+- Each claim declares the snapshot it was measured on, so a different profile is
+  reported as out of scope instead of failing. Document Windows troubleshooting.
+
+## 1.7.0 — 2026-08-31
+
+- Reorganize the documentation on the CTA minimal template and describe the
+  execution environment. `verify_paper_claims.py` binds every numeric claim of
+  the paper to the query that verifies it. Fix the `Dockerfile`, which copied a
+  missing path and installed unpinned versions.
+
+## 1.6.0 — 2026-08-25
+
+- New 7:49 demonstration video at 1920×1080, cut to the narration, with
+  Brazilian Portuguese and English captions.
+
+## 1.5.9 — 2026-08-25
+
+- The arXiv search button passed API syntax to the web form and returned nothing
+  for every author.
+
+## 1.5.8 — 2026-08-25
+
+- Derive the height of horizontal charts from the number of bars, removing empty
+  frames.
+
+## 1.5.7 — 2026-08-25
+
+- Fix the scale of *Papers by class*: a bar starts at zero and a log scale has
+  no zero, so no bar was drawn. Escape typed text before it becomes a `LIKE`
+  pattern.
+
+## 1.5.6 — 2026-08-25
+
+- Describe the snapshots the package actually ships.
+
+## 1.5.5 — 2026-08-25
+
+- The interface also starts with `streamlit run web/app.py`. One headline-card
+  row across pages.
+
+## 1.5.4 — 2026-08-25
+
+- Refuse to ship without the snapshots that published papers name.
+
+## 1.5.3 — 2026-08-25
+
+- The smoke test checks that the interface renders, not only that the port
+  answers.
+
+## 1.5.2 — 2026-08-24
+
+- State the reproduction command for the reader's platform.
+
+## 1.5.1 — 2026-08-24
+
+- Restore the USENIX extractor fix and the top-4 concentration metric.
+
 ## 1.5.0 — 2026-08-24
 
 - Publish `security-20-v4`, repairing ten titles truncated at inline DBLP markup

@@ -14,17 +14,23 @@ from __future__ import annotations
 import altair as alt
 import pandas as pd
 
-# One accent, one ink, one muted tone. Extra colour here would carry no meaning.
-ACCENT = "#2f6f73"
+# Data colours, not brand colours (docs/brand/BRAND.md): Corpus Blue identifies
+# TopVenues and never encodes a value. One data hue, one ink, one muted tone;
+# extra colour here would carry no meaning.
+ACCENT = "#44607F"
 # Coverage answers "where can this corpus not speak?", so it reads apart from
 # the volume charts on purpose.
-COVERAGE = "#537a4a"
-# Multi-series charts need one hue per series to stay readable. Single-series
-# charts do not: there, a second colour would mean nothing.
-SERIES = ("#2f6f73", "#b36b2c", "#334e68")
-INK = "#1f2933"
-MUTED = "#64748b"
-RULE = "#e8edf1"
+COVERAGE = "#4F7D4A"
+# Multi-series charts need one hue per series to stay readable, and a second
+# channel (line dash) so that no chart relies on colour alone. The two extra
+# hues are Okabe-Ito colours, distinguishable under common colour-vision
+# deficiencies. Single-series charts do not use them: there, a second colour
+# would mean nothing.
+SERIES = ("#44607F", "#D55E00", "#009E73")
+SERIES_DASH = ((1, 0), (6, 3), (2, 3))
+INK = "#10233F"
+MUTED = "#667085"
+RULE = "#E9EEF4"
 FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
 
 # Unselected bars must read as clearly dimmed, not merely lighter.
@@ -40,6 +46,11 @@ BAR_GAP = 10
 LABEL_SIZE = 12
 TITLE_SIZE = 12
 VALUE_LABEL_SIZE = 11
+
+
+def series_legend() -> alt.Legend:
+    """Legend entries drawn as the line itself, so dash identifies a series too."""
+    return alt.Legend(symbolType="stroke", symbolStrokeWidth=2.3, symbolSize=320)
 
 
 def apply_theme(chart: alt.Chart) -> alt.Chart:

@@ -58,6 +58,23 @@ Depois disso, o [Teste mínimo](#teste-mínimo) mostra a ferramenta em uso e os
 
 ---
 
+## Qual artefato usar
+
+O TopVenues tem dois artigos publicados no SBSeg 2026. Cada um fica preso ao
+seu repositório, à sua versão e ao seu snapshot, e é reproduzido a partir deles,
+nunca da versão corrente. O [registro dos artigos](docs/PAPERS.md) traz o
+SHA-256 e o comando de cada um; a
+[página do projeto](https://sidneibarbieri.github.io/topVenues/) reúne tudo.
+
+| Quero… | Onde |
+| --- | --- |
+| Reproduzir este artigo (Salão de Ferramentas) | este repositório: `bash reproduce.sh --profile security-20` |
+| Usar o corpus atual | este repositório, perfil `security-20-v4` ([README.en.md](README.en.md)) |
+| Reproduzir o artigo da trilha principal | [`topVenues`](https://github.com/sidneibarbieri/topVenues): `bash reproduce.sh` |
+| Baixar os dados | [Hugging Face `sidneibarbieri/topvenues`](https://huggingface.co/datasets/sidneibarbieri/topvenues) |
+
+---
+
 ## A ferramenta em uso
 
 | | |
@@ -115,7 +132,7 @@ topvenues-tool/
 ├── src/                       biblioteca e interface de linha de comando
 ├── web/                       aplicação Streamlit
 ├── scripts/                   automação de verificação e de experimentos
-├── tests/                     364 testes automatizados
+├── tests/                     371 testes automatizados
 └── docs/                      guia do revisor, protocolo de auditoria, demonstração
 ```
 
@@ -508,7 +525,7 @@ python -m pytest -q
 ```
 
 - **Tempo esperado:** ~10 s
-- **Resultado esperado:** `364 passed`, sem acesso à rede.
+- **Resultado esperado:** `371 passed`, sem acesso à rede.
 - **Contagem de testes:** o número cresce a cada versão; o
   [histórico de versões](#histórico-de-versões) registra a evolução. O valor
   corrente é verificado automaticamente contra este README.
@@ -558,6 +575,7 @@ relevante para quem reproduz ou audita o corpus.
 
 | Versão | Mudanças relevantes para reprodução |
 | --- | --- |
+| `v1.10.0` | Identidade visual aplicada à interface, com a cor da marca separada das cores de dados e as séries dos gráficos distinguidas também por traço. Seção [Qual artefato usar](#qual-artefato-usar) e registro dos artigos publicados em `docs/PAPERS.md`. `CITATION.cff` passa a declarar a versão corrente e a citar o artigo. |
 | `v1.9.3` | Reprodução em um comando movida para o topo do documento, antes de qualquer outra leitura. |
 | `v1.9.2` | Teste mínimo passa a indicar a ativação do ambiente virtual, sem a qual o primeiro comando falhava em máquina limpa. Requisitos de memória e disco substituídos por valores medidos. |
 | `v1.9.1` | Verificação contínua passa a reproduzir também o perfil citado no artigo, nos oito ambientes, e publica o registro de execução como artefato. |
