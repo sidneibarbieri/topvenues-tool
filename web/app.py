@@ -86,11 +86,18 @@ TREND_EXAMPLE_TOPICS = ("LLM", "ransomware", "fuzzing")
 PAGE_SIZE_OPTIONS = (25, 50, 100, 200)
 ABSTRACT_PREVIEW_CHARS = 280
 
+BRAND_DIR = Path(__file__).resolve().parents[1] / "docs" / "brand"
+BRAND_WORDMARK = BRAND_DIR / "topvenues-wordmark.svg"
+BRAND_MARK = BRAND_DIR / "topvenues-mark.svg"
+BRAND_ICON = BRAND_DIR / "mark-32.png"
+
 st.set_page_config(
-    page_title="TopVenues - Security Paper Explorer",
+    page_title="TopVenues",
+    page_icon=str(BRAND_ICON),
     layout="wide",
     initial_sidebar_state="expanded",
 )
+st.logo(str(BRAND_WORDMARK), size="large", icon_image=str(BRAND_MARK))
 
 
 # ── Styles ────────────────────────────────────────────────────────────────
@@ -99,22 +106,22 @@ st.markdown(
     """
     <style>
         :root {
-            --ink:    #18212f;
-            --navy:   #243247;
-            --slate:  #3d4b5f;
-            --teal:   #2f6f73;
-            --green:  #4f7d4a;
-            --muted:  #d8e2e3;
-            --border: #d8dde3;
-            --bg:     #f8f8f5;
-            --card:   #ffffff;
+            /* Brand tokens: docs/brand/BRAND.md. */
+            --ink:     #10233F;
+            --accent:  #2867B2;
+            --slate:   #667085;
+            --mist:    #E9EEF4;
+            --surface: #F5F7FA;
+            --border:  #D3DBE5;
+            --bg:      #FFFFFF;
+            --card:    #FFFFFF;
         }
 
         .stApp, [data-testid="stAppViewContainer"] {
             background: var(--bg);
             color: var(--ink);
         }
-        [data-testid="stHeader"] { background: rgba(248, 248, 245, .86); }
+        [data-testid="stHeader"] { background: rgba(255, 255, 255, .88); }
         [data-testid="stMainBlockContainer"] { padding-top: 2.2rem; }
         [data-testid="stDeployButton"],
         [data-testid="stAppDeployButton"],
@@ -132,8 +139,8 @@ st.markdown(
         }
 
         .app-header {
-            background: #eef4f5;
-            border-left: 5px solid var(--teal);
+            background: var(--surface);
+            border-left: 4px solid var(--accent);
             border-radius: 6px;
             padding: 1.35rem 1.6rem;
             margin-bottom: 1.4rem;
@@ -142,10 +149,10 @@ st.markdown(
             border-bottom: 1px solid var(--border);
         }
         .app-header h1 {
-            color: #18212f !important; font-size: 1.75rem; font-weight: 700;
-            margin: 0 0 .35rem; letter-spacing: 0;
+            color: var(--ink) !important; font-size: 1.75rem; font-weight: 650;
+            margin: 0 0 .35rem; letter-spacing: -.01em;
         }
-        .app-header p { color: #4d5f71; font-size: .96rem; margin: 0; }
+        .app-header p { color: var(--slate); font-size: .96rem; margin: 0; }
 
 
     .tag {
@@ -162,7 +169,7 @@ st.markdown(
     .tag-article  { background: #f0f4f8; color: #0d1b2a; }
 
     section[data-testid="stSidebar"] {
-        background: #f1f4f3;
+        background: var(--surface);
         border-right: 1px solid var(--border);
     }
     section[data-testid="stSidebar"] * { color: var(--ink) !important; }
@@ -174,7 +181,7 @@ st.markdown(
     }
     section[data-testid="stSidebar"] label,
     section[data-testid="stSidebar"] p {
-        color: #334155 !important;
+        color: var(--ink) !important;
     }
 
         .results-bar {
@@ -183,7 +190,7 @@ st.markdown(
             padding: .7rem 1rem; margin-bottom: 1rem;
         }
         .results-bar .count { color: var(--ink); font-size: 1rem; font-weight: 700; }
-    .results-bar .sub   { color: #6b7c8d; font-size: .85rem; }
+    .results-bar .sub   { color: var(--slate); font-size: .85rem; }
 
         .paper-card {
             background: var(--card); border: 1px solid var(--border);
@@ -191,12 +198,12 @@ st.markdown(
         }
         .paper-card h3 { color: var(--ink); margin: 0 0 .6rem; }
     .paper-meta {
-        display: flex; gap: 1.5rem; color: #6b7c8d; font-size: .85rem;
+        display: flex; gap: 1.5rem; color: var(--slate); font-size: .85rem;
         margin-bottom: .8rem; flex-wrap: wrap;
     }
     .paper-abstract {
         white-space: pre-wrap; line-height: 1.6;
-        color: #2c3e50; font-size: .95rem;
+        color: var(--ink); font-size: .95rem;
     }
 
         .claim-grid {
@@ -207,13 +214,13 @@ st.markdown(
             border: 1px solid var(--border); border-radius: 6px; background: var(--card);
             padding: .95rem 1rem;
         }
-        .claim .name { color: #607084; text-transform: uppercase; font-size: .72rem; font-weight: 700; }
+        .claim .name { color: var(--slate); text-transform: uppercase; font-size: .72rem; font-weight: 700; letter-spacing: .04em; }
         .claim .value { color: var(--ink); font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
-        .claim .note { color: #637184; font-size: .84rem; }
+        .claim .note { color: var(--slate); font-size: .84rem; }
         .stDataFrame { border-radius: 6px; overflow: hidden; }
         div[data-testid="stExpander"] { border-radius: 6px; }
     .footer {
-        color: #94a3b8; font-size: .78rem; text-align: center;
+        color: var(--slate); font-size: .78rem; text-align: center;
         margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border);
     }
 </style>
@@ -1530,6 +1537,16 @@ def page_insights() -> None:
                                 range=list(charts.SERIES),
                             ),
                             title=None,
+                            legend=charts.series_legend(),
+                        ),
+                        strokeDash=alt.StrokeDash(
+                            "Measure:N",
+                            scale=alt.Scale(
+                                domain=["Papers", "First author", "Last author"],
+                                range=[list(dash) for dash in charts.SERIES_DASH],
+                            ),
+                            title=None,
+                            legend=charts.series_legend(),
                         ),
                         tooltip=["Year:O", "Measure:N", "Count:Q", "Venues:N"],
                     )
@@ -2140,13 +2157,6 @@ def main() -> None:
         "Dataset lifecycle": page_pipeline,
     }
     with st.sidebar:
-        st.markdown(
-            '<h2 style="color:#fff !important; border:none !important;'
-            "font-size:1.15rem !important; text-transform:none !important;"
-            'letter-spacing:0 !important; margin-bottom:1rem !important">'
-            "TopVenues</h2>",
-            unsafe_allow_html=True,
-        )
         page = st.radio("Navigate", list(pages.keys()), label_visibility="collapsed", key="page")
         st.markdown("<br>", unsafe_allow_html=True)
 

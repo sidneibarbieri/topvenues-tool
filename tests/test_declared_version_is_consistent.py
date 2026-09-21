@@ -37,3 +37,11 @@ def test_every_documented_clone_checks_out_this_release():
     readme = (ROOT / "README.en.md").read_text(encoding="utf-8")
     tags = set(re.findall(r"--branch v([0-9.]+) https://github\.com/", readme))
     assert tags == {src.__version__}, f"the README clones {sorted(tags)}"
+
+
+def test_the_citation_file_declares_this_release():
+    """CITATION.cff stayed at 1.3.0 through six releases; GitHub shows it verbatim."""
+    cff = (ROOT / "CITATION.cff").read_text(encoding="utf-8")
+    declared = re.search(r'^version: "([0-9.]+)"$', cff, flags=re.M)
+    assert declared, "CITATION.cff no longer declares a version"
+    assert declared.group(1) == src.__version__

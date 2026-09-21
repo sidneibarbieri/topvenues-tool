@@ -4,6 +4,17 @@ TopVenues is an open-source, local-first tool for constructing and inspecting a 
 
 The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submission-r1`](https://github.com/sidneibarbieri/topvenues-tool/releases/tag/sbseg2026-sf-submission-r1) release and its `security-20` snapshot. It is preserved unchanged; do not use current counts to verify claims in that paper.
 
+| I want to… | Go to |
+| --- | --- |
+| Use TopVenues today | this repository, profile `security-20-v4` ([quick start](#reviewer-quick-start)) |
+| Reproduce the tools-track paper | this repository, `bash reproduce.sh --profile security-20` |
+| Reproduce the main-track paper | [`topVenues`](https://github.com/sidneibarbieri/topVenues), `bash reproduce.sh` |
+| Download the data | [Hugging Face `sidneibarbieri/topvenues`](https://huggingface.co/datasets/sidneibarbieri/topvenues) |
+
+Both papers, their releases, snapshots, SHA-256 digests and commands are listed
+in [docs/PAPERS.md](docs/PAPERS.md). The project page is
+<https://sidneibarbieri.github.io/topVenues/>.
+
 ## Authors
 
 - Sidnei Barbieri — `sidneibarbieri@gmail.com`
@@ -13,7 +24,7 @@ The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submis
 
 | Property | Value |
 | --- | --- |
-| Tool release | `v1.9.3` |
+| Tool release | `v1.10.0` |
 | Snapshot source release | `v1.2.1` |
 | Scope | 20 declared security and security-relevant venues |
 | Records | 14,859 corpus records |
@@ -30,7 +41,7 @@ The successor enforces the declared 2019–2026 window, inherits exact-resource 
 Requires Python 3.11–3.14, Git, and Bash.
 
 ```bash
-git clone --depth 1 --branch v1.9.3 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --depth 1 --branch v1.10.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 bash reproduce.sh --profile security-20-v4
 ```
@@ -44,7 +55,7 @@ PowerShell. Use the native PowerShell workflow rather than editing the Unix
 script or mixing Git Bash and PowerShell environments:
 
 ```powershell
-git clone --depth 1 --branch v1.9.3 https://github.com/sidneibarbieri/topvenues-tool.git
+git clone --depth 1 --branch v1.10.0 https://github.com/sidneibarbieri/topvenues-tool.git
 cd topvenues-tool
 powershell -ExecutionPolicy Bypass -File .\reproduce.ps1 -Profile security-20-v4
 ```
@@ -134,7 +145,7 @@ python -m src.cli --profile security-20-v4 export --format bibtex --tech "fuzzin
   --tier-scope "Security top-4" -o fuzzing-tier1.bib
 
 # Build the Hugging Face Parquet export from the immutable profile
-python -m src.cli --profile security-20-v4 export-hf --release-tag v1.9.3
+python -m src.cli --profile security-20-v4 export-hf --release-tag v1.10.0
 
 # Create and later evaluate a portable research watch
 python scripts/evaluate_watchlist.py topvenues-watchlist.json --profile security-20-v4
@@ -172,6 +183,14 @@ against it.
 ## Hugging Face export
 
 The public dataset is at [sidneibarbieri/topvenues](https://huggingface.co/datasets/sidneibarbieri/topvenues). The dataset card records the selected profile, source tag, and snapshot SHA-256.
+
+## Citation
+
+Cite the paper whose numbers you use: the tools-track paper for the tool and
+`security-20`, the main-track paper for the corpus method and its measurements.
+GitHub's "Cite this repository" reads [CITATION.cff](CITATION.cff); both BibTeX
+entries are on the [project page](https://sidneibarbieri.github.io/topVenues/#cite).
+When you use the current release, also name the profile and its SHA-256.
 
 ## License and provenance
 
