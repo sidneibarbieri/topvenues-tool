@@ -16,12 +16,24 @@
     document.querySelectorAll("[data-label-" + lang + "]").forEach(function (el) {
       el.setAttribute("aria-label", el.getAttribute("data-label-" + lang));
     });
-    document.querySelectorAll("video").forEach(function (v) {
-      Array.prototype.forEach.call(v.textTracks, function (t) {
-        t.mode = (t.language.indexOf(lang) === 0) ? "showing" : "disabled";
-      });
+    document.querySelectorAll("video").forEach(function (v) { syncCaptions(v); });
+  }
+
+  // A track set to "showing" is fetched at once, so captions are chosen only
+  // after playback starts: nothing leaves this page for a third party before.
+  function syncCaptions(v) {
+    if (!v.hasAttribute("data-started")) return;
+    var lang = d.getAttribute("data-lang");
+    Array.prototype.forEach.call(v.textTracks, function (t) {
+      t.mode = (t.language.indexOf(lang) === 0) ? "showing" : "disabled";
     });
   }
+  document.querySelectorAll("video").forEach(function (v) {
+    v.addEventListener("play", function () {
+      v.setAttribute("data-started", "");
+      syncCaptions(v);
+    });
+  });
 
   document.querySelectorAll("[data-set-lang]").forEach(function (b) {
     b.addEventListener("click", function () {
