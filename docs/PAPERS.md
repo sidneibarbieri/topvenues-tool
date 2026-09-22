@@ -44,6 +44,7 @@ DOI `10.5753/sbseg.2026.29056`
 ```bash
 git clone https://github.com/sidneibarbieri/topVenues
 cd topVenues
+git checkout sbseg2026-camera-ready
 bash reproduce.sh
 ```
 
@@ -99,10 +100,13 @@ Not a paper. The corpus TopVenues ships today, maintained and extended.
 exact-resource deduplication and a declared 2019–2026 window make it a
 different population, with its own identity.
 
-## Why two repositories
+## One repository
 
-`topVenues` is the frozen artifact of Paper A, and its `main` still reproduces
-that paper exactly. `topvenues-tool` is where TopVenues is developed, and it
-also carries the snapshot Paper B cites. Moving either one would break a
-reproduction command already in print, so neither moves. The project's front
-door is the landing page, which routes to both.
+TopVenues moved to [`topVenues`](https://github.com/sidneibarbieri/topVenues)
+in v1.11.0. This repository is archived with its history and tags, so the
+command Paper B prints keeps working. Paper A is frozen at the
+`sbseg2026-camera-ready` release of `topVenues`, whose continuous integration
+re-runs it on every change, next to the `security-20` and `security-20-v4`
+profiles. The current
+version of this registry is
+[`topVenues/docs/PAPERS.md`](https://github.com/sidneibarbieri/topVenues/blob/main/docs/PAPERS.md).

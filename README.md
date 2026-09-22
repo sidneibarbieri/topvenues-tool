@@ -4,6 +4,15 @@
 [![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%E2%80%933.14-blue.svg)](#dependências)
 
+> [!IMPORTANT]
+> **Este repositório foi arquivado. O TopVenues agora vive em
+> [sidneibarbieri/topVenues](https://github.com/sidneibarbieri/topVenues)**,
+> que recebe todas as versões novas a partir da v1.11.0. O código daqui fica
+> intacto para que o comando impresso no artigo do Salão de Ferramentas
+> continue funcionando; o mesmo perfil `security-20` é reproduzido e verificado
+> pela integração contínua no repositório novo
+> ([docs/PAPERS.md](https://github.com/sidneibarbieri/topVenues/blob/main/docs/PAPERS.md)).
+
 **Artefato do artigo #189 — Salão de Ferramentas, SBSeg 2026**
 *TopVenues: An Executable Corpus and Research Tool for Cybersecurity Literature Reviews*
 Sidnei Barbieri, Ágney Roth Ferraz, Lourenço Alves Pereira Júnior (ITA)
@@ -70,7 +79,7 @@ SHA-256 e o comando de cada um; a
 | --- | --- |
 | Reproduzir este artigo (Salão de Ferramentas) | este repositório: `bash reproduce.sh --profile security-20` |
 | Usar o corpus atual | este repositório, perfil `security-20-v4` ([README.en.md](README.en.md)) |
-| Reproduzir o artigo da trilha principal | [`topVenues`](https://github.com/sidneibarbieri/topVenues): `bash reproduce.sh` |
+| Reproduzir o artigo da trilha principal | [`topVenues`](https://github.com/sidneibarbieri/topVenues): `git checkout sbseg2026-camera-ready && bash reproduce.sh` |
 | Baixar os dados | [Hugging Face `sidneibarbieri/topvenues`](https://huggingface.co/datasets/sidneibarbieri/topvenues) |
 
 ---
