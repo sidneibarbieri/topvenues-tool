@@ -1,5 +1,14 @@
 # TopVenues
 
+> [!IMPORTANT]
+> **This repository is archived. TopVenues now lives at
+> [sidneibarbieri/topVenues](https://github.com/sidneibarbieri/topVenues)**,
+> which receives every new release from v1.11.0 on. The code here stays intact
+> so that the command printed in the tools-track paper keeps working; the same
+> `security-20` profile is reproduced and verified by continuous integration in
+> the new home
+> ([docs/PAPERS.md](https://github.com/sidneibarbieri/topVenues/blob/main/docs/PAPERS.md)).
+
 TopVenues is an open-source, local-first tool for constructing and inspecting a declared corpus for cybersecurity literature reviews. The current researcher-facing release is pinned to the immutable `security-20-v4` profile.
 
 The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submission-r1`](https://github.com/sidneibarbieri/topvenues-tool/releases/tag/sbseg2026-sf-submission-r1) release and its `security-20` snapshot. It is preserved unchanged; do not use current counts to verify claims in that paper.
@@ -8,7 +17,7 @@ The accepted SBSeg-SF paper remains bound to the immutable [`sbseg2026-sf-submis
 | --- | --- |
 | Use TopVenues today | this repository, profile `security-20-v4` ([quick start](#reviewer-quick-start)) |
 | Reproduce the tools-track paper | this repository, `bash reproduce.sh --profile security-20` |
-| Reproduce the main-track paper | [`topVenues`](https://github.com/sidneibarbieri/topVenues), `bash reproduce.sh` |
+| Reproduce the main-track paper | [`topVenues`](https://github.com/sidneibarbieri/topVenues), `git checkout sbseg2026-camera-ready && bash reproduce.sh` |
 | Download the data | [Hugging Face `sidneibarbieri/topvenues`](https://huggingface.co/datasets/sidneibarbieri/topvenues) |
 
 Both papers, their releases, snapshots, SHA-256 digests and commands are listed
